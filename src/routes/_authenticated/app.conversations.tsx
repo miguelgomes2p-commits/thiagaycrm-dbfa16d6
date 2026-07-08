@@ -3,11 +3,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  sendWhatsappMessage,
+  takeConversation,
+  releaseConversation,
+  resolveConversation,
+} from "@/lib/whatsapp.functions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe } from "lucide-react";
+import {
+  MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
+  Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -15,6 +25,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/app/conversations")({
   component: ConversationsPage,
 });
+
 
 const channelIcon = { whatsapp: Phone, instagram: Instagram, facebook: Facebook, email: Mail, webchat: Globe, telegram: Send, sms: Phone } as const;
 
