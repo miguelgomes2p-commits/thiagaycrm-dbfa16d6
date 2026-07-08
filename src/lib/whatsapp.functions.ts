@@ -261,7 +261,7 @@ export const syncWhatsappTemplates = createServerFn({ method: "POST" })
         language: t.language,
         category: t.category ?? null,
         status,
-        components: t.components as unknown as object,
+        components: (t.components ?? []) as never,
         meta_id: t.id,
       };
     });
