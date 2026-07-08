@@ -75,7 +75,8 @@ function PipelinePage() {
     const patch: Record<string, unknown> = { stage_id: newStageId, last_interaction_at: new Date().toISOString() };
     if (stage?.type === "won") patch.won_at = new Date().toISOString();
     if (stage?.type === "lost") patch.lost_at = new Date().toISOString();
-    const { error } = await supabase.from("leads").update(patch).eq("id", leadId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase.from("leads").update(patch as any).eq("id", leadId);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["pipeline", ws?.id] });
     qc.invalidateQueries({ queryKey: ["dashboard", ws?.id] });
@@ -87,6 +88,7 @@ function PipelinePage() {
     if (!ws || !pipelineQ.data?.pipe || !pipelineQ.data.stages[0]) return;
     const fd = new FormData(e.currentTarget);
     const { data: user } = await supabase.auth.getUser();
+    const priority = (String(fd.get("priority") || "medium")) as "low" | "medium" | "high" | "urgent";
     const { error } = await supabase.from("leads").insert({
       workspace_id: ws.id,
       pipeline_id: pipelineQ.data.pipe.id,
@@ -94,7 +96,7 @@ function PipelinePage() {
       title: String(fd.get("title")),
       value: Number(fd.get("value") || 0),
       source: String(fd.get("source") || "") || null,
-      priority: String(fd.get("priority") || "medium") as Lead["priority"],
+      priority,
       contact_id: String(fd.get("contact_id") || "") || null,
       owner_id: user.user?.id,
     });

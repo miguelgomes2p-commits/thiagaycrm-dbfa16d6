@@ -25,7 +25,8 @@ export const Route = createFileRoute("/_authenticated/app")({
   component: AppShell,
 });
 
-const NAV = [
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean };
+const NAV: NavItem[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/app/pipeline", label: "Pipeline", icon: KanbanSquare },
   { to: "/app/contacts", label: "Contatos", icon: Users },
@@ -33,7 +34,7 @@ const NAV = [
   { to: "/app/tasks", label: "Tarefas", icon: CheckSquare },
   { to: "/app/ai", label: "Assistente IA", icon: Bot },
   { to: "/app/settings", label: "Configurações", icon: Settings },
-] as const;
+];
 
 function AppShell() {
   const [collapsed, setCollapsed] = useState(false);

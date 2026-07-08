@@ -43,7 +43,8 @@ function ContactsPage() {
     const payload: Record<string, unknown> = { workspace_id: ws.id, type };
     fd.forEach((v, k) => { if (v && v !== "") payload[k] = v; });
     if (fd.get("tags")) payload.tags = String(fd.get("tags")).split(",").map((s) => s.trim()).filter(Boolean);
-    const { error } = await supabase.from("contacts").insert(payload);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase.from("contacts").insert(payload as any);
     if (error) { toast.error(error.message); return; }
     toast.success("Contato criado");
     qc.invalidateQueries({ queryKey: ["contacts"] });
