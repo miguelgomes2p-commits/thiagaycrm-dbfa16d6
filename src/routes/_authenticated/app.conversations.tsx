@@ -34,7 +34,12 @@ function ConversationsPage() {
   const ws = workspaces?.[0];
   const [activeId, setActiveId] = useState<string | null>(null);
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
   const qc = useQueryClient();
+  const sendWa = useServerFn(sendWhatsappMessage);
+  const takeFn = useServerFn(takeConversation);
+  const releaseFn = useServerFn(releaseConversation);
+  const resolveFn = useServerFn(resolveConversation);
 
   const convsQ = useQuery({
     enabled: !!ws?.id,
@@ -58,56 +63,78 @@ function ConversationsPage() {
     },
   });
 
-  // Realtime for messages of active conversation
+  // Realtime for active conversation messages
   useEffect(() => {
     if (!activeId) return;
     const ch = supabase.channel(`msgs-${activeId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${activeId}` },
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${activeId}` },
         () => qc.invalidateQueries({ queryKey: ["messages", activeId] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [activeId, qc]);
 
-  const active = useMemo(() => convsQ.data?.find((c) => c.id === activeId), [convsQ.data, activeId]);
+  // Realtime for conversation list (new WhatsApp conversations landing on the workspace)
+  useEffect(() => {
+    if (!ws?.id) return;
+    const ch = supabase.channel(`convs-${ws.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `workspace_id=eq.${ws.id}` },
+        () => qc.invalidateQueries({ queryKey: ["conversations", ws.id] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ws?.id, qc]);
 
+  const active = useMemo(() => convsQ.data?.find((c) => c.id === activeId), [convsQ.data, activeId]);
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [msgsQ.data]);
-
-  async function createDemoConversation() {
-    if (!ws) return;
-    const { data: contact } = await supabase.from("contacts").insert({
-      workspace_id: ws.id, type: "person", name: "Novo contato via WhatsApp",
-    }).select().single();
-    if (!contact) return;
-    const { data: conv } = await supabase.from("conversations").insert({
-      workspace_id: ws.id, contact_id: contact.id, channel: "whatsapp", status: "open",
-      subject: "Nova conversa", last_message_preview: "Olá! Vi seu anúncio...", last_message_at: new Date().toISOString(),
-    }).select().single();
-    if (conv) {
-      await supabase.from("messages").insert({
-        workspace_id: ws.id, conversation_id: conv.id, direction: "inbound", sender_type: "contact",
-        content: "Olá! Vi seu anúncio no Instagram e queria saber mais sobre os serviços de vocês.",
-      });
-    }
-    qc.invalidateQueries({ queryKey: ["conversations"] });
-    toast.success("Conversa demo criada");
-  }
 
   async function sendMessage() {
     if (!text.trim() || !active || !ws) return;
     const content = text.trim();
+    const isWa = active.channel === "whatsapp" && !!(active as { whatsapp_number_id?: string | null }).whatsapp_number_id;
     setText("");
-    const { data: u } = await supabase.auth.getUser();
-    await supabase.from("messages").insert({
-      workspace_id: ws.id, conversation_id: active.id, direction: "outbound", sender_type: "user",
-      sender_user_id: u.user?.id, content,
-    });
-    await supabase.from("conversations").update({
-      last_message_preview: content, last_message_at: new Date().toISOString(),
-    }).eq("id", active.id);
-    qc.invalidateQueries({ queryKey: ["messages", active.id] });
-    qc.invalidateQueries({ queryKey: ["conversations"] });
+    setSending(true);
+    try {
+      if (isWa) {
+        await sendWa({ data: { conversationId: active.id, body: content } });
+      } else {
+        const { data: u } = await supabase.auth.getUser();
+        await supabase.from("messages").insert({
+          workspace_id: ws.id, conversation_id: active.id, direction: "outbound", sender_type: "user",
+          sender_user_id: u.user?.id, content,
+        });
+        await supabase.from("conversations").update({
+          last_message_preview: content, last_message_at: new Date().toISOString(),
+        }).eq("id", active.id);
+      }
+      qc.invalidateQueries({ queryKey: ["messages", active.id] });
+      qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao enviar");
+      setText(content);
+    } finally {
+      setSending(false);
+    }
   }
+
+  async function take() {
+    if (!active) return;
+    try { await takeFn({ data: { conversationId: active.id } }); toast.success("Conversa atribuída a você");
+      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+  async function release() {
+    if (!active) return;
+    try { await releaseFn({ data: { conversationId: active.id } }); toast.success("Devolvido para a fila");
+      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+  async function resolve() {
+    if (!active) return;
+    try { await resolveFn({ data: { conversationId: active.id } }); toast.success("Conversa resolvida");
+      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+
 
   return (
     <div className="h-full flex">
