@@ -169,7 +169,9 @@ export type Database = {
       }
       conversations: {
         Row: {
+          ai_summary: string | null
           assigned_to: string | null
+          auto_reply_enabled: boolean
           channel: Database["public"]["Enums"]["channel_type"]
           contact_id: string | null
           created_at: string
@@ -181,10 +183,14 @@ export type Database = {
           subject: string | null
           unread_count: number
           updated_at: string
+          wa_contact_wa_id: string | null
+          whatsapp_number_id: string | null
           workspace_id: string
         }
         Insert: {
+          ai_summary?: string | null
           assigned_to?: string | null
+          auto_reply_enabled?: boolean
           channel?: Database["public"]["Enums"]["channel_type"]
           contact_id?: string | null
           created_at?: string
@@ -196,10 +202,14 @@ export type Database = {
           subject?: string | null
           unread_count?: number
           updated_at?: string
+          wa_contact_wa_id?: string | null
+          whatsapp_number_id?: string | null
           workspace_id: string
         }
         Update: {
+          ai_summary?: string | null
           assigned_to?: string | null
+          auto_reply_enabled?: boolean
           channel?: Database["public"]["Enums"]["channel_type"]
           contact_id?: string | null
           created_at?: string
@@ -211,6 +221,8 @@ export type Database = {
           subject?: string | null
           unread_count?: number
           updated_at?: string
+          wa_contact_wa_id?: string | null
+          whatsapp_number_id?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -226,6 +238,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_whatsapp_number_id_fkey"
+            columns: ["whatsapp_number_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_numbers"
             referencedColumns: ["id"]
           },
           {
@@ -340,39 +359,54 @@ export type Database = {
           content: string | null
           conversation_id: string
           created_at: string
+          delivery_status: Database["public"]["Enums"]["wa_delivery_status"]
           direction: Database["public"]["Enums"]["message_direction"]
+          error_message: string | null
           id: string
+          media_mime_type: string | null
           media_type: string | null
           media_url: string | null
           metadata: Json | null
           sender_type: Database["public"]["Enums"]["sender_type"]
           sender_user_id: string | null
+          template_name: string | null
+          wa_message_id: string | null
           workspace_id: string
         }
         Insert: {
           content?: string | null
           conversation_id: string
           created_at?: string
+          delivery_status?: Database["public"]["Enums"]["wa_delivery_status"]
           direction: Database["public"]["Enums"]["message_direction"]
+          error_message?: string | null
           id?: string
+          media_mime_type?: string | null
           media_type?: string | null
           media_url?: string | null
           metadata?: Json | null
           sender_type: Database["public"]["Enums"]["sender_type"]
           sender_user_id?: string | null
+          template_name?: string | null
+          wa_message_id?: string | null
           workspace_id: string
         }
         Update: {
           content?: string | null
           conversation_id?: string
           created_at?: string
+          delivery_status?: Database["public"]["Enums"]["wa_delivery_status"]
           direction?: Database["public"]["Enums"]["message_direction"]
+          error_message?: string | null
           id?: string
+          media_mime_type?: string | null
           media_type?: string | null
           media_url?: string | null
           metadata?: Json | null
           sender_type?: Database["public"]["Enums"]["sender_type"]
           sender_user_id?: string | null
+          template_name?: string | null
+          wa_message_id?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -519,6 +553,95 @@ export type Database = {
           },
         ]
       }
+      queue_entries: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          conversation_id: string
+          created_at: string
+          entered_at: string
+          id: string
+          priority: number
+          resolved_at: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          conversation_id: string
+          created_at?: string
+          entered_at?: string
+          id?: string
+          priority?: number
+          resolved_at?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          conversation_id?: string
+          created_at?: string
+          entered_at?: string
+          id?: string
+          priority?: number
+          resolved_at?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_entries_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: true
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queue_entries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      queue_settings: {
+        Row: {
+          created_at: string
+          last_assigned_user_id: string | null
+          sla_minutes: number
+          strategy: Database["public"]["Enums"]["queue_strategy"]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_assigned_user_id?: string | null
+          sla_minutes?: number
+          strategy?: Database["public"]["Enums"]["queue_strategy"]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          last_assigned_user_id?: string | null
+          sla_minutes?: number
+          strategy?: Database["public"]["Enums"]["queue_strategy"]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -585,6 +708,128 @@ export type Database = {
           },
           {
             foreignKeyName: "tasks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_numbers: {
+        Row: {
+          access_token: string
+          app_id: string | null
+          auto_reply_enabled: boolean
+          auto_reply_prompt: string | null
+          created_at: string
+          default_owner_id: string | null
+          display_number: string
+          id: string
+          is_active: boolean
+          label: string
+          last_webhook_at: string | null
+          phone_number_id: string
+          updated_at: string
+          waba_id: string
+          webhook_verify_token: string
+          workspace_id: string
+        }
+        Insert: {
+          access_token: string
+          app_id?: string | null
+          auto_reply_enabled?: boolean
+          auto_reply_prompt?: string | null
+          created_at?: string
+          default_owner_id?: string | null
+          display_number: string
+          id?: string
+          is_active?: boolean
+          label: string
+          last_webhook_at?: string | null
+          phone_number_id: string
+          updated_at?: string
+          waba_id: string
+          webhook_verify_token?: string
+          workspace_id: string
+        }
+        Update: {
+          access_token?: string
+          app_id?: string | null
+          auto_reply_enabled?: boolean
+          auto_reply_prompt?: string | null
+          created_at?: string
+          default_owner_id?: string | null
+          display_number?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_webhook_at?: string | null
+          phone_number_id?: string
+          updated_at?: string
+          waba_id?: string
+          webhook_verify_token?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_numbers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          category: string | null
+          components: Json
+          created_at: string
+          id: string
+          language: string
+          meta_id: string | null
+          name: string
+          status: Database["public"]["Enums"]["wa_template_status"]
+          updated_at: string
+          whatsapp_number_id: string
+          workspace_id: string
+        }
+        Insert: {
+          category?: string | null
+          components?: Json
+          created_at?: string
+          id?: string
+          language?: string
+          meta_id?: string | null
+          name: string
+          status?: Database["public"]["Enums"]["wa_template_status"]
+          updated_at?: string
+          whatsapp_number_id: string
+          workspace_id: string
+        }
+        Update: {
+          category?: string | null
+          components?: Json
+          created_at?: string
+          id?: string
+          language?: string
+          meta_id?: string | null
+          name?: string
+          status?: Database["public"]["Enums"]["wa_template_status"]
+          updated_at?: string
+          whatsapp_number_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_whatsapp_number_id_fkey"
+            columns: ["whatsapp_number_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_templates_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -662,6 +907,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_next_agent: { Args: { _workspace_id: string }; Returns: string }
       create_workspace_with_defaults: {
         Args: { _name: string; _slug: string }
         Returns: string
@@ -693,8 +939,11 @@ export type Database = {
       conversation_status: "open" | "pending" | "resolved" | "closed"
       lead_priority: "low" | "medium" | "high" | "urgent"
       message_direction: "inbound" | "outbound" | "internal"
+      queue_strategy: "round_robin" | "manual" | "hybrid"
       sender_type: "contact" | "user" | "ai" | "system"
       stage_type: "open" | "won" | "lost"
+      wa_delivery_status: "pending" | "sent" | "delivered" | "read" | "failed"
+      wa_template_status: "pending" | "approved" | "rejected" | "paused"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -836,8 +1085,11 @@ export const Constants = {
       conversation_status: ["open", "pending", "resolved", "closed"],
       lead_priority: ["low", "medium", "high", "urgent"],
       message_direction: ["inbound", "outbound", "internal"],
+      queue_strategy: ["round_robin", "manual", "hybrid"],
       sender_type: ["contact", "user", "ai", "system"],
       stage_type: ["open", "won", "lost"],
+      wa_delivery_status: ["pending", "sent", "delivered", "read", "failed"],
+      wa_template_status: ["pending", "approved", "rejected", "paused"],
     },
   },
 } as const
