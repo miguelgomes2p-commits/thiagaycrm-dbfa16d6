@@ -32,7 +32,7 @@ function AIAssistant() {
 
   const transport = useMemo(() => new DefaultChatTransport({
     api: "/api/ai/chat",
-    headers: () => (authHeader ? { Authorization: authHeader } : {}),
+    headers: (): Record<string, string> => (authHeader ? { Authorization: authHeader } : {}),
   }), [authHeader]);
 
   const { messages, sendMessage, status, error } = useChat({ transport });
