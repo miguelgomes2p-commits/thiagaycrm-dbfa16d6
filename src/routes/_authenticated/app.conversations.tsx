@@ -146,9 +146,10 @@ function ConversationsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." className="pl-9 h-9" />
           </div>
-          <Button size="sm" variant="outline" className="w-full mt-2" onClick={createDemoConversation}>
-            + Criar conversa demo
-          </Button>
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            Conversas WhatsApp aparecem aqui automaticamente ao receber mensagens.
+          </div>
+
         </div>
         <div className="flex-1 overflow-y-auto">
           {convsQ.data?.length === 0 && (
@@ -209,41 +210,65 @@ function ConversationsPage() {
                   {((active.contacts as { name?: string } | null)?.name ?? "??").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <div className="text-sm font-medium">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</div>
                 <div className="text-xs text-muted-foreground">{active.channel} · {active.status}</div>
+              </div>
+              <div className="flex items-center gap-1">
+                {(active as { assigned_to?: string | null }).assigned_to ? (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={release}><UserMinus className="h-4 w-4 mr-1" />Devolver</Button>
+                    <Button size="sm" variant="ghost" onClick={resolve}><CheckCircle2 className="h-4 w-4 mr-1" />Resolver</Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={take}><UserPlus className="h-4 w-4 mr-1" />Pegar</Button>
+                )}
               </div>
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-              {msgsQ.data?.map((m) => (
-                <div key={m.id} className={cn("flex", m.direction === "outbound" ? "justify-end" : "justify-start")}>
-                  <div className={cn(
-                    "max-w-md rounded-2xl px-4 py-2 text-sm",
-                    m.direction === "outbound"
-                      ? "gradient-brand text-primary-foreground rounded-br-sm"
-                      : m.sender_type === "ai"
-                        ? "bg-accent/20 text-accent-foreground border border-accent/30 rounded-bl-sm"
-                        : "bg-surface border border-border rounded-bl-sm"
-                  )}>
-                    {m.content}
-                    <div className="mt-1 text-[10px] opacity-60 text-right">
-                      {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              {msgsQ.data?.map((m) => {
+                const status = (m as { delivery_status?: string }).delivery_status;
+                const err = (m as { error_message?: string | null }).error_message;
+                return (
+                  <div key={m.id} className={cn("flex", m.direction === "outbound" ? "justify-end" : "justify-start")}>
+                    <div className={cn(
+                      "max-w-md rounded-2xl px-4 py-2 text-sm",
+                      m.direction === "outbound"
+                        ? "gradient-brand text-primary-foreground rounded-br-sm"
+                        : m.sender_type === "ai"
+                          ? "bg-accent/20 text-accent-foreground border border-accent/30 rounded-bl-sm"
+                          : "bg-surface border border-border rounded-bl-sm"
+                    )}>
+                      {m.content}
+                      <div className="mt-1 text-[10px] opacity-70 flex items-center justify-end gap-1">
+                        <span>{new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                        {m.direction === "outbound" && status === "sent" && <Check className="h-3 w-3" />}
+                        {m.direction === "outbound" && status === "delivered" && <CheckCheck className="h-3 w-3" />}
+                        {m.direction === "outbound" && status === "read" && <CheckCheck className="h-3 w-3 text-info" />}
+                        {m.direction === "outbound" && status === "failed" && (
+                          <span title={err ?? "Falha no envio"} className="inline-flex items-center gap-0.5 text-destructive">
+                            <AlertTriangle className="h-3 w-3" />
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="border-t border-border p-3 flex gap-2 shrink-0">
               <Input
                 value={text} onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                 placeholder="Digite uma mensagem..."
+                disabled={sending}
               />
-              <Button onClick={sendMessage} className="gradient-brand text-primary-foreground border-0">
+              <Button onClick={sendMessage} disabled={sending} className="gradient-brand text-primary-foreground border-0">
                 <Send className="h-4 w-4" />
               </Button>
             </div>
           </>
+
         )}
       </div>
     </div>
