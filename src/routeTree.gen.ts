@@ -16,12 +16,14 @@ import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
 import { Route as ApiAiChatRouteImport } from './routes/api/ai/chat'
+import { Route as AuthenticatedAppWhatsappRouteImport } from './routes/_authenticated/app.whatsapp'
 import { Route as AuthenticatedAppTasksRouteImport } from './routes/_authenticated/app.tasks'
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app.settings'
 import { Route as AuthenticatedAppPipelineRouteImport } from './routes/_authenticated/app.pipeline'
 import { Route as AuthenticatedAppConversationsRouteImport } from './routes/_authenticated/app.conversations'
 import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenticated/app.contacts'
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
+import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -57,6 +59,12 @@ const ApiAiChatRoute = ApiAiChatRouteImport.update({
   path: '/api/ai/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAppWhatsappRoute =
+  AuthenticatedAppWhatsappRouteImport.update({
+    id: '/whatsapp',
+    path: '/whatsapp',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppTasksRoute = AuthenticatedAppTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -91,6 +99,12 @@ const AuthenticatedAppAiRoute = AuthenticatedAppAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const ApiPublicWebhooksWhatsappNumberIdRoute =
+  ApiPublicWebhooksWhatsappNumberIdRouteImport.update({
+    id: '/api/public/webhooks/whatsapp/$numberId',
+    path: '/api/public/webhooks/whatsapp/$numberId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,8 +117,10 @@ export interface FileRoutesByFullPath {
   '/app/pipeline': typeof AuthenticatedAppPipelineRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/tasks': typeof AuthenticatedAppTasksRoute
+  '/app/whatsapp': typeof AuthenticatedAppWhatsappRoute
   '/api/ai/chat': typeof ApiAiChatRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -116,8 +132,10 @@ export interface FileRoutesByTo {
   '/app/pipeline': typeof AuthenticatedAppPipelineRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/tasks': typeof AuthenticatedAppTasksRoute
+  '/app/whatsapp': typeof AuthenticatedAppWhatsappRoute
   '/api/ai/chat': typeof ApiAiChatRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -132,8 +150,10 @@ export interface FileRoutesById {
   '/_authenticated/app/pipeline': typeof AuthenticatedAppPipelineRoute
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/app/tasks': typeof AuthenticatedAppTasksRoute
+  '/_authenticated/app/whatsapp': typeof AuthenticatedAppWhatsappRoute
   '/api/ai/chat': typeof ApiAiChatRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -148,8 +168,10 @@ export interface FileRouteTypes {
     | '/app/pipeline'
     | '/app/settings'
     | '/app/tasks'
+    | '/app/whatsapp'
     | '/api/ai/chat'
     | '/app/'
+    | '/api/public/webhooks/whatsapp/$numberId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -161,8 +183,10 @@ export interface FileRouteTypes {
     | '/app/pipeline'
     | '/app/settings'
     | '/app/tasks'
+    | '/app/whatsapp'
     | '/api/ai/chat'
     | '/app'
+    | '/api/public/webhooks/whatsapp/$numberId'
   id:
     | '__root__'
     | '/'
@@ -176,8 +200,10 @@ export interface FileRouteTypes {
     | '/_authenticated/app/pipeline'
     | '/_authenticated/app/settings'
     | '/_authenticated/app/tasks'
+    | '/_authenticated/app/whatsapp'
     | '/api/ai/chat'
     | '/_authenticated/app/'
+    | '/api/public/webhooks/whatsapp/$numberId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -185,6 +211,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
+  ApiPublicWebhooksWhatsappNumberIdRoute: typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -238,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/app/whatsapp': {
+      id: '/_authenticated/app/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/app/whatsapp'
+      preLoaderRoute: typeof AuthenticatedAppWhatsappRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/tasks': {
       id: '/_authenticated/app/tasks'
       path: '/tasks'
@@ -280,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAiRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/api/public/webhooks/whatsapp/$numberId': {
+      id: '/api/public/webhooks/whatsapp/$numberId'
+      path: '/api/public/webhooks/whatsapp/$numberId'
+      fullPath: '/api/public/webhooks/whatsapp/$numberId'
+      preLoaderRoute: typeof ApiPublicWebhooksWhatsappNumberIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -290,6 +331,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppPipelineRoute: typeof AuthenticatedAppPipelineRoute
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
   AuthenticatedAppTasksRoute: typeof AuthenticatedAppTasksRoute
+  AuthenticatedAppWhatsappRoute: typeof AuthenticatedAppWhatsappRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
 }
 
@@ -300,6 +342,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppPipelineRoute: AuthenticatedAppPipelineRoute,
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
   AuthenticatedAppTasksRoute: AuthenticatedAppTasksRoute,
+  AuthenticatedAppWhatsappRoute: AuthenticatedAppWhatsappRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
 }
 
@@ -324,6 +367,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiAiChatRoute: ApiAiChatRoute,
+  ApiPublicWebhooksWhatsappNumberIdRoute:
+    ApiPublicWebhooksWhatsappNumberIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
