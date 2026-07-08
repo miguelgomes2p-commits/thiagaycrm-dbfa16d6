@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bot, Send, Sparkles, User as UserIcon, Loader2 } from "lucide-react";
@@ -29,10 +30,12 @@ function AIAssistant() {
     });
   }, []);
 
-  const { messages, sendMessage, status, error } = useChat({
+  const transport = useMemo(() => new DefaultChatTransport({
     api: "/api/ai/chat",
-    headers: authHeader ? { Authorization: authHeader } : undefined,
-  });
+    headers: () => (authHeader ? { Authorization: authHeader } : {}),
+  }), [authHeader]);
+
+  const { messages, sendMessage, status, error } = useChat({ transport });
 
   useEffect(() => { if (error) toast.error(error.message); }, [error]);
 
