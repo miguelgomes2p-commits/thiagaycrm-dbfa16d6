@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
-  Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
+  Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2, Sparkles, MessageCirclePlus,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -135,19 +135,82 @@ function ConversationsPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
 
+  async function simulateNewConversation() {
+    if (!ws) return;
+    const names = ["Ana Souza", "Carlos Lima", "Beatriz Rocha", "Diego Alves", "Fernanda Melo", "Rafael Costa"];
+    const firstMsgs = [
+      "Oi! Vi o site de vocês, ainda têm horário essa semana?",
+      "Bom dia, quanto custa o plano mensal?",
+      "Olá, gostaria de mais informações por favor 🙂",
+      "Vocês atendem também aos sábados?",
+      "Oi, meu amigo indicou vocês — como funciona?",
+    ];
+    const name = names[Math.floor(Math.random() * names.length)];
+    const phone = "+55119" + Math.floor(10000000 + Math.random() * 89999999);
+    const first = firstMsgs[Math.floor(Math.random() * firstMsgs.length)];
+    try {
+      const { data: contact, error: cErr } = await supabase.from("contacts")
+        .insert({ workspace_id: ws.id, type: "person", name, phone })
+        .select("id").single();
+      if (cErr) throw cErr;
+      const { data: conv, error: convErr } = await supabase.from("conversations")
+        .insert({
+          workspace_id: ws.id, contact_id: contact.id, channel: "webchat", status: "open",
+          last_message_preview: first, last_message_at: new Date().toISOString(),
+        })
+        .select("id").single();
+      if (convErr) throw convErr;
+      await supabase.from("messages").insert({
+        workspace_id: ws.id, conversation_id: conv.id, direction: "inbound",
+        sender_type: "contact", content: first,
+      });
+      qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+      setActiveId(conv.id);
+      toast.success(`Nova conversa simulada de ${name}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao simular");
+    }
+  }
+
+  async function simulateIncomingReply() {
+    if (!active || !ws) return;
+    const replies = [
+      "Perfeito, obrigado!",
+      "Entendi, e como faço pra reservar?",
+      "Legal, pode me mandar por escrito?",
+      "Hmm, vou pensar e te aviso 👍",
+      "Ah ótimo! Tem desconto pra pagamento à vista?",
+    ];
+    const content = replies[Math.floor(Math.random() * replies.length)];
+    await supabase.from("messages").insert({
+      workspace_id: ws.id, conversation_id: active.id, direction: "inbound",
+      sender_type: "contact", content,
+    });
+    await supabase.from("conversations").update({
+      last_message_preview: content, last_message_at: new Date().toISOString(),
+    }).eq("id", active.id);
+    qc.invalidateQueries({ queryKey: ["messages", active.id] });
+    qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+  }
+
 
   return (
     <div className="h-full flex">
       {/* List */}
       <div className="w-80 border-r border-border flex flex-col shrink-0">
         <div className="p-4 border-b border-border">
-          <h1 className="font-semibold">Conversas</h1>
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="font-semibold">Conversas</h1>
+            <Button size="sm" variant="outline" onClick={simulateNewConversation} className="h-8 gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" /> Simular
+            </Button>
+          </div>
           <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." className="pl-9 h-9" />
           </div>
           <div className="mt-2 text-[11px] text-muted-foreground">
-            Conversas WhatsApp aparecem aqui automaticamente ao receber mensagens.
+            Use <span className="font-medium">Simular</span> pra testar o fluxo sem WhatsApp real.
           </div>
 
         </div>
@@ -215,6 +278,11 @@ function ConversationsPage() {
                 <div className="text-xs text-muted-foreground">{active.channel} · {active.status}</div>
               </div>
               <div className="flex items-center gap-1">
+                {active.channel === "webchat" && (
+                  <Button size="sm" variant="ghost" onClick={simulateIncomingReply} title="Simular resposta do contato">
+                    <MessageCirclePlus className="h-4 w-4 mr-1" />Simular resposta
+                  </Button>
+                )}
                 {(active as { assigned_to?: string | null }).assigned_to ? (
                   <>
                     <Button size="sm" variant="ghost" onClick={release}><UserMinus className="h-4 w-4 mr-1" />Devolver</Button>
