@@ -54,7 +54,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Conta criada! Verifique seu email se necessário.");
+        toast.success("Conta criada! Redirecionando...");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -76,8 +76,8 @@ function AuthPage() {
           <div className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-accent/30 blur-[100px]" />
         </div>
         <Link to="/" className="flex items-center gap-2 text-sidebar-foreground">
-          <div className="h-8 w-8 rounded-lg gradient-brand grid place-items-center">
-            <span className="text-primary-foreground font-bold text-sm">L</span>
+          <div className="h-9 w-9 rounded-lg overflow-hidden border border-sidebar-border">
+            <img src="/lupus-logo.jpeg" alt="Lupus" className="h-full w-full object-cover" />
           </div>
           <span className="font-semibold">Lupus CRM</span>
         </Link>

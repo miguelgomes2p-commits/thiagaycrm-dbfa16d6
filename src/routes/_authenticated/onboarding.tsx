@@ -39,8 +39,8 @@ function Onboarding() {
   return (
     <div className="min-h-screen grid place-items-center bg-background p-6">
       <div className="w-full max-w-md card-elevated p-8 animate-fade-in-up">
-        <div className="h-12 w-12 rounded-xl gradient-brand grid place-items-center mb-4">
-          <Rocket className="h-6 w-6 text-primary-foreground" />
+        <div className="h-12 w-12 rounded-xl overflow-hidden border border-border mb-4">
+          <img src="/lupus-logo.jpeg" alt="Lupus" className="h-full w-full object-cover" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Crie sua empresa</h1>
         <p className="text-sm text-muted-foreground mt-1">
