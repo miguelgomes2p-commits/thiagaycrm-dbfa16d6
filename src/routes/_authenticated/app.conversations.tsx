@@ -278,6 +278,11 @@ function ConversationsPage() {
                 <div className="text-xs text-muted-foreground">{active.channel} · {active.status}</div>
               </div>
               <div className="flex items-center gap-1">
+                {active.channel === "webchat" && (
+                  <Button size="sm" variant="ghost" onClick={simulateIncomingReply} title="Simular resposta do contato">
+                    <MessageCirclePlus className="h-4 w-4 mr-1" />Simular resposta
+                  </Button>
+                )}
                 {(active as { assigned_to?: string | null }).assigned_to ? (
                   <>
                     <Button size="sm" variant="ghost" onClick={release}><UserMinus className="h-4 w-4 mr-1" />Devolver</Button>
