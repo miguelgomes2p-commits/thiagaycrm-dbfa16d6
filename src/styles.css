@@ -57,62 +57,63 @@
   --shadow-card: 0 1px 0 0 oklch(1 0 0 / 0.04), 0 8px 24px -12px oklch(0 0 0 / 0.5);
 }
 
-/* Default = dark theme (SaaS CRM look). Class .light flips it. */
+/* Default = dark theme (Lupus brand: charcoal + red). */
 :root {
   --radius: 0.75rem;
 
-  --background: oklch(0.16 0.02 265);
-  --foreground: oklch(0.97 0.005 260);
+  --background: oklch(0.15 0.005 260);
+  --foreground: oklch(0.98 0.003 260);
 
-  --surface: oklch(0.19 0.02 265);
-  --surface-2: oklch(0.22 0.025 265);
+  --surface: oklch(0.18 0.005 260);
+  --surface-2: oklch(0.22 0.006 260);
 
-  --card: oklch(0.20 0.02 265);
-  --card-foreground: oklch(0.97 0.005 260);
+  --card: oklch(0.19 0.005 260);
+  --card-foreground: oklch(0.98 0.003 260);
 
-  --popover: oklch(0.20 0.02 265);
-  --popover-foreground: oklch(0.97 0.005 260);
+  --popover: oklch(0.19 0.005 260);
+  --popover-foreground: oklch(0.98 0.003 260);
 
-  --primary: oklch(0.68 0.22 285);
+  --primary: oklch(0.62 0.24 25);
   --primary-foreground: oklch(0.99 0.005 260);
 
-  --secondary: oklch(0.26 0.03 265);
-  --secondary-foreground: oklch(0.97 0.005 260);
+  --secondary: oklch(0.25 0.006 260);
+  --secondary-foreground: oklch(0.98 0.003 260);
 
-  --muted: oklch(0.24 0.02 265);
-  --muted-foreground: oklch(0.68 0.02 265);
+  --muted: oklch(0.23 0.005 260);
+  --muted-foreground: oklch(0.70 0.008 260);
 
-  --accent: oklch(0.75 0.18 200);
-  --accent-foreground: oklch(0.15 0.02 265);
+  --accent: oklch(0.68 0.22 28);
+  --accent-foreground: oklch(0.99 0.005 260);
 
-  --destructive: oklch(0.65 0.24 25);
+  --destructive: oklch(0.60 0.24 25);
   --destructive-foreground: oklch(0.99 0.005 260);
 
   --success: oklch(0.72 0.19 155);
-  --success-foreground: oklch(0.15 0.02 265);
+  --success-foreground: oklch(0.15 0.005 260);
 
   --warning: oklch(0.80 0.17 75);
-  --warning-foreground: oklch(0.15 0.02 265);
+  --warning-foreground: oklch(0.15 0.005 260);
 
   --info: oklch(0.72 0.15 240);
-  --info-foreground: oklch(0.15 0.02 265);
+  --info-foreground: oklch(0.15 0.005 260);
 
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.10);
-  --ring: oklch(0.68 0.22 285);
+  --ring: oklch(0.62 0.24 25);
 
-  --sidebar: oklch(0.14 0.02 265);
-  --sidebar-foreground: oklch(0.85 0.01 260);
+  --sidebar: oklch(0.12 0.004 260);
+  --sidebar-foreground: oklch(0.88 0.005 260);
   --sidebar-border: oklch(1 0 0 / 0.06);
-  --sidebar-accent: oklch(0.22 0.03 265);
+  --sidebar-accent: oklch(0.22 0.006 260);
   --sidebar-accent-foreground: oklch(0.99 0.005 260);
 
-  --chart-1: oklch(0.68 0.22 285);
+  --chart-1: oklch(0.62 0.24 25);
   --chart-2: oklch(0.72 0.19 155);
   --chart-3: oklch(0.75 0.18 200);
   --chart-4: oklch(0.80 0.17 75);
   --chart-5: oklch(0.70 0.20 340);
 }
+
 
 .light {
   --background: oklch(0.99 0.003 260);
@@ -161,15 +162,16 @@
 }
 
 @utility gradient-brand {
-  background-image: linear-gradient(135deg, oklch(0.68 0.22 285), oklch(0.72 0.19 220));
+  background-image: linear-gradient(135deg, oklch(0.58 0.24 25), oklch(0.68 0.22 32));
 }
 
 @utility text-gradient-brand {
-  background-image: linear-gradient(135deg, oklch(0.78 0.20 285), oklch(0.82 0.16 220));
+  background-image: linear-gradient(135deg, oklch(0.72 0.22 25), oklch(0.80 0.18 35));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
+
 
 @utility card-elevated {
   background: var(--color-card);
