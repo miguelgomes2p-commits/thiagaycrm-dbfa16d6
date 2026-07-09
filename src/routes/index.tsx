@@ -13,8 +13,8 @@ function Landing() {
       <header className="sticky top-0 z-40 backdrop-blur-lg bg-background/70 border-b border-border">
         <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg gradient-brand grid place-items-center">
-              <span className="text-primary-foreground font-bold text-sm">L</span>
+            <div className="h-9 w-9 rounded-lg overflow-hidden border border-border">
+              <img src="/lupus-logo.jpeg" alt="Lupus" className="h-full w-full object-cover" />
             </div>
             <span className="font-semibold tracking-tight">Lupus CRM</span>
           </div>
