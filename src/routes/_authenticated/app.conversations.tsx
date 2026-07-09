@@ -133,6 +133,8 @@ function ConversationsPage() {
     try { await resolveFn({ data: { conversationId: active.id } }); toast.success("Conversa resolvida");
       qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+
   async function simulateNewConversation() {
     if (!ws) return;
     const names = ["Ana Souza", "Carlos Lima", "Beatriz Rocha", "Diego Alves", "Fernanda Melo", "Rafael Costa"];
