@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
-  Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
+  Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2, Sparkles, MessageCirclePlus,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
