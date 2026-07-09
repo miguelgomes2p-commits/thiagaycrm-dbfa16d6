@@ -54,7 +54,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Conta criada! Verifique seu email se necessário.");
+        toast.success("Conta criada! Redirecionando...");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
