@@ -69,9 +69,10 @@ function AppShell() {
         collapsed ? "w-16" : "w-64"
       )}>
         <div className="h-14 px-3 flex items-center gap-2 border-b border-sidebar-border">
-          <div className="h-8 w-8 rounded-lg gradient-brand grid place-items-center shrink-0">
-            <span className="text-primary-foreground font-bold text-sm">L</span>
+          <div className="h-9 w-9 rounded-lg bg-background/40 border border-sidebar-border grid place-items-center shrink-0 overflow-hidden">
+            <img src="/lupus-logo.jpeg" alt="Lupus" className="h-full w-full object-cover" />
           </div>
+
           {!collapsed && (
             <div className="min-w-0">
               <div className="text-sm font-semibold text-sidebar-foreground truncate">Lupus CRM</div>
