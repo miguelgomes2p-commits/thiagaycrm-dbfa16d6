@@ -642,6 +642,405 @@ export type Database = {
           },
         ]
       }
+      renave_config: {
+        Row: {
+          base_url: string
+          certificate_password_ref: string | null
+          certificate_ref: string | null
+          cnpj: string | null
+          consumer_key: string | null
+          consumer_secret_ref: string | null
+          created_at: string
+          environment: string
+          extra: Json
+          id: string
+          is_active: boolean
+          oauth_token_url: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          base_url?: string
+          certificate_password_ref?: string | null
+          certificate_ref?: string | null
+          cnpj?: string | null
+          consumer_key?: string | null
+          consumer_secret_ref?: string | null
+          created_at?: string
+          environment?: string
+          extra?: Json
+          id?: string
+          is_active?: boolean
+          oauth_token_url?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          base_url?: string
+          certificate_password_ref?: string | null
+          certificate_ref?: string | null
+          cnpj?: string | null
+          consumer_key?: string | null
+          consumer_secret_ref?: string | null
+          created_at?: string
+          environment?: string
+          extra?: Json
+          id?: string
+          is_active?: boolean
+          oauth_token_url?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renave_config_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renave_endpoints: {
+        Row: {
+          body_template: Json | null
+          category: string
+          code: string
+          created_at: string
+          description: string | null
+          headers: Json
+          id: string
+          is_enabled: boolean
+          is_system: boolean
+          method: string
+          name: string
+          path_template: string
+          query_template: Json
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          body_template?: Json | null
+          category: string
+          code: string
+          created_at?: string
+          description?: string | null
+          headers?: Json
+          id?: string
+          is_enabled?: boolean
+          is_system?: boolean
+          method?: string
+          name: string
+          path_template: string
+          query_template?: Json
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          body_template?: Json | null
+          category?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          headers?: Json
+          id?: string
+          is_enabled?: boolean
+          is_system?: boolean
+          method?: string
+          name?: string
+          path_template?: string
+          query_template?: Json
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renave_endpoints_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renave_http_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          endpoint_code: string | null
+          id: string
+          method: string | null
+          operation_id: string | null
+          request_body: Json | null
+          request_headers: Json | null
+          response_body: Json | null
+          response_headers: Json | null
+          response_status: number | null
+          url: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          endpoint_code?: string | null
+          id?: string
+          method?: string | null
+          operation_id?: string | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          response_body?: Json | null
+          response_headers?: Json | null
+          response_status?: number | null
+          url?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          endpoint_code?: string | null
+          id?: string
+          method?: string | null
+          operation_id?: string | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          response_body?: Json | null
+          response_headers?: Json | null
+          response_status?: number | null
+          url?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renave_http_logs_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "renave_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renave_http_logs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renave_operations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          endpoint_code: string | null
+          error_message: string | null
+          id: string
+          numero_documento: string | null
+          operation_type: string
+          request_payload: Json | null
+          response_payload: Json | null
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          endpoint_code?: string | null
+          error_message?: string | null
+          id?: string
+          numero_documento?: string | null
+          operation_type: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          endpoint_code?: string | null
+          error_message?: string | null
+          id?: string
+          numero_documento?: string | null
+          operation_type?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renave_operations_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "renave_vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renave_operations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renave_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          endpoint_code: string
+          id: string
+          last_error: string | null
+          max_attempts: number
+          next_run_at: string
+          operation_id: string | null
+          payload: Json
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          endpoint_code: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_run_at?: string
+          operation_id?: string | null
+          payload?: Json
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          endpoint_code?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_run_at?: string
+          operation_id?: string | null
+          payload?: Json
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renave_queue_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "renave_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renave_queue_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renave_vehicles: {
+        Row: {
+          ano_fabricacao: number | null
+          ano_modelo: number | null
+          chassi: string | null
+          combustivel: string | null
+          comprador_documento: string | null
+          comprador_nome: string | null
+          cor: string | null
+          created_at: string
+          created_by: string | null
+          data_entrada: string | null
+          data_saida: string | null
+          fornecedor: string | null
+          id: string
+          km: number | null
+          marca: string | null
+          metadata: Json
+          modelo: string | null
+          observacoes: string | null
+          placa: string | null
+          renavam: string | null
+          status: string
+          updated_at: string
+          valor_compra: number | null
+          valor_venda: number | null
+          workspace_id: string
+        }
+        Insert: {
+          ano_fabricacao?: number | null
+          ano_modelo?: number | null
+          chassi?: string | null
+          combustivel?: string | null
+          comprador_documento?: string | null
+          comprador_nome?: string | null
+          cor?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_entrada?: string | null
+          data_saida?: string | null
+          fornecedor?: string | null
+          id?: string
+          km?: number | null
+          marca?: string | null
+          metadata?: Json
+          modelo?: string | null
+          observacoes?: string | null
+          placa?: string | null
+          renavam?: string | null
+          status?: string
+          updated_at?: string
+          valor_compra?: number | null
+          valor_venda?: number | null
+          workspace_id: string
+        }
+        Update: {
+          ano_fabricacao?: number | null
+          ano_modelo?: number | null
+          chassi?: string | null
+          combustivel?: string | null
+          comprador_documento?: string | null
+          comprador_nome?: string | null
+          cor?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_entrada?: string | null
+          data_saida?: string | null
+          fornecedor?: string | null
+          id?: string
+          km?: number | null
+          marca?: string | null
+          metadata?: Json
+          modelo?: string | null
+          observacoes?: string | null
+          placa?: string | null
+          renavam?: string | null
+          status?: string
+          updated_at?: string
+          valor_compra?: number | null
+          valor_venda?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renave_vehicles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -923,6 +1322,10 @@ export type Database = {
       is_workspace_member: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
+      }
+      renave_seed_endpoints: {
+        Args: { _workspace_id: string }
+        Returns: number
       }
     }
     Enums: {
