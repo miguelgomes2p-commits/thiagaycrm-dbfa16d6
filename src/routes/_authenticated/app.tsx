@@ -49,6 +49,11 @@ function AppShell() {
   const navigate = useNavigate();
   const { data: workspaces } = useMyWorkspaces();
   const { data: profile } = useCurrentProfile();
+  const { data: authUser } = useQuery({
+    queryKey: ["auth-user-email"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user,
+  });
+  const isSuperAdmin = authUser?.email?.toLowerCase() === "miguelgomes2p@gmail.com";
   const qc = useQueryClient();
   const current = workspaces?.[0];
 
