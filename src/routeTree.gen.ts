@@ -19,6 +19,7 @@ import { Route as ApiAiChatRouteImport } from './routes/api/ai/chat'
 import { Route as AuthenticatedAppWhatsappRouteImport } from './routes/_authenticated/app.whatsapp'
 import { Route as AuthenticatedAppTasksRouteImport } from './routes/_authenticated/app.tasks'
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app.settings'
+import { Route as AuthenticatedAppRenaveRouteImport } from './routes/_authenticated/app.renave'
 import { Route as AuthenticatedAppPipelineRouteImport } from './routes/_authenticated/app.pipeline'
 import { Route as AuthenticatedAppConversationsRouteImport } from './routes/_authenticated/app.conversations'
 import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenticated/app.contacts'
@@ -76,6 +77,11 @@ const AuthenticatedAppSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppRenaveRoute = AuthenticatedAppRenaveRouteImport.update({
+  id: '/renave',
+  path: '/renave',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
 const AuthenticatedAppPipelineRoute =
   AuthenticatedAppPipelineRouteImport.update({
     id: '/pipeline',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
   '/app/pipeline': typeof AuthenticatedAppPipelineRoute
+  '/app/renave': typeof AuthenticatedAppRenaveRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/tasks': typeof AuthenticatedAppTasksRoute
   '/app/whatsapp': typeof AuthenticatedAppWhatsappRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
   '/app/pipeline': typeof AuthenticatedAppPipelineRoute
+  '/app/renave': typeof AuthenticatedAppRenaveRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/tasks': typeof AuthenticatedAppTasksRoute
   '/app/whatsapp': typeof AuthenticatedAppWhatsappRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/_authenticated/app/contacts': typeof AuthenticatedAppContactsRoute
   '/_authenticated/app/conversations': typeof AuthenticatedAppConversationsRoute
   '/_authenticated/app/pipeline': typeof AuthenticatedAppPipelineRoute
+  '/_authenticated/app/renave': typeof AuthenticatedAppRenaveRoute
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/app/tasks': typeof AuthenticatedAppTasksRoute
   '/_authenticated/app/whatsapp': typeof AuthenticatedAppWhatsappRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/app/contacts'
     | '/app/conversations'
     | '/app/pipeline'
+    | '/app/renave'
     | '/app/settings'
     | '/app/tasks'
     | '/app/whatsapp'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/app/contacts'
     | '/app/conversations'
     | '/app/pipeline'
+    | '/app/renave'
     | '/app/settings'
     | '/app/tasks'
     | '/app/whatsapp'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/contacts'
     | '/_authenticated/app/conversations'
     | '/_authenticated/app/pipeline'
+    | '/_authenticated/app/renave'
     | '/_authenticated/app/settings'
     | '/_authenticated/app/tasks'
     | '/_authenticated/app/whatsapp'
@@ -286,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppSettingsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/renave': {
+      id: '/_authenticated/app/renave'
+      path: '/renave'
+      fullPath: '/app/renave'
+      preLoaderRoute: typeof AuthenticatedAppRenaveRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/pipeline': {
       id: '/_authenticated/app/pipeline'
       path: '/pipeline'
@@ -329,6 +348,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppContactsRoute: typeof AuthenticatedAppContactsRoute
   AuthenticatedAppConversationsRoute: typeof AuthenticatedAppConversationsRoute
   AuthenticatedAppPipelineRoute: typeof AuthenticatedAppPipelineRoute
+  AuthenticatedAppRenaveRoute: typeof AuthenticatedAppRenaveRoute
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
   AuthenticatedAppTasksRoute: typeof AuthenticatedAppTasksRoute
   AuthenticatedAppWhatsappRoute: typeof AuthenticatedAppWhatsappRoute
@@ -340,6 +360,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppContactsRoute: AuthenticatedAppContactsRoute,
   AuthenticatedAppConversationsRoute: AuthenticatedAppConversationsRoute,
   AuthenticatedAppPipelineRoute: AuthenticatedAppPipelineRoute,
+  AuthenticatedAppRenaveRoute: AuthenticatedAppRenaveRoute,
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
   AuthenticatedAppTasksRoute: AuthenticatedAppTasksRoute,
   AuthenticatedAppWhatsappRoute: AuthenticatedAppWhatsappRoute,

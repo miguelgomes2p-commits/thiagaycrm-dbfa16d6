@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone
+  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car
 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,8 @@ const NAV: NavItem[] = [
   { to: "/app/conversations", label: "Conversas", icon: MessageSquare },
   { to: "/app/whatsapp", label: "WhatsApp", icon: Phone },
   { to: "/app/tasks", label: "Tarefas", icon: CheckSquare },
+  { to: "/app/renave", label: "RENAVE", icon: Car },
+
 
   { to: "/app/ai", label: "Assistente IA", icon: Bot },
   { to: "/app/settings", label: "Configurações", icon: Settings },
