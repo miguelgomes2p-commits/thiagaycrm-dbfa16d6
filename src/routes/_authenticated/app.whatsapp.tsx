@@ -9,6 +9,7 @@ import {
   deleteWhatsappNumber,
   toggleAutoReply,
   syncWhatsappTemplates,
+  subscribeWhatsappWebhook,
   listWhatsappTemplates,
   sendWhatsappTemplate,
 } from "@/lib/whatsapp.functions";
@@ -29,6 +30,7 @@ import {
   Sparkles,
   CheckCircle2,
   AlertTriangle,
+  BellRing,
   Send,
   ExternalLink,
   Rocket,
@@ -52,6 +54,7 @@ function WhatsappPage() {
   const remove = useServerFn(deleteWhatsappNumber);
   const toggle = useServerFn(toggleAutoReply);
   const syncTpls = useServerFn(syncWhatsappTemplates);
+  const subscribeWebhook = useServerFn(subscribeWhatsappWebhook);
   const listTpls = useServerFn(listWhatsappTemplates);
   const sendTpl = useServerFn(sendWhatsappTemplate);
 
@@ -108,6 +111,18 @@ function WhatsappPage() {
     onSuccess: (r) => {
       toast.success(`${r.count} templates sincronizados`);
       qc.invalidateQueries({ queryKey: ["wa-templates", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const subscribeM = useMutation({
+    mutationFn: (whatsappNumberId: string) => subscribeWebhook({ data: { whatsappNumberId } }),
+    onSuccess: (r) => {
+      if (r.messagesSubscribed) {
+        toast.success("WABA assinada para receber messages");
+      } else {
+        toast.warning("Assinatura enviada; confirme o campo messages na Meta");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -202,6 +217,9 @@ function WhatsappPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => subscribeM.mutate(n.id)} disabled={subscribeM.isPending}>
+                      <BellRing className="h-4 w-4 mr-1" /> Assinar WABA
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => syncM.mutate(n.id)} disabled={syncM.isPending}>
                       <RefreshCw className={cn("h-4 w-4 mr-1", syncM.isPending && "animate-spin")} /> Templates
                     </Button>

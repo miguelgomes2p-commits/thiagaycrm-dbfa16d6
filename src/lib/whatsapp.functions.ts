@@ -274,6 +274,25 @@ export const syncWhatsappTemplates = createServerFn({ method: "POST" })
     return { count: rows.length };
   });
 
+export const subscribeWhatsappWebhook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ whatsappNumberId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: num, error: nerr } = await context.supabase
+      .from("whatsapp_numbers")
+      .select("id, waba_id, access_token")
+      .eq("id", data.whatsappNumberId)
+      .single();
+    if (nerr || !num) throw new Error("Número não encontrado");
+
+    const { subscribeWabaToMessages, listWabaSubscriptions } = await import("@/lib/whatsapp.server");
+    await subscribeWabaToMessages(num.waba_id, num.access_token);
+    const subscriptions = await listWabaSubscriptions(num.waba_id, num.access_token);
+    const fields = subscriptions.data?.flatMap((app) => app.subscribed_fields ?? []) ?? [];
+
+    return { ok: true, messagesSubscribed: fields.includes("messages"), subscribedFields: [...new Set(fields)] };
+  });
+
 export const listWhatsappTemplates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ workspaceId: z.string().uuid() }).parse(d))
