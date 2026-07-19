@@ -100,17 +100,36 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
 
     const { data: num, error: nerr } = await context.supabase
       .from("whatsapp_numbers")
-      .select("phone_number_id, access_token")
+      .select("id, provider, phone_number_id, access_token, provider_base_url, provider_api_key, instance_name")
       .eq("id", conv.whatsapp_number_id)
       .single();
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
-    if (!num.phone_number_id || !num.access_token) {
-      throw new Error("Este número não usa Cloud API. Use o envio via provedor QR Code.");
-    }
 
-    const { sendWaText } = await import("@/lib/whatsapp.server");
+    let waId: string | null = null;
     try {
-      const resp = await sendWaText(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, data.body);
+      if (num.provider === "cloud_api") {
+        if (!num.phone_number_id || !num.access_token) {
+          throw new Error("Credenciais Cloud API ausentes neste número.");
+        }
+        const { sendWaText } = await import("@/lib/whatsapp.server");
+        const resp = await sendWaText(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, data.body);
+        waId = resp.messages?.[0]?.id ?? null;
+      } else if (num.provider === "evolution") {
+        if (!num.provider_base_url || !num.provider_api_key || !num.instance_name) {
+          throw new Error("Configuração da instância Evolution ausente.");
+        }
+        const { evolutionSendText } = await import("@/lib/evolution.server");
+        const resp = await evolutionSendText(
+          num.provider_base_url,
+          num.provider_api_key,
+          num.instance_name,
+          conv.wa_contact_wa_id,
+          data.body,
+        );
+        waId = resp.key?.id ?? null;
+      } else {
+        throw new Error(`Provedor ${num.provider} não implementado`);
+      }
       const waId = resp.messages?.[0]?.id ?? null;
       const { data: msg, error: merr } = await context.supabase
         .from("messages")
