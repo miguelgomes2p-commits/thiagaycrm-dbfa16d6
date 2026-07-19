@@ -34,6 +34,8 @@ const NAV: NavItem[] = [
   { to: "/app/conversations", label: "Conversas", icon: MessageSquare },
   { to: "/app/whatsapp", label: "WhatsApp", icon: Phone },
   { to: "/app/tasks", label: "Tarefas", icon: CheckSquare },
+  { to: "/app/renave", label: "RENAVE", icon: Car },
+
 
   { to: "/app/ai", label: "Assistente IA", icon: Bot },
   { to: "/app/settings", label: "Configurações", icon: Settings },
