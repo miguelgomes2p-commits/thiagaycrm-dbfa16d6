@@ -9,7 +9,7 @@ export const listWhatsappNumbers = createServerFn({ method: "POST" })
     const { data: rows, error } = await context.supabase
       .from("whatsapp_numbers")
       .select(
-        "id, label, display_number, phone_number_id, waba_id, is_active, webhook_verify_token, auto_reply_enabled, last_webhook_at, created_at",
+        "id, label, display_number, phone_number_id, waba_id, is_active, webhook_verify_token, auto_reply_enabled, last_webhook_at, created_at, provider, instance_name, connection_status, last_qr_at",
       )
       .eq("workspace_id", data.workspaceId)
       .order("created_at");
@@ -100,15 +100,36 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
 
     const { data: num, error: nerr } = await context.supabase
       .from("whatsapp_numbers")
-      .select("phone_number_id, access_token")
+      .select("id, provider, phone_number_id, access_token, provider_base_url, provider_api_key, instance_name")
       .eq("id", conv.whatsapp_number_id)
       .single();
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
 
-    const { sendWaText } = await import("@/lib/whatsapp.server");
+    let waId: string | null = null;
     try {
-      const resp = await sendWaText(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, data.body);
-      const waId = resp.messages?.[0]?.id ?? null;
+      if (num.provider === "cloud_api") {
+        if (!num.phone_number_id || !num.access_token) {
+          throw new Error("Credenciais Cloud API ausentes neste número.");
+        }
+        const { sendWaText } = await import("@/lib/whatsapp.server");
+        const resp = await sendWaText(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, data.body);
+        waId = resp.messages?.[0]?.id ?? null;
+      } else if (num.provider === "evolution") {
+        if (!num.provider_base_url || !num.provider_api_key || !num.instance_name) {
+          throw new Error("Configuração da instância Evolution ausente.");
+        }
+        const { evolutionSendText } = await import("@/lib/evolution.server");
+        const resp = await evolutionSendText(
+          num.provider_base_url,
+          num.provider_api_key,
+          num.instance_name,
+          conv.wa_contact_wa_id,
+          data.body,
+        );
+        waId = resp.key?.id ?? null;
+      } else {
+        throw new Error(`Provedor ${num.provider} não implementado`);
+      }
       const { data: msg, error: merr } = await context.supabase
         .from("messages")
         .insert({
@@ -166,6 +187,7 @@ export const sendWhatsappTemplate = createServerFn({ method: "POST" })
       .eq("id", data.whatsappNumberId)
       .single();
     if (nerr || !num || num.workspace_id !== data.workspaceId) throw new Error("Número não encontrado");
+    if (!num.phone_number_id || !num.access_token) throw new Error("Este número não usa Cloud API.");
 
     const { sendWaTemplate } = await import("@/lib/whatsapp.server");
     const to = data.to.replace(/\D/g, "");
@@ -247,6 +269,7 @@ export const syncWhatsappTemplates = createServerFn({ method: "POST" })
       .eq("id", data.whatsappNumberId)
       .single();
     if (nerr || !num) throw new Error("Número não encontrado");
+    if (!num.waba_id || !num.access_token) throw new Error("Este número não usa Cloud API.");
 
     const { listWaTemplates } = await import("@/lib/whatsapp.server");
     const resp = await listWaTemplates(num.waba_id, num.access_token);
@@ -284,6 +307,7 @@ export const subscribeWhatsappWebhook = createServerFn({ method: "POST" })
       .eq("id", data.whatsappNumberId)
       .single();
     if (nerr || !num) throw new Error("Número não encontrado");
+    if (!num.waba_id || !num.access_token) throw new Error("Este número não usa Cloud API.");
 
     const { subscribeWabaToMessages, listWabaSubscriptions } = await import("@/lib/whatsapp.server");
     await subscribeWabaToMessages(num.waba_id, num.access_token);

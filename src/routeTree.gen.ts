@@ -27,6 +27,7 @@ import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app.admin'
 import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
+import { Route as ApiPublicWebhooksEvolutionNumberIdRouteImport } from './routes/api/public/webhooks/evolution.$numberId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -123,6 +124,12 @@ const ApiPublicWebhooksWhatsappNumberIdRoute =
     path: '/api/public/webhooks/whatsapp/$numberId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebhooksEvolutionNumberIdRoute =
+  ApiPublicWebhooksEvolutionNumberIdRouteImport.update({
+    id: '/api/public/webhooks/evolution/$numberId',
+    path: '/api/public/webhooks/evolution/$numberId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/app/whatsapp': typeof AuthenticatedAppWhatsappRoute
   '/api/ai/chat': typeof ApiAiChatRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 export interface FileRoutesByTo {
@@ -159,6 +167,7 @@ export interface FileRoutesByTo {
   '/app/whatsapp': typeof AuthenticatedAppWhatsappRoute
   '/api/ai/chat': typeof ApiAiChatRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 export interface FileRoutesById {
@@ -180,6 +189,7 @@ export interface FileRoutesById {
   '/_authenticated/app/whatsapp': typeof AuthenticatedAppWhatsappRoute
   '/api/ai/chat': typeof ApiAiChatRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 export interface FileRouteTypes {
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/app/whatsapp'
     | '/api/ai/chat'
     | '/app/'
+    | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/app/whatsapp'
     | '/api/ai/chat'
     | '/app'
+    | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
   id:
     | '__root__'
@@ -239,6 +251,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/whatsapp'
     | '/api/ai/chat'
     | '/_authenticated/app/'
+    | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
   fileRoutesById: FileRoutesById
 }
@@ -247,6 +260,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
+  ApiPublicWebhooksEvolutionNumberIdRoute: typeof ApiPublicWebhooksEvolutionNumberIdRoute
   ApiPublicWebhooksWhatsappNumberIdRoute: typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 
@@ -378,6 +392,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksWhatsappNumberIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/evolution/$numberId': {
+      id: '/api/public/webhooks/evolution/$numberId'
+      path: '/api/public/webhooks/evolution/$numberId'
+      fullPath: '/api/public/webhooks/evolution/$numberId'
+      preLoaderRoute: typeof ApiPublicWebhooksEvolutionNumberIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -430,19 +451,11 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiAiChatRoute: ApiAiChatRoute,
+  ApiPublicWebhooksEvolutionNumberIdRoute:
+    ApiPublicWebhooksEvolutionNumberIdRoute,
   ApiPublicWebhooksWhatsappNumberIdRoute:
     ApiPublicWebhooksWhatsappNumberIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

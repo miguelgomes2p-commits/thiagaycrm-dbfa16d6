@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
 import {
   listWhatsappNumbers,
@@ -13,12 +13,18 @@ import {
   listWhatsappTemplates,
   sendWhatsappTemplate,
 } from "@/lib/whatsapp.functions";
+import {
+  createEvolutionInstance,
+  refreshEvolutionQr,
+  checkEvolutionStatus,
+  logoutEvolutionInstance,
+} from "@/lib/evolution.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WhatsappSetupWizard } from "@/components/whatsapp/SetupWizard";
 import {
@@ -34,6 +40,10 @@ import {
   Send,
   ExternalLink,
   Rocket,
+  QrCode,
+  Loader2,
+  LogOut,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -57,11 +67,16 @@ function WhatsappPage() {
   const subscribeWebhook = useServerFn(subscribeWhatsappWebhook);
   const listTpls = useServerFn(listWhatsappTemplates);
   const sendTpl = useServerFn(sendWhatsappTemplate);
+  const createEvo = useServerFn(createEvolutionInstance);
+  const refreshQr = useServerFn(refreshEvolutionQr);
+  const checkStatus = useServerFn(checkEvolutionStatus);
+  const logoutEvo = useServerFn(logoutEvolutionInstance);
 
   const numbersQ = useQuery({
     enabled: !!ws?.id,
     queryKey: ["wa-numbers", ws?.id],
     queryFn: () => list({ data: { workspaceId: ws!.id } }),
+    refetchInterval: 15000,
   });
 
   const templatesQ = useQuery({
@@ -71,8 +86,10 @@ function WhatsappPage() {
   });
 
   const [openConnect, setOpenConnect] = useState(false);
+  const [openEvo, setOpenEvo] = useState(false);
   const [openWizard, setOpenWizard] = useState(false);
   const [openSend, setOpenSend] = useState(false);
+  const [qrModal, setQrModal] = useState<{ id: string; qr: string | null } | null>(null);
 
   const connectM = useMutation({
     mutationFn: (values: {
@@ -118,11 +135,8 @@ function WhatsappPage() {
   const subscribeM = useMutation({
     mutationFn: (whatsappNumberId: string) => subscribeWebhook({ data: { whatsappNumberId } }),
     onSuccess: (r) => {
-      if (r.messagesSubscribed) {
-        toast.success("WABA assinada para receber messages");
-      } else {
-        toast.warning("Assinatura enviada; confirme o campo messages na Meta");
-      }
+      if (r.messagesSubscribed) toast.success("WABA assinada para receber messages");
+      else toast.warning("Assinatura enviada; confirme o campo messages na Meta");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -137,8 +151,7 @@ function WhatsappPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Meta não consegue validar o webhook no domínio de preview (protegido por auth do Lovable).
-  // Usamos sempre o domínio publicado quando estamos em preview/localhost.
+  // Domínio publicado — Meta e serviços externos precisam de URL pública.
   const origin = (() => {
     if (typeof window === "undefined") return "https://thiagaycrm.lovable.app";
     const host = window.location.host;
@@ -150,21 +163,70 @@ function WhatsappPage() {
     return isPreview ? "https://thiagaycrm.lovable.app" : window.location.origin;
   })();
 
+  const createEvoM = useMutation({
+    mutationFn: (v: { label: string; displayNumber: string; baseUrl: string; apiKey: string; instanceName: string }) =>
+      createEvo({ data: { workspaceId: ws!.id, webhookOrigin: origin, ...v } }),
+    onSuccess: (r) => {
+      toast.success("Instância criada — escaneie o QR Code");
+      qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+      setOpenEvo(false);
+      setQrModal({ id: r.id, qr: r.qr });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const refreshQrM = useMutation({
+    mutationFn: (id: string) => refreshQr({ data: { id } }),
+    onSuccess: (r, id) => {
+      setQrModal({ id, qr: r.qr });
+      qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const checkStatusM = useMutation({
+    mutationFn: (id: string) => checkStatus({ data: { id } }),
+    onSuccess: (r) => {
+      toast.info(`Estado: ${r.mapped}`);
+      qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const logoutEvoM = useMutation({
+    mutationFn: (id: string) => logoutEvo({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Sessão encerrada");
+      qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">WhatsApp Business</h1>
-          <p className="text-sm text-muted-foreground">Conecte múltiplos números, ative auto-resposta com IA e envie templates.</p>
+          <p className="text-sm text-muted-foreground">
+            Conecte múltiplos números: oficial via Cloud API ou espelhado por QR Code (Evolution/Z-API).
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => setOpenWizard(true)}>
-            <Rocket className="h-4 w-4 mr-1" /> Guia passo a passo
+            <Rocket className="h-4 w-4 mr-1" /> Guia Meta Cloud
           </Button>
+          <Dialog open={openEvo} onOpenChange={setOpenEvo}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <QrCode className="h-4 w-4 mr-1" /> Conectar por QR Code
+              </Button>
+            </DialogTrigger>
+            <EvolutionConnectDialog onSubmit={(v) => createEvoM.mutate(v)} loading={createEvoM.isPending} />
+          </Dialog>
           <Dialog open={openConnect} onOpenChange={setOpenConnect}>
             <DialogTrigger asChild>
               <Button className="gradient-brand text-primary-foreground border-0">
-                <Plus className="h-4 w-4 mr-1" /> Conectar número
+                <Plus className="h-4 w-4 mr-1" /> Cloud API oficial
               </Button>
             </DialogTrigger>
             <ConnectDialog onSubmit={(v) => connectM.mutate(v)} loading={connectM.isPending} />
@@ -181,6 +243,50 @@ function WhatsappPage() {
         connecting={connectM.isPending}
       />
 
+      {/* QR Code modal */}
+      <Dialog open={!!qrModal} onOpenChange={(o) => !o && setQrModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Escaneie no seu WhatsApp</DialogTitle>
+            <DialogDescription>
+              WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho.
+              O celular pode continuar usando normalmente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3">
+            {qrModal?.qr ? (
+              <img
+                src={qrModal.qr}
+                alt="QR Code de conexão"
+                className="w-64 h-64 rounded-lg bg-white p-2"
+              />
+            ) : (
+              <div className="w-64 h-64 rounded-lg bg-muted flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => qrModal && refreshQrM.mutate(qrModal.id)}
+                disabled={refreshQrM.isPending}
+              >
+                <RefreshCw className={cn("h-4 w-4 mr-1", refreshQrM.isPending && "animate-spin")} /> Novo QR
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => qrModal && checkStatusM.mutate(qrModal.id)}
+                disabled={checkStatusM.isPending}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" /> Já escaneei
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Numbers */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Números conectados</h2>
@@ -193,46 +299,125 @@ function WhatsappPage() {
         )}
         <div className="grid gap-3">
           {numbersQ.data?.map((n) => {
-            const webhookUrl = `${origin}/api/public/webhooks/whatsapp/${n.id}`;
+            const webhookUrl =
+              n.provider === "evolution"
+                ? `${origin}/api/public/webhooks/evolution/${n.id}`
+                : `${origin}/api/public/webhooks/whatsapp/${n.id}`;
             const active = !!n.last_webhook_at;
+            const isEvo = n.provider === "evolution";
+            const statusColor =
+              n.connection_status === "connected"
+                ? "bg-success"
+                : n.connection_status === "qr" || n.connection_status === "connecting"
+                  ? "bg-warning"
+                  : n.connection_status === "error"
+                    ? "bg-destructive"
+                    : active
+                      ? "bg-success"
+                      : "bg-muted";
             return (
               <div key={n.id} className="card-elevated p-5 space-y-4">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className={cn("h-2 w-2 rounded-full", active ? "bg-success" : "bg-muted")} />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cn("h-2 w-2 rounded-full", statusColor)} />
                       <span className="font-semibold">{n.label}</span>
                       <span className="text-sm text-muted-foreground">· {n.display_number}</span>
+                      <span
+                        className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                          isEvo ? "bg-primary/15 text-primary" : "bg-success/15 text-success",
+                        )}
+                      >
+                        {isEvo ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Smartphone className="h-3 w-3" /> QR Code (espelhado)
+                          </span>
+                        ) : (
+                          "Cloud API oficial"
+                        )}
+                      </span>
+                      {isEvo && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          {n.connection_status}
+                        </span>
+                      )}
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground font-mono">phone_number_id: {n.phone_number_id}</div>
+                    {!isEvo && n.phone_number_id && (
+                      <div className="mt-1 text-xs text-muted-foreground font-mono">phone_number_id: {n.phone_number_id}</div>
+                    )}
+                    {isEvo && n.instance_name && (
+                      <div className="mt-1 text-xs text-muted-foreground font-mono">instância: {n.instance_name}</div>
+                    )}
                     {n.last_webhook_at ? (
                       <div className="mt-1 text-xs text-muted-foreground inline-flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 text-success" /> Último webhook há{" "}
+                        <CheckCircle2 className="h-3 w-3 text-success" /> Último evento há{" "}
                         {formatDistanceToNow(new Date(n.last_webhook_at), { locale: ptBR, addSuffix: false })}
                       </div>
                     ) : (
                       <div className="mt-1 text-xs text-warning inline-flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" /> Nenhum webhook recebido — configure o callback no painel Meta
+                        <AlertTriangle className="h-3 w-3" />{" "}
+                        {isEvo ? "Aguardando escaneamento do QR" : "Nenhum webhook recebido — configure na Meta"}
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => subscribeM.mutate(n.id)} disabled={subscribeM.isPending}>
-                      <BellRing className="h-4 w-4 mr-1" /> Assinar WABA
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => syncM.mutate(n.id)} disabled={syncM.isPending}>
-                      <RefreshCw className={cn("h-4 w-4 mr-1", syncM.isPending && "animate-spin")} /> Templates
-                    </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isEvo ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setQrModal({ id: n.id, qr: null });
+                            refreshQrM.mutate(n.id);
+                          }}
+                        >
+                          <QrCode className="h-4 w-4 mr-1" /> QR
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => checkStatusM.mutate(n.id)}
+                          disabled={checkStatusM.isPending}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-1" /> Status
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => logoutEvoM.mutate(n.id)}
+                          disabled={logoutEvoM.isPending}
+                        >
+                          <LogOut className="h-4 w-4 mr-1" /> Logout
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => subscribeM.mutate(n.id)} disabled={subscribeM.isPending}>
+                          <BellRing className="h-4 w-4 mr-1" /> Assinar WABA
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => syncM.mutate(n.id)} disabled={syncM.isPending}>
+                          <RefreshCw className={cn("h-4 w-4 mr-1", syncM.isPending && "animate-spin")} /> Templates
+                        </Button>
+                      </>
+                    )}
                     <Button size="icon" variant="ghost" onClick={() => removeM.mutate(n.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <CopyField label="Callback URL (Webhook)" value={webhookUrl} />
-                  <CopyField label="Verify Token" value={n.webhook_verify_token} mono />
-                </div>
+                {!isEvo && (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <CopyField label="Callback URL (Webhook)" value={webhookUrl} />
+                    <CopyField label="Verify Token" value={n.webhook_verify_token} mono />
+                  </div>
+                )}
+                {isEvo && (
+                  <div>
+                    <CopyField label="Webhook Evolution (já configurado na criação)" value={webhookUrl} />
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between rounded-lg border border-border p-3">
                   <div className="flex items-center gap-3">
@@ -240,11 +425,14 @@ function WhatsappPage() {
                     <div>
                       <div className="text-sm font-medium">Auto-resposta com IA</div>
                       <div className="text-xs text-muted-foreground">
-                        Responde automaticamente novas mensagens até um agente assumir.
+                        {isEvo
+                          ? "Disponível apenas em Cloud API oficial nesta versão."
+                          : "Responde automaticamente novas mensagens até um agente assumir."}
                       </div>
                     </div>
                   </div>
                   <Switch
+                    disabled={isEvo}
                     checked={n.auto_reply_enabled}
                     onCheckedChange={(v) => toggleM.mutate({ id: n.id, enabled: v })}
                   />
@@ -255,7 +443,7 @@ function WhatsappPage() {
         </div>
       </section>
 
-      {/* Templates */}
+      {/* Templates (Cloud API only) */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -268,7 +456,7 @@ function WhatsappPage() {
               </Button>
             </DialogTrigger>
             <SendTemplateDialog
-              numbers={numbersQ.data ?? []}
+              numbers={(numbersQ.data ?? []).filter((n) => n.provider !== "evolution")}
               templates={templatesQ.data ?? []}
               onSubmit={(v) => sendM.mutate(v)}
               loading={sendM.isPending}
@@ -277,7 +465,7 @@ function WhatsappPage() {
         </div>
         {templatesQ.data?.length === 0 && (
           <div className="card-elevated p-6 text-sm text-muted-foreground">
-            Nenhum template sincronizado. Clique em "Templates" no card do número.
+            Templates existem apenas em números Cloud API oficial (Meta).
           </div>
         )}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -309,18 +497,18 @@ function WhatsappPage() {
       {/* Setup help */}
       <section className="card-elevated p-5 text-sm">
         <div className="flex items-center gap-2 font-semibold mb-2">
-          <ExternalLink className="h-4 w-4 text-primary" /> Como configurar no Meta
+          <ExternalLink className="h-4 w-4 text-primary" /> Sobre os dois modos
         </div>
-        <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-          <li>Após conectar o número acima, copie a <strong>Callback URL</strong> e o <strong>Verify Token</strong>.</li>
+        <ul className="list-disc list-inside space-y-1 text-muted-foreground">
           <li>
-            No <a className="underline" href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer">Meta for Developers</a>,
-            abra seu App → WhatsApp → Configuration → Webhooks.
+            <strong>Cloud API oficial:</strong> aprovado pela Meta, sem risco de banimento, mas o número não pode ficar
+            no app do celular. Suporta templates e auto-resposta com IA.
           </li>
-          <li>Cole a Callback URL e o Verify Token, clique em <em>Verify and save</em>.</li>
-          <li>Assine o campo <strong>messages</strong>.</li>
-          <li>Pronto — mensagens entrarão na fila automaticamente.</li>
-        </ol>
+          <li>
+            <strong>QR Code (Evolution/Z-API):</strong> espelha o número via WhatsApp Web, celular continua ligado. Use
+            Evolution API (self-hosted grátis) ou Z-API (SaaS). Cole a URL e a API key do servidor no botão acima.
+          </li>
+        </ul>
       </section>
     </div>
   );
@@ -348,6 +536,90 @@ function CopyField({ label, value, mono }: { label: string; value: string; mono?
   );
 }
 
+function EvolutionConnectDialog({
+  onSubmit,
+  loading,
+}: {
+  onSubmit: (v: {
+    label: string;
+    displayNumber: string;
+    baseUrl: string;
+    apiKey: string;
+    instanceName: string;
+  }) => void;
+  loading: boolean;
+}) {
+  const [instanceName, setInstanceName] = useState(`lupus_${Math.random().toString(36).slice(2, 8)}`);
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader>
+        <DialogTitle>Conectar via QR Code (Evolution / Z-API)</DialogTitle>
+        <DialogDescription>
+          Aponte para um servidor Evolution API v2 (self-hosted) ou compatível. Se ainda não tem, veja instruções
+          abaixo.
+        </DialogDescription>
+      </DialogHeader>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          onSubmit({
+            label: String(fd.get("label")),
+            displayNumber: String(fd.get("displayNumber")),
+            baseUrl: String(fd.get("baseUrl")).trim(),
+            apiKey: String(fd.get("apiKey")).trim(),
+            instanceName,
+          });
+        }}
+      >
+        <div>
+          <Label>Rótulo interno *</Label>
+          <Input name="label" required placeholder="Ex: Vendas Brasil" />
+        </div>
+        <div>
+          <Label>Número (exibição) *</Label>
+          <Input name="displayNumber" required placeholder="+55 11 91234-5678" />
+        </div>
+        <div>
+          <Label>URL do servidor Evolution *</Label>
+          <Input name="baseUrl" required placeholder="https://sua-evolution.up.railway.app" className="text-xs" />
+        </div>
+        <div>
+          <Label>API Key global *</Label>
+          <Input name="apiKey" required placeholder="AUTHENTICATION_API_KEY" className="font-mono text-xs" />
+        </div>
+        <div>
+          <Label>Nome da instância</Label>
+          <Input
+            value={instanceName}
+            onChange={(e) => setInstanceName(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
+            className="font-mono text-xs"
+          />
+        </div>
+        <Button type="submit" disabled={loading} className="w-full gradient-brand text-primary-foreground border-0">
+          {loading ? "Criando instância…" : "Criar instância e gerar QR"}
+        </Button>
+        <div className="text-xs text-muted-foreground border-t pt-3 space-y-1">
+          <p className="font-medium">Sem servidor Evolution ainda?</p>
+          <p>
+            Deploy grátis em 3 min:{" "}
+            <a
+              className="underline text-primary"
+              href="https://doc.evolution-api.com/v2/pt/install/render"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Guia oficial (Render/Railway)
+            </a>
+            . Copie o `AUTHENTICATION_API_KEY` do painel e a URL pública.
+          </p>
+        </div>
+      </form>
+    </DialogContent>
+  );
+}
+
 function ConnectDialog({
   onSubmit,
   loading,
@@ -365,7 +637,7 @@ function ConnectDialog({
   return (
     <DialogContent className="max-w-lg">
       <DialogHeader>
-        <DialogTitle>Conectar número WhatsApp</DialogTitle>
+        <DialogTitle>Conectar número WhatsApp (Cloud API)</DialogTitle>
       </DialogHeader>
       <form
         className="space-y-3"
@@ -436,6 +708,7 @@ function SendTemplateDialog({
   const [numberId, setNumberId] = useState<string>(numbers[0]?.id ?? "");
   const [templateId, setTemplateId] = useState<string>("");
   const available = templates.filter((t) => t.whatsapp_number_id === numberId && t.status === "approved");
+  useEffect(() => setTemplateId(""), [numberId]);
   return (
     <DialogContent>
       <DialogHeader>
@@ -446,29 +719,26 @@ function SendTemplateDialog({
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
-          const tpl = available.find((t) => t.id === templateId);
-          if (!tpl) {
-            toast.error("Selecione um template");
-            return;
-          }
+          const t = templates.find((x) => x.id === templateId);
+          if (!t) return;
           onSubmit({
             whatsappNumberId: numberId,
-            to: String(fd.get("to")),
-            templateName: tpl.name,
-            language: tpl.language,
+            to: String(fd.get("to")).replace(/\D/g, ""),
+            templateName: t.name,
+            language: t.language,
           });
         }}
       >
         <div>
-          <Label>Número de origem</Label>
+          <Label>Número</Label>
           <Select value={numberId} onValueChange={setNumberId}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
               {numbers.map((n) => (
                 <SelectItem key={n.id} value={n.id}>
-                  {n.label} — {n.display_number}
+                  {n.label} · {n.display_number}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -478,7 +748,7 @@ function SendTemplateDialog({
           <Label>Template</Label>
           <Select value={templateId} onValueChange={setTemplateId}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecione um template aprovado" />
+              <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
               {available.map((t) => (
@@ -490,8 +760,8 @@ function SendTemplateDialog({
           </Select>
         </div>
         <div>
-          <Label>Destinatário (E.164 sem "+")</Label>
-          <Input name="to" required placeholder="5511912345678" />
+          <Label>Destinatário (E.164)</Label>
+          <Input name="to" required placeholder="5511912345678" className="font-mono text-xs" />
         </div>
         <Button type="submit" disabled={loading || !templateId} className="w-full gradient-brand text-primary-foreground border-0">
           {loading ? "Enviando…" : "Enviar"}
