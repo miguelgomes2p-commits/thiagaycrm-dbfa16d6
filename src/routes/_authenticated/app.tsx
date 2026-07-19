@@ -2,9 +2,10 @@ import { createFileRoute, Outlet, Link, useLocation, useNavigate, redirect } fro
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car, Tag
+  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car, Tag, ShieldAlert
 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,11 @@ function AppShell() {
   const navigate = useNavigate();
   const { data: workspaces } = useMyWorkspaces();
   const { data: profile } = useCurrentProfile();
+  const { data: authUser } = useQuery({
+    queryKey: ["auth-user-email"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user,
+  });
+  const isSuperAdmin = authUser?.email?.toLowerCase() === "miguelgomes2p@gmail.com";
   const qc = useQueryClient();
   const current = workspaces?.[0];
 
@@ -84,7 +90,7 @@ function AppShell() {
           )}
         </div>
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {NAV.map((item) => {
+          {[...NAV, ...(isSuperAdmin ? [{ to: "/app/admin", label: "Admin Global", icon: ShieldAlert } as NavItem] : [])].map((item) => {
             const active = item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to);
             const Icon = item.icon;
             return (

@@ -25,6 +25,7 @@ import { Route as AuthenticatedAppLabelsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAppConversationsRouteImport } from './routes/_authenticated/app.conversations'
 import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenticated/app.contacts'
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
+import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app.admin'
 import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -111,6 +112,11 @@ const AuthenticatedAppAiRoute = AuthenticatedAppAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppAdminRoute = AuthenticatedAppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
 const ApiPublicWebhooksWhatsappNumberIdRoute =
   ApiPublicWebhooksWhatsappNumberIdRouteImport.update({
     id: '/api/public/webhooks/whatsapp/$numberId',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/app': typeof AuthenticatedAppRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/ai': typeof AuthenticatedAppAiRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/ai': typeof AuthenticatedAppAiRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/app/admin': typeof AuthenticatedAppAdminRoute
   '/_authenticated/app/ai': typeof AuthenticatedAppAiRoute
   '/_authenticated/app/contacts': typeof AuthenticatedAppContactsRoute
   '/_authenticated/app/conversations': typeof AuthenticatedAppConversationsRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/app'
     | '/onboarding'
+    | '/app/admin'
     | '/app/ai'
     | '/app/contacts'
     | '/app/conversations'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/onboarding'
+    | '/app/admin'
     | '/app/ai'
     | '/app/contacts'
     | '/app/conversations'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/app'
     | '/_authenticated/onboarding'
+    | '/_authenticated/app/admin'
     | '/_authenticated/app/ai'
     | '/_authenticated/app/contacts'
     | '/_authenticated/app/conversations'
@@ -352,6 +364,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAiRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/admin': {
+      id: '/_authenticated/app/admin'
+      path: '/admin'
+      fullPath: '/app/admin'
+      preLoaderRoute: typeof AuthenticatedAppAdminRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/api/public/webhooks/whatsapp/$numberId': {
       id: '/api/public/webhooks/whatsapp/$numberId'
       path: '/api/public/webhooks/whatsapp/$numberId'
@@ -363,6 +382,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppAdminRoute: typeof AuthenticatedAppAdminRoute
   AuthenticatedAppAiRoute: typeof AuthenticatedAppAiRoute
   AuthenticatedAppContactsRoute: typeof AuthenticatedAppContactsRoute
   AuthenticatedAppConversationsRoute: typeof AuthenticatedAppConversationsRoute
@@ -376,6 +396,7 @@ interface AuthenticatedAppRouteChildren {
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppAdminRoute: AuthenticatedAppAdminRoute,
   AuthenticatedAppAiRoute: AuthenticatedAppAiRoute,
   AuthenticatedAppContactsRoute: AuthenticatedAppContactsRoute,
   AuthenticatedAppConversationsRoute: AuthenticatedAppConversationsRoute,
