@@ -16,12 +16,29 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [existingSession, setExistingSession] = useState<null | { email: string | null }>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/app" });
+      if (data.session) {
+        setExistingSession({ email: data.session.user.email ?? null });
+      }
     });
-  }, [navigate]);
+  }, []);
+
+  async function handleContinue() {
+    navigate({ to: "/app" });
+  }
+
+  async function handleSignOutExisting() {
+    setLoading(true);
+    await supabase.auth.signOut();
+    localStorage.removeItem("lupus:lastActivity");
+    localStorage.removeItem("lupus:sessionStart");
+    setExistingSession(null);
+    setLoading(false);
+  }
+
 
   async function handleGoogle() {
     setLoading(true);
