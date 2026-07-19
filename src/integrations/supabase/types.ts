@@ -1406,10 +1406,6 @@ export type Database = {
     }
     Functions: {
       assign_next_agent: { Args: { _workspace_id: string }; Returns: string }
-      create_workspace_with_defaults: {
-        Args: { _name: string; _slug: string }
-        Returns: string
-      }
       ensure_whatsapp_number_label: {
         Args: { _wa_number_id: string; _workspace_id: string }
         Returns: string
@@ -1425,10 +1421,6 @@ export type Database = {
       is_workspace_member: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
-      }
-      renave_seed_endpoints: {
-        Args: { _workspace_id: string }
-        Returns: number
       }
     }
     Enums: {
