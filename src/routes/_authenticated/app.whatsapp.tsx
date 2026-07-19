@@ -122,7 +122,14 @@ function WhatsappPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  // Meta não consegue validar o webhook no domínio de preview (protegido por auth do Lovable).
+  // Usamos sempre o domínio publicado quando estamos em preview/localhost.
+  const origin = (() => {
+    if (typeof window === "undefined") return "";
+    const host = window.location.host;
+    const isPreview = host.includes("id-preview--") || host.includes("localhost") || host.includes("127.0.0.1");
+    return isPreview ? "https://thiagaycrm.lovable.app" : window.location.origin;
+  })();
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
