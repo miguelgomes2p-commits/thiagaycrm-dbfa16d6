@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone
+  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car
 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
