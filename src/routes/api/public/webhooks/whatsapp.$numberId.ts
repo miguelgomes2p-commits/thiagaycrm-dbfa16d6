@@ -211,7 +211,7 @@ export const Route = createFileRoute("/api/public/webhooks/whatsapp/$numberId")(
                     if (aiRes.ok) {
                       const j = (await aiRes.json()) as { choices?: Array<{ message?: { content?: string } }> };
                       const reply = j.choices?.[0]?.message?.content?.trim();
-                      if (reply) {
+                      if (reply && num.phone_number_id && num.access_token) {
                         const { sendWaText } = await import("@/lib/whatsapp.server");
                         const r = await sendWaText(num.phone_number_id, num.access_token, fromWaId, reply);
                         await supabaseAdmin.from("messages").insert({
