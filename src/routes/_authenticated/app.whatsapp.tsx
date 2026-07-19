@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WhatsappSetupWizard } from "@/components/whatsapp/SetupWizard";
 import {
   Phone,
   Plus,
@@ -30,6 +31,7 @@ import {
   AlertTriangle,
   Send,
   ExternalLink,
+  Rocket,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -66,6 +68,7 @@ function WhatsappPage() {
   });
 
   const [openConnect, setOpenConnect] = useState(false);
+  const [openWizard, setOpenWizard] = useState(false);
   const [openSend, setOpenSend] = useState(false);
 
   const connectM = useMutation({
@@ -128,15 +131,29 @@ function WhatsappPage() {
           <h1 className="text-2xl font-bold tracking-tight">WhatsApp Business</h1>
           <p className="text-sm text-muted-foreground">Conecte múltiplos números, ative auto-resposta com IA e envie templates.</p>
         </div>
-        <Dialog open={openConnect} onOpenChange={setOpenConnect}>
-          <DialogTrigger asChild>
-            <Button className="gradient-brand text-primary-foreground border-0">
-              <Plus className="h-4 w-4 mr-1" /> Conectar número
-            </Button>
-          </DialogTrigger>
-          <ConnectDialog onSubmit={(v) => connectM.mutate(v)} loading={connectM.isPending} />
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setOpenWizard(true)}>
+            <Rocket className="h-4 w-4 mr-1" /> Guia passo a passo
+          </Button>
+          <Dialog open={openConnect} onOpenChange={setOpenConnect}>
+            <DialogTrigger asChild>
+              <Button className="gradient-brand text-primary-foreground border-0">
+                <Plus className="h-4 w-4 mr-1" /> Conectar número
+              </Button>
+            </DialogTrigger>
+            <ConnectDialog onSubmit={(v) => connectM.mutate(v)} loading={connectM.isPending} />
+          </Dialog>
+        </div>
       </div>
+
+      <WhatsappSetupWizard
+        open={openWizard}
+        onOpenChange={setOpenWizard}
+        webhookUrl={numbersQ.data?.[0] ? `${origin}/api/public/webhooks/whatsapp/${numbersQ.data[0].id}` : undefined}
+        verifyToken={numbersQ.data?.[0]?.webhook_verify_token}
+        onConnect={(v) => connectM.mutate(v)}
+        connecting={connectM.isPending}
+      />
 
       {/* Numbers */}
       <section className="space-y-3">
