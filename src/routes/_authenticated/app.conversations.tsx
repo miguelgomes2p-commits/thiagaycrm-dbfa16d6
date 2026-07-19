@@ -145,7 +145,7 @@ function ConversationsPage() {
       const active = new Set(view.activeLabels);
       list = list.filter((c) => {
         const ids = convLabelMap?.get(c.id) ?? [];
-        if (view.filterMode === "AND") return view.activeLabels.every((id) => ids.includes(id));
+        if (view.filterMode === "AND") return view.activeLabels.every((id: string) => ids.includes(id));
         return ids.some((id) => active.has(id));
       });
     }
@@ -171,7 +171,7 @@ function ConversationsPage() {
   }, [convsQ.data, view, convLabelMap]);
 
   // Grouped
-  const grouped = useMemo((): Array<{ key: string; title: string; color?: string; items: typeof visible }> => {
+  const grouped = useMemo((): Array<{ key: string; title: string; color?: string | undefined; items: typeof visible }> => {
     if (view.groupBy === "none") return [{ key: "all", title: "", items: visible }];
     if (view.groupBy === "status") {
       const buckets = new Map<string, typeof visible>();
@@ -339,7 +339,7 @@ function ConversationsPage() {
     setView((v) => ({
       ...v,
       activeLabels: v.activeLabels.includes(id)
-        ? v.activeLabels.filter((x) => x !== id)
+        ? v.activeLabels.filter((x: string) => x !== id)
         : [...v.activeLabels, id],
     }));
   }
