@@ -167,6 +167,52 @@ export type Database = {
           },
         ]
       }
+      conversation_labels: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          conversation_id: string
+          label_id: string
+          workspace_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          conversation_id: string
+          label_id: string
+          workspace_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          conversation_id?: string
+          label_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_labels_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_labels_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_labels_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           ai_summary: string | null
@@ -249,6 +295,59 @@ export type Database = {
           },
           {
             foreignKeyName: "conversations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      labels: {
+        Row: {
+          archived: boolean
+          color: string
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: Database["public"]["Enums"]["label_kind"]
+          name: string
+          scope: Database["public"]["Enums"]["label_scope"]
+          sort_order: number
+          system_ref: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          archived?: boolean
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["label_kind"]
+          name: string
+          scope?: Database["public"]["Enums"]["label_scope"]
+          sort_order?: number
+          system_ref?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          archived?: boolean
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["label_kind"]
+          name?: string
+          scope?: Database["public"]["Enums"]["label_scope"]
+          sort_order?: number
+          system_ref?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labels_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -1311,6 +1410,10 @@ export type Database = {
         Args: { _name: string; _slug: string }
         Returns: string
       }
+      ensure_whatsapp_number_label: {
+        Args: { _wa_number_id: string; _workspace_id: string }
+        Returns: string
+      }
       has_workspace_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -1340,6 +1443,8 @@ export type Database = {
         | "sms"
       contact_type: "person" | "company"
       conversation_status: "open" | "pending" | "resolved" | "closed"
+      label_kind: "system" | "custom"
+      label_scope: "conversation" | "contact" | "lead"
       lead_priority: "low" | "medium" | "high" | "urgent"
       message_direction: "inbound" | "outbound" | "internal"
       queue_strategy: "round_robin" | "manual" | "hybrid"
@@ -1486,6 +1591,8 @@ export const Constants = {
       ],
       contact_type: ["person", "company"],
       conversation_status: ["open", "pending", "resolved", "closed"],
+      label_kind: ["system", "custom"],
+      label_scope: ["conversation", "contact", "lead"],
       lead_priority: ["low", "medium", "high", "urgent"],
       message_direction: ["inbound", "outbound", "internal"],
       queue_strategy: ["round_robin", "manual", "hybrid"],
