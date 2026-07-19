@@ -1407,7 +1407,7 @@ export type Database = {
     Functions: {
       assign_next_agent: { Args: { _workspace_id: string }; Returns: string }
       create_workspace_with_defaults: {
-        Args: { _name: string; _slug: string }
+        Args: { _name: string; _slug: string; _user_id: string }
         Returns: string
       }
       ensure_whatsapp_number_label: {
