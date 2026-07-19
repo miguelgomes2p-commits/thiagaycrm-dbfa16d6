@@ -169,6 +169,7 @@ export const sendWhatsappTemplate = createServerFn({ method: "POST" })
       .eq("id", data.whatsappNumberId)
       .single();
     if (nerr || !num || num.workspace_id !== data.workspaceId) throw new Error("Número não encontrado");
+    if (!num.phone_number_id || !num.access_token) throw new Error("Este número não usa Cloud API.");
 
     const { sendWaTemplate } = await import("@/lib/whatsapp.server");
     const to = data.to.replace(/\D/g, "");
