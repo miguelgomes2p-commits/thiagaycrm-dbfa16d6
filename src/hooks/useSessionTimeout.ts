@@ -50,7 +50,7 @@ export function useSessionTimeout() {
       }
     };
 
-    const events: (keyof WindowEventMap)[] = [
+    const events: string[] = [
       "mousemove",
       "mousedown",
       "keydown",
@@ -58,7 +58,8 @@ export function useSessionTimeout() {
       "touchstart",
       "visibilitychange",
     ];
-    events.forEach((ev) => window.addEventListener(ev, markActivity, { passive: true }));
+    events.forEach((ev) => window.addEventListener(ev, markActivity, { passive: true } as AddEventListenerOptions));
+
     markActivity();
 
     interval = setInterval(check, 30_000);
