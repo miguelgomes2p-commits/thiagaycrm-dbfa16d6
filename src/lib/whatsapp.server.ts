@@ -73,6 +73,20 @@ export function listWaTemplates(wabaId: string, token: string) {
   }>(`/${wabaId}/message_templates?limit=200`, token, { method: "GET" });
 }
 
+export function subscribeWabaToMessages(wabaId: string, token: string) {
+  return graphRequest<{ success?: boolean }>(
+    `/${wabaId}/subscribed_apps?subscribed_fields=${encodeURIComponent("messages")}`,
+    token,
+    { method: "POST" },
+  );
+}
+
+export function listWabaSubscriptions(wabaId: string, token: string) {
+  return graphRequest<{
+    data?: Array<{ id?: string; name?: string; subscribed_fields?: string[] }>;
+  }>(`/${wabaId}/subscribed_apps?fields=id,name,subscribed_fields&limit=25`, token, { method: "GET" });
+}
+
 export function verifyMetaSignature(appSecret: string, rawBody: string, headerSig: string | null) {
   if (!headerSig) return false;
   const expected = "sha256=" + createHmac("sha256", appSecret).update(rawBody).digest("hex");
