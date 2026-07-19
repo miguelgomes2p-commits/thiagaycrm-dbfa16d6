@@ -252,17 +252,22 @@ function StepProduct() {
   return (
     <Section>
       <div>
-        <h3 className="text-base font-semibold mb-1">3. Adicionar o produto WhatsApp</h3>
+        <h3 className="text-base font-semibold mb-1">3. Ativar WhatsApp na produção</h3>
         <p className="text-muted-foreground">
-          Dentro do App, ative o WhatsApp Business Platform e obtenha um número de teste.
+          Dentro do App, ative o WhatsApp Business Platform e use a <strong>configuração de produção</strong> — não a etapa de teste.
         </p>
       </div>
       <Ol
         items={[
-          <>No painel do App, role até <strong>"Adicionar produtos ao seu app"</strong>.</>,
-          <>Localize <strong>WhatsApp</strong> e clique em <em>Configurar</em>.</>,
-          <>Selecione o <strong>Portfólio empresarial Lupus</strong> e clique <em>Continuar</em>.</>,
-          <>A Meta cria automaticamente uma <strong>WhatsApp Business Account (WABA)</strong> e um <strong>número de teste</strong> gratuito.</>,
+          <>No painel do App, localize a seção <strong>"Personalização do app e requisitos"</strong> (ou "Adicionar produtos ao seu app").</>,
+          <>Clique em <strong>"Personalizar o caso de uso 'Conectar-se com os clientes pelo WhatsApp'"</strong>.</>,
+          <>
+            <strong>Ignore a "Etapa 1. Experimente"</strong> e clique no link azul{" "}
+            <strong>"Configuração da produção"</strong> (ou "Production setup").
+          </>,
+          <>Clique em <strong>"Integrar com API"</strong>.</>,
+          <>Selecione o <strong>Portfólio empresarial Lupus</strong> e confirme.</>,
+          <>A Meta cria uma <strong>WhatsApp Business Account (WABA)</strong> e mostra a tela de configuração da API.</>,
           <>No menu lateral esquerdo abra <strong>WhatsApp → Configuração da API</strong> (ou "API Setup").</>,
           <>Copie e guarde estes dois valores (você vai colar no CRM no último passo):
             <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5 text-xs">
@@ -270,11 +275,10 @@ function StepProduct() {
               <li><strong>WhatsApp Business Account ID</strong> (WABA ID)</li>
             </ul>
           </>,
-          <>Em "Enviar e receber mensagens", adicione seu <strong>WhatsApp pessoal</strong> como número de destino de teste e envie o template <code className="text-xs bg-muted px-1 py-0.5 rounded">hello_world</code> para confirmar que funciona.</>,
         ]}
       />
       <Warn>
-        O número de teste envia apenas para destinatários pré-cadastrados e tem limite de 250 conversas/dia. Para produção, adicione um número próprio em <em>WhatsApp → Gerenciador de números</em>.
+        Não clique em <strong>"Reivindicar número de teste"</strong>. O número de teste só envia para destinatários pré-cadastrados e não serve para atender clientes reais no CRM.
       </Warn>
     </Section>
   );
