@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { createWorkspaceWithDefaults } from "@/lib/workspaces.functions";
 import { toast } from "sonner";
 import { Loader2, Rocket } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,13 +28,18 @@ function Onboarding() {
     if (!name.trim()) return;
     setLoading(true);
     const slug = slugify(name) + "-" + Math.random().toString(36).slice(2, 6);
-    const { error } = await supabase.rpc("create_workspace_with_defaults", { _name: name.trim(), _slug: slug });
-    setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Empresa criada!");
-    qc.invalidateQueries();
-    navigate({ to: "/app" });
+    try {
+      await createWorkspaceWithDefaults({ data: { name: name.trim(), slug } });
+      toast.success("Empresa criada!");
+      qc.invalidateQueries();
+      navigate({ to: "/app" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao criar workspace");
+    } finally {
+      setLoading(false);
+    }
   }
+
 
   return (
     <div className="min-h-screen grid place-items-center bg-background p-6">
