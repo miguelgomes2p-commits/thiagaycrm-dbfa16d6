@@ -1215,56 +1215,77 @@ export type Database = {
       }
       whatsapp_numbers: {
         Row: {
-          access_token: string
+          access_token: string | null
           app_id: string | null
           auto_reply_enabled: boolean
           auto_reply_prompt: string | null
+          connection_status: Database["public"]["Enums"]["wa_connection_status"]
           created_at: string
           default_owner_id: string | null
           display_number: string
           id: string
+          instance_name: string | null
           is_active: boolean
           label: string
+          last_qr: string | null
+          last_qr_at: string | null
           last_webhook_at: string | null
-          phone_number_id: string
+          phone_number_id: string | null
+          provider: Database["public"]["Enums"]["wa_provider"]
+          provider_api_key: string | null
+          provider_base_url: string | null
           updated_at: string
-          waba_id: string
+          waba_id: string | null
           webhook_verify_token: string
           workspace_id: string
         }
         Insert: {
-          access_token: string
+          access_token?: string | null
           app_id?: string | null
           auto_reply_enabled?: boolean
           auto_reply_prompt?: string | null
+          connection_status?: Database["public"]["Enums"]["wa_connection_status"]
           created_at?: string
           default_owner_id?: string | null
           display_number: string
           id?: string
+          instance_name?: string | null
           is_active?: boolean
           label: string
+          last_qr?: string | null
+          last_qr_at?: string | null
           last_webhook_at?: string | null
-          phone_number_id: string
+          phone_number_id?: string | null
+          provider?: Database["public"]["Enums"]["wa_provider"]
+          provider_api_key?: string | null
+          provider_base_url?: string | null
           updated_at?: string
-          waba_id: string
+          waba_id?: string | null
           webhook_verify_token?: string
           workspace_id: string
         }
         Update: {
-          access_token?: string
+          access_token?: string | null
           app_id?: string | null
           auto_reply_enabled?: boolean
           auto_reply_prompt?: string | null
+          connection_status?: Database["public"]["Enums"]["wa_connection_status"]
           created_at?: string
           default_owner_id?: string | null
           display_number?: string
           id?: string
+          instance_name?: string | null
           is_active?: boolean
           label?: string
+          last_qr?: string | null
+          last_qr_at?: string | null
           last_webhook_at?: string | null
-          phone_number_id?: string
+          phone_number_id?: string | null
+          provider?: Database["public"]["Enums"]["wa_provider"]
+          provider_api_key?: string | null
+          provider_base_url?: string | null
           updated_at?: string
-          waba_id?: string
+          waba_id?: string | null
           webhook_verify_token?: string
           workspace_id?: string
         }
@@ -1450,7 +1471,14 @@ export type Database = {
       queue_strategy: "round_robin" | "manual" | "hybrid"
       sender_type: "contact" | "user" | "ai" | "system"
       stage_type: "open" | "won" | "lost"
+      wa_connection_status:
+        | "disconnected"
+        | "qr"
+        | "connecting"
+        | "connected"
+        | "error"
       wa_delivery_status: "pending" | "sent" | "delivered" | "read" | "failed"
+      wa_provider: "cloud_api" | "evolution" | "zapi"
       wa_template_status: "pending" | "approved" | "rejected" | "paused"
     }
     CompositeTypes: {
@@ -1598,7 +1626,15 @@ export const Constants = {
       queue_strategy: ["round_robin", "manual", "hybrid"],
       sender_type: ["contact", "user", "ai", "system"],
       stage_type: ["open", "won", "lost"],
+      wa_connection_status: [
+        "disconnected",
+        "qr",
+        "connecting",
+        "connected",
+        "error",
+      ],
       wa_delivery_status: ["pending", "sent", "delivered", "read", "failed"],
+      wa_provider: ["cloud_api", "evolution", "zapi"],
       wa_template_status: ["pending", "approved", "rejected", "paused"],
     },
   },
