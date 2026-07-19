@@ -130,7 +130,6 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
       } else {
         throw new Error(`Provedor ${num.provider} não implementado`);
       }
-      const waId = resp.messages?.[0]?.id ?? null;
       const { data: msg, error: merr } = await context.supabase
         .from("messages")
         .insert({
