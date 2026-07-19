@@ -205,7 +205,7 @@ function ConversationsPage() {
     const groups = (labels ?? [])
       .filter((l) => buckets.has(l.id))
       .map((l) => ({ key: l.id, title: l.name, color: l.color, items: buckets.get(l.id)! }));
-    if (untagged.length > 0) groups.push({ key: "untagged", title: "Sem etiqueta", items: untagged });
+    if (untagged.length > 0) groups.push({ key: "untagged", title: "Sem etiqueta", color: "#64748b", items: untagged });
     return groups;
   }, [visible, view.groupBy, convLabelMap, labels]);
 
