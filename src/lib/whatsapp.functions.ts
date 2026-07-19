@@ -104,6 +104,9 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
       .eq("id", conv.whatsapp_number_id)
       .single();
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
+    if (!num.phone_number_id || !num.access_token) {
+      throw new Error("Este número não usa Cloud API. Use o envio via provedor QR Code.");
+    }
 
     const { sendWaText } = await import("@/lib/whatsapp.server");
     try {
