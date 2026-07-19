@@ -90,7 +90,7 @@ function AppShell() {
           )}
         </div>
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {NAV.map((item) => {
+          {[...NAV, ...(isSuperAdmin ? [{ to: "/app/admin", label: "Admin Global", icon: ShieldAlert } as NavItem] : [])].map((item) => {
             const active = item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to);
             const Icon = item.icon;
             return (
