@@ -119,6 +119,27 @@ function AuthPage() {
           <h1 className="text-2xl font-bold tracking-tight">Bem-vindo</h1>
           <p className="text-sm text-muted-foreground mt-1">Entre ou crie sua conta para continuar.</p>
 
+          {existingSession && (
+            <div className="mt-6 rounded-lg border border-border bg-card p-4">
+              <p className="text-sm text-foreground">
+                Você já está autenticado{existingSession.email ? ` como ` : "."}
+                {existingSession.email && <span className="font-medium">{existingSession.email}</span>}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Por segurança, confirme se deseja continuar nesta sessão ou saia para entrar com outra conta.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" onClick={handleContinue} disabled={loading} className="gradient-brand">
+                  Continuar
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleSignOutExisting} disabled={loading}>
+                  Sair e trocar de conta
+                </Button>
+              </div>
+            </div>
+          )}
+
+
           <Button onClick={handleGoogle} disabled={loading} variant="outline" className="w-full mt-6 h-11">
             <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .55 4.1 1.6l3-3C17.4 1.7 14.9.5 12 .5 7.3.5 3.2 3.2 1.3 7.2l3.5 2.7C5.7 7 8.6 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.5-.2-2.3H12v4.5h6.5c-.3 1.5-1.2 2.7-2.5 3.6l3.5 2.7c2.1-1.9 3.5-4.8 3.5-8.5z"/><path fill="#FBBC05" d="M4.8 14.4c-.3-.9-.5-1.8-.5-2.8s.2-1.9.5-2.8L1.3 6.1C.5 7.9 0 9.9 0 12s.5 4.1 1.3 5.9l3.5-2.7z"/><path fill="#34A853" d="M12 24c3 0 5.5-1 7.4-2.8l-3.5-2.7c-1 .7-2.3 1.1-3.9 1.1-3.4 0-6.3-2-7.2-4.9l-3.5 2.7C3.2 20.8 7.3 24 12 24z"/></svg>
             Continuar com Google
