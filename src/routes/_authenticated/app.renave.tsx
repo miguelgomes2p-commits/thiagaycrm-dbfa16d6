@@ -360,8 +360,8 @@ function EndpointsTab({ workspaceId }: { workspaceId: string }) {
 
   const seed = useMutation({
     mutationFn: async () => {
-      const { seedRenaveEndpoints } = await import("@/lib/workspaces.functions");
-      await seedRenaveEndpoints({ data: { workspaceId } });
+      const { error } = await supabase.rpc("renave_seed_endpoints", { _workspace_id: workspaceId });
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Endpoints do Swagger carregados");
@@ -369,7 +369,6 @@ function EndpointsTab({ workspaceId }: { workspaceId: string }) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
 
   const grouped = useMemo(() => {
     const g: Record<string, typeof data> = {};
