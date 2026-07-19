@@ -252,24 +252,23 @@ function StepProduct() {
   return (
     <Section>
       <div>
-        <h3 className="text-base font-semibold mb-1">3. Ativar WhatsApp na produção</h3>
+        <h3 className="text-base font-semibold mb-1">3. Abrir o API Setup e pegar os IDs</h3>
         <p className="text-muted-foreground">
-          Dentro do App, ative o WhatsApp Business Platform e use a <strong>configuração de produção</strong> — não a etapa de teste.
+          A Meta mudou a navegação: em muitos apps não aparece um menu lateral chamado <strong>WhatsApp</strong>. O caminho atual fica dentro do caso de uso.
         </p>
       </div>
       <Ol
         items={[
-          <>No painel do App, localize a seção <strong>"Personalização do app e requisitos"</strong> (ou "Adicionar produtos ao seu app").</>,
-          <>Clique em <strong>"Personalizar o caso de uso 'Conectar-se com os clientes pelo WhatsApp'"</strong>.</>,
+          <>No painel do App, fique em <strong>Personalizar caso de uso → Conectar-se com os clientes pelo WhatsApp</strong>.</>,
+          <>Abra a aba/seção <strong>Início rápido</strong> ou <strong>Quickstart</strong>.</>,
           <>
-            <strong>Ignore a "Etapa 1. Experimente"</strong> e clique no link azul{" "}
-            <strong>"Configuração da produção"</strong> (ou "Production setup").
+            Clique no botão azul <strong>"Começar a usar a API"</strong> ou <strong>"Start using the API"</strong>.
           </>,
-          <>Clique em <strong>"Integrar com API"</strong>.</>,
-          <>Selecione o <strong>Portfólio empresarial Lupus</strong> e confirme.</>,
-          <>A Meta cria uma <strong>WhatsApp Business Account (WABA)</strong> e mostra a tela de configuração da API.</>,
-          <>No menu lateral esquerdo abra <strong>WhatsApp → Configuração da API</strong> (ou "API Setup").</>,
-          <>Copie e guarde estes dois valores (você vai colar no CRM no último passo):
+          <>Você será levado para a tela <strong>API Setup</strong>. Se aparecer a etapa de teste, procure o link/aba <strong>Configuração de produção</strong>.</>,
+          <>Na área <strong>API Setup</strong>, conecte o app a uma <strong>WhatsApp Business Account</strong>: selecione a conta existente da Lupus ou crie uma nova.</>,
+          <>Depois de conectar, copie o <strong>WhatsApp Business Account ID</strong> — esse é o <strong>WABA ID</strong>.</>,
+          <>Na seção <strong>Enviar e receber mensagens</strong>, escolha o número no campo <strong>De / From</strong>. Perto desse número aparece o <strong>Phone Number ID</strong>.</>,
+          <>Guarde estes dois valores para colar no CRM:
             <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5 text-xs">
               <li><strong>Phone number ID</strong> (identificador de número)</li>
               <li><strong>WhatsApp Business Account ID</strong> (WABA ID)</li>
@@ -277,8 +276,11 @@ function StepProduct() {
           </>,
         ]}
       />
+      <Tip>
+        Se você não vê “WhatsApp” em lugar nenhum, procure por <strong>Quickstart</strong>, <strong>API Setup</strong> ou pelo botão <strong>Start using the API</strong>. Esses são os nomes atuais usados pela Meta em 2026.
+      </Tip>
       <Warn>
-        Não clique em <strong>"Reivindicar número de teste"</strong>. O número de teste só envia para destinatários pré-cadastrados e não serve para atender clientes reais no CRM.
+        O número de teste só serve para testar com destinatários cadastrados. Para clientes reais, use a área de <strong>Configuração de produção</strong> e o número comercial registrado.
       </Warn>
     </Section>
   );
@@ -325,7 +327,7 @@ function StepWebhook({ webhookUrl, verifyToken }: { webhookUrl?: string; verifyT
 
       <Ol
         items={[
-          <>No App Meta, abra <strong>WhatsApp → Configuração</strong> (menu lateral).</>,
+          <>No App Meta, abra <strong>Personalizar caso de uso → Conectar-se com os clientes pelo WhatsApp → Configuração</strong>. Se não aparecer, entre pelo <strong>API Setup</strong> e procure a seção <strong>Webhooks</strong>.</>,
           <>Na seção <strong>Webhook</strong>, clique em <em>Editar</em> ao lado de "Callback URL".</>,
           <>Cole a <strong>Callback URL</strong> e o <strong>Verify Token</strong> exibidos acima.</>,
           <>Clique <em>Verificar e salvar</em> — deve aparecer ✓ em verde.</>,
