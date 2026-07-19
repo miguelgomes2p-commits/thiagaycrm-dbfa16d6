@@ -125,9 +125,13 @@ function WhatsappPage() {
   // Meta não consegue validar o webhook no domínio de preview (protegido por auth do Lovable).
   // Usamos sempre o domínio publicado quando estamos em preview/localhost.
   const origin = (() => {
-    if (typeof window === "undefined") return "";
+    if (typeof window === "undefined") return "https://thiagaycrm.lovable.app";
     const host = window.location.host;
-    const isPreview = host.includes("id-preview--") || host.includes("localhost") || host.includes("127.0.0.1");
+    const isPreview =
+      host.includes("id-preview--") ||
+      host.includes("lovableproject.com") ||
+      host.includes("localhost") ||
+      host.includes("127.0.0.1");
     return isPreview ? "https://thiagaycrm.lovable.app" : window.location.origin;
   })();
 
