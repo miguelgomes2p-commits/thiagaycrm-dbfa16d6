@@ -289,6 +289,7 @@ export const subscribeWhatsappWebhook = createServerFn({ method: "POST" })
       .eq("id", data.whatsappNumberId)
       .single();
     if (nerr || !num) throw new Error("Número não encontrado");
+    if (!num.waba_id || !num.access_token) throw new Error("Este número não usa Cloud API.");
 
     const { subscribeWabaToMessages, listWabaSubscriptions } = await import("@/lib/whatsapp.server");
     await subscribeWabaToMessages(num.waba_id, num.access_token);
