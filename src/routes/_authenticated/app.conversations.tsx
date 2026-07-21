@@ -31,6 +31,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { AudioPlayer } from "@/components/chat/AudioPlayer";
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
   component: ConversationsPage,
@@ -906,7 +907,11 @@ function ConversationsPage() {
                         </a>
                       )}
                       {mediaUrl && mediaType === "audio" && (
-                        <audio controls src={mediaUrl} className="w-full max-w-[280px]" />
+                        <AudioPlayer
+                          src={mediaUrl}
+                          mime={mediaMime}
+                          variant={m.direction === "outbound" ? "dark" : "light"}
+                        />
                       )}
                       {mediaUrl && mediaType === "video" && (
                         <video controls src={mediaUrl} className="rounded-lg max-h-72 w-full" />
