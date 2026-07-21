@@ -285,13 +285,15 @@ function ConversationsPage() {
 
   useEffect(() => {
     const lead = leadContextQ.data?.lead;
+    const stages = leadContextQ.data?.stages ?? [];
     const contactName = (active?.contacts as { name?: string } | null)?.name ?? "Lead WhatsApp";
     setLeadTitle(lead?.title ?? contactName);
     setLeadValue(lead?.value ? String(lead.value) : "");
     setLeadPriority(lead?.priority ?? "medium");
+    setLeadStageId(lead?.stage_id ?? stages[0]?.id ?? "");
     setLeadNotes(lead?.notes ?? "");
     setLeadFields((lead?.custom_fields ?? {}) as Record<string, string>);
-  }, [leadContextQ.data?.lead, active?.id, active?.contacts]);
+  }, [leadContextQ.data?.lead, leadContextQ.data?.stages, active?.id, active?.contacts]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgsQ.data]);
