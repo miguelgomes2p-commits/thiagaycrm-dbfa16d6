@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { PipelineStagesManager } from "@/components/pipeline/PipelineStagesManager";
 
 export const Route = createFileRoute("/_authenticated/app/pipeline")({
   component: PipelinePage,
