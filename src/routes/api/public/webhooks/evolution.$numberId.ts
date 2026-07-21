@@ -278,7 +278,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                 if (!base64) {
                   const { evolutionGetBase64FromMedia } = await import("@/lib/evolution.server");
                   const resp = await evolutionGetBase64FromMedia(num.provider_base_url, num.provider_api_key, num.instance_name, m);
-                  base64 = stripDataUrl(resp.base64);
+                  base64 = stripDataUrl(resp.base64 ?? resp.buffer);
                   if (resp.mimetype) mediaMime = resp.mimetype;
                   console.log("[evolution webhook] getBase64", { id: m.key?.id, gotBase64: !!base64, mimetype: resp.mimetype });
                 }

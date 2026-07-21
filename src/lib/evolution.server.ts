@@ -134,6 +134,24 @@ export function evolutionSendMedia(
   );
 }
 
+export function evolutionSendWhatsAppAudio(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string,
+  number: string,
+  audioBase64OrUrl: string,
+) {
+  return req<{ key?: { id?: string; remoteJid?: string; fromMe?: boolean } }>(
+    baseUrl,
+    apiKey,
+    `/message/sendWhatsAppAudio/${encodeURIComponent(instanceName)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ number, audio: audioBase64OrUrl, encoding: true }),
+    },
+  );
+}
+
 export function evolutionSetWebhook(
   baseUrl: string,
   apiKey: string,
@@ -164,13 +182,14 @@ export function evolutionGetBase64FromMedia(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   message: any,
 ) {
-  return req<{ base64?: string; mimetype?: string; fileName?: string }>(
+  const mediaMessage = message?.key ? { key: message.key } : message;
+  return req<{ base64?: string; buffer?: string | null; mimetype?: string; mediaType?: string; fileName?: string; size?: { fileLength?: string } }>(
     baseUrl,
     apiKey,
     `/chat/getBase64FromMediaMessage/${encodeURIComponent(instanceName)}`,
     {
       method: "POST",
-      body: JSON.stringify({ message, convertToMp4: false }),
+      body: JSON.stringify({ message: mediaMessage, convertToMp4: false }),
     },
   );
 }

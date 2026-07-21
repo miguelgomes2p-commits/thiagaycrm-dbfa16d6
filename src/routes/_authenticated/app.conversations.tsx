@@ -7,6 +7,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   sendWhatsappMessage,
   sendWhatsappAttachment,
+  repairWhatsappAudioMedia,
   takeConversation,
   releaseConversation,
   resolveConversation,
@@ -25,6 +26,7 @@ import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
   Tag, Filter, ChevronRight, Paperclip, BriefcaseBusiness, Save, Loader2,
+  Mic, Square, PanelRightOpen, PanelRightClose, X,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -74,10 +76,19 @@ function ConversationsPage() {
   const [leadValue, setLeadValue] = useState("");
   const [leadPriority, setLeadPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [leadNotes, setLeadNotes] = useState("");
+  const [leadPaneOpen, setLeadPaneOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<BlobPart[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
+  const repairingAudioRef = useRef(new Set<string>());
   const qc = useQueryClient();
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
+  const repairAudio = useServerFn(repairWhatsappAudioMedia);
   const takeFn = useServerFn(takeConversation);
   const releaseFn = useServerFn(releaseConversation);
   const resolveFn = useServerFn(resolveConversation);
@@ -279,6 +290,31 @@ function ConversationsPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgsQ.data]);
 
+  useEffect(() => () => {
+    if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  useEffect(() => {
+    if (!activeId || !msgsQ.data || repairingAudioRef.current.has(activeId)) return;
+    const needsRepair = msgsQ.data.some((m) => {
+      const mediaUrl = (m as { media_url?: string | null }).media_url;
+      const mediaType = (m as { media_type?: string | null }).media_type;
+      const content = (m.content ?? "").toLowerCase();
+      return !mediaUrl && (mediaType === "audio" || content.includes("áudio") || content.includes("audio"));
+    });
+    if (!needsRepair) return;
+    repairingAudioRef.current.add(activeId);
+    repairAudio({ data: { conversationId: activeId } })
+      .then((result) => {
+        if (result.repaired > 0) {
+          qc.invalidateQueries({ queryKey: ["messages", activeId] });
+          toast.success(`${result.repaired} áudio(s) recuperado(s)`);
+        }
+      })
+      .catch(() => undefined);
+  }, [activeId, msgsQ.data, qc, repairAudio]);
+
   // Counts per label (unread inbound-first proxy: use unread_count)
   const labelCounts = useMemo(() => {
     const map = new Map<string, { total: number; unread: number }>();
@@ -356,6 +392,86 @@ function ConversationsPage() {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  function preferredAudioMime() {
+    const options = [
+      "audio/ogg;codecs=opus",
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+    ];
+    return options.find((mime) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(mime)) ?? "";
+  }
+
+  function stopRecordingTracks() {
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingStreamRef.current = null;
+    if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+    setIsRecording(false);
+  }
+
+  async function startAudioRecording() {
+    if (!active || sending || uploading || isRecording) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("Gravação de áudio não é suportada neste navegador.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = preferredAudioMime();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recordingStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const type = recorder.mimeType || mimeType || "audio/webm";
+        const blob = new Blob(recordingChunksRef.current, { type });
+        recordingChunksRef.current = [];
+        if (blob.size > 0) {
+          const ext = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
+          void sendAttachment(new File([blob], `audio-${Date.now()}.${ext}`, { type }));
+        }
+        stopRecordingTracks();
+      };
+      recorder.start(500);
+      setRecordingSeconds(0);
+      setIsRecording(true);
+      recordingTimerRef.current = window.setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+    } catch (e) {
+      stopRecordingTracks();
+      toast.error(e instanceof Error && e.name === "NotAllowedError" ? "Permita o microfone para gravar áudio." : "Não foi possível iniciar a gravação.");
+    }
+  }
+
+  function finishAudioRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    } else {
+      stopRecordingTracks();
+    }
+  }
+
+  function cancelAudioRecording() {
+    recordingChunksRef.current = [];
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.onstop = stopRecordingTracks;
+      recorder.stop();
+    } else {
+      stopRecordingTracks();
+    }
+  }
+
+  function formatRecordingTime(seconds: number) {
+    const min = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const sec = (seconds % 60).toString().padStart(2, "0");
+    return `${min}:${sec}`;
   }
 
   async function saveLead() {
@@ -708,6 +824,16 @@ function ConversationsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant={leadPaneOpen ? "outline" : "ghost"}
+                  className="h-8 gap-1.5"
+                  onClick={() => setLeadPaneOpen((v) => !v)}
+                  title={leadPaneOpen ? "Fechar anotações" : "Abrir anotações"}
+                >
+                  {leadPaneOpen ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
+                  Lead
+                </Button>
                 <LabelPicker
                   labels={labels ?? []}
                   activeIds={activeLabelIds}
@@ -817,7 +943,7 @@ function ConversationsPage() {
               })}
 
             </div>
-            <div className="border-t border-border p-3 flex gap-2 shrink-0">
+            <div className="border-t border-border p-3 shrink-0">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -825,30 +951,58 @@ function ConversationsPage() {
                 accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
                 onChange={(e) => sendAttachment(e.target.files?.[0])}
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                disabled={sending || uploading}
-                onClick={() => fileInputRef.current?.click()}
-                title="Anexar arquivo"
-              >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
-              </Button>
-              <Input
-                value={text} onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                placeholder="Digite uma mensagem..."
-                disabled={sending || uploading}
-              />
-              <Button onClick={sendMessage} disabled={sending || uploading} className="gradient-brand text-primary-foreground border-0">
-                <Send className="h-4 w-4" />
-              </Button>
+              {isRecording ? (
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-2">
+                  <Button type="button" variant="ghost" size="icon" onClick={cancelAudioRecording} title="Cancelar gravação">
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <div className="flex flex-1 items-center gap-2 text-sm text-destructive">
+                    <span className="h-2.5 w-2.5 rounded-full bg-destructive animate-pulse" />
+                    <span className="font-medium">Gravando áudio</span>
+                    <span className="font-mono text-xs">{formatRecordingTime(recordingSeconds)}</span>
+                  </div>
+                  <Button type="button" onClick={finishAudioRecording} className="gradient-brand text-primary-foreground border-0" title="Enviar áudio">
+                    <Square className="h-4 w-4 mr-1" /> Enviar
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={sending || uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Anexar arquivo"
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={sending || uploading || !active}
+                    onClick={startAudioRecording}
+                    title="Gravar áudio"
+                  >
+                    <Mic className="h-4 w-4" />
+                  </Button>
+                  <Input
+                    value={text} onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                    placeholder="Digite uma mensagem..."
+                    disabled={sending || uploading}
+                  />
+                  <Button onClick={sendMessage} disabled={sending || uploading} className="gradient-brand text-primary-foreground border-0">
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}
       </div>
-      {active && (
+      {active && leadPaneOpen && (
         <aside className="w-80 border-l border-border bg-surface/20 p-4 overflow-y-auto shrink-0">
           <div className="flex items-center gap-2 mb-4">
             <BriefcaseBusiness className="h-4 w-4 text-primary" />
