@@ -23,9 +23,24 @@ function extOf(mime?: string | null, fallback = "bin"): string {
   return map[clean] ?? clean?.split("/")[1] ?? fallback;
 }
 
-function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; type: string | null; mime: string | null; caption: string | null; filename: string | null } {
+function unwrapMessage(msg: Json | undefined): Json | undefined {
+  if (!msg) return msg;
+  // WhatsApp wraps some messages: ephemeral, viewOnce, deviceSent, etc.
+  return (
+    msg.ephemeralMessage?.message ??
+    msg.viewOnceMessage?.message ??
+    msg.viewOnceMessageV2?.message ??
+    msg.viewOnceMessageV2Extension?.message ??
+    msg.deviceSentMessage?.message ??
+    msg.documentWithCaptionMessage?.message ??
+    msg
+  );
+}
+
+function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; type: string | null; mime: string | null; caption: string | null; filename: string | null; inner: Json | undefined } {
+  const inner = unwrapMessage(m.message);
   for (const k of MEDIA_KEYS) {
-    const node = m.message?.[k];
+    const node = inner?.[k] ?? m.message?.[k];
     if (node) {
       const type =
         k === "imageMessage" ? "image"
@@ -39,11 +54,13 @@ function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; ty
         mime: node.mimetype ?? null,
         caption: node.caption ?? null,
         filename: node.fileName ?? null,
+        inner,
       };
     }
   }
-  return { key: null, type: null, mime: null, caption: null, filename: null };
+  return { key: null, type: null, mime: null, caption: null, filename: null, inner };
 }
+
 
 export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")({
   server: {
