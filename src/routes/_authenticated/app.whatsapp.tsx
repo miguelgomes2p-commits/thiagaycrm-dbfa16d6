@@ -246,44 +246,16 @@ function WhatsappPage() {
       {/* QR Code modal */}
       <Dialog open={!!qrModal} onOpenChange={(o) => !o && setQrModal(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Escaneie no seu WhatsApp</DialogTitle>
-            <DialogDescription>
-              WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho.
-              O celular pode continuar usando normalmente.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-3">
-            {qrModal?.qr ? (
-              <img
-                src={qrModal.qr}
-                alt="QR Code de conexão"
-                className="w-64 h-64 rounded-lg bg-white p-2"
-              />
-            ) : (
-              <div className="w-64 h-64 rounded-lg bg-muted flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => qrModal && refreshQrM.mutate(qrModal.id)}
-                disabled={refreshQrM.isPending}
-              >
-                <RefreshCw className={cn("h-4 w-4 mr-1", refreshQrM.isPending && "animate-spin")} /> Novo QR
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => qrModal && checkStatusM.mutate(qrModal.id)}
-                disabled={checkStatusM.isPending}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-1" /> Já escaneei
-              </Button>
-            </div>
-          </div>
+          <QrSyncContent
+            qrModal={qrModal}
+            currentStatus={numbersQ.data?.find((n) => n.id === qrModal?.id)?.connection_status ?? null}
+            lastWebhookAt={numbersQ.data?.find((n) => n.id === qrModal?.id)?.last_webhook_at ?? null}
+            onRefreshQr={() => qrModal && refreshQrM.mutate(qrModal.id)}
+            refreshing={refreshQrM.isPending}
+            onCheckStatus={() => qrModal && checkStatusM.mutate(qrModal.id)}
+            checking={checkStatusM.isPending}
+            onClose={() => setQrModal(null)}
+          />
         </DialogContent>
       </Dialog>
 
