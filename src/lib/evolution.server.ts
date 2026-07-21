@@ -124,3 +124,41 @@ export function evolutionSetWebhook(
     }),
   });
 }
+
+// Retrieves the media (image/audio/video/document/sticker) attached to a message
+// as a base64 blob. Evolution v2 endpoint: POST /chat/getBase64FromMediaMessage/{instance}
+// Body: { message: { key }, convertToMp4?: boolean }
+export function evolutionGetBase64FromMedia(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  message: any,
+) {
+  return req<{ base64?: string; mimetype?: string; fileName?: string }>(
+    baseUrl,
+    apiKey,
+    `/chat/getBase64FromMediaMessage/${encodeURIComponent(instanceName)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ message: { key: message.key }, convertToMp4: false }),
+    },
+  );
+}
+
+// Fetches WhatsApp profile picture URL for a given jid/number.
+// POST /chat/fetchProfilePictureUrl/{instance} { number }
+export function evolutionFetchProfilePic(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string,
+  number: string,
+) {
+  return req<{ profilePictureUrl?: string }>(
+    baseUrl,
+    apiKey,
+    `/chat/fetchProfilePictureUrl/${encodeURIComponent(instanceName)}`,
+    { method: "POST", body: JSON.stringify({ number }) },
+  );
+}
+

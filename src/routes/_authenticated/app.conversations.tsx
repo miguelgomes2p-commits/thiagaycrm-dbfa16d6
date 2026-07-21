@@ -13,7 +13,7 @@ import {
 import { useLabels, useConversationLabels, useAssignLabel, useRemoveLabel } from "@/hooks/useLabels";
 import { LabelBadge } from "@/components/labels/LabelBadge";
 import { LabelPicker } from "@/components/labels/LabelPicker";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -89,10 +89,11 @@ function ConversationsPage() {
     queryKey: ["conversations", ws?.id],
     queryFn: async () => {
       const { data } = await supabase.from("conversations")
-        .select("*, contacts:contact_id(name, type)")
+        .select("*, contacts:contact_id(name, type, avatar_url)")
         .eq("workspace_id", ws!.id)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(200);
+
       return data ?? [];
     },
   });
@@ -494,7 +495,7 @@ function ConversationsPage() {
               )}
               {g.items.map((c) => {
                 const Icon = channelIcon[c.channel as keyof typeof channelIcon] ?? MessageSquare;
-                const contact = c.contacts as { name?: string; type?: string } | null;
+                const contact = c.contacts as { name?: string; type?: string; avatar_url?: string | null } | null;
                 const name = contact?.name ?? "Anônimo";
                 const isGroup = contact?.type === "group";
                 const ids = convLabelMap?.get(c.id) ?? [];
@@ -512,10 +513,12 @@ function ConversationsPage() {
                     )}
                   >
                     <Avatar className="h-10 w-10 shrink-0">
+                      {contact?.avatar_url && <AvatarImage src={contact.avatar_url} alt={name} />}
                       <AvatarFallback className="bg-primary/20 text-primary text-xs">
                         {isGroup ? "GR" : name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-medium truncate flex items-center gap-1.5">
@@ -570,10 +573,14 @@ function ConversationsPage() {
           <>
             <div className="h-14 border-b border-border px-4 flex items-center gap-3 shrink-0">
               <Avatar className="h-9 w-9">
+                {(active.contacts as { avatar_url?: string | null } | null)?.avatar_url && (
+                  <AvatarImage src={(active.contacts as { avatar_url?: string | null }).avatar_url!} />
+                )}
                 <AvatarFallback className="bg-primary/20 text-primary text-xs">
                   {((active.contacts as { name?: string } | null)?.name ?? "??").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1.5">
@@ -634,17 +641,52 @@ function ConversationsPage() {
               {msgsQ.data?.map((m) => {
                 const status = (m as { delivery_status?: string }).delivery_status;
                 const err = (m as { error_message?: string | null }).error_message;
+                const mediaUrl = (m as { media_url?: string | null }).media_url;
+                const mediaType = (m as { media_type?: string | null }).media_type;
+                const mediaMime = (m as { media_mime_type?: string | null }).media_mime_type;
                 return (
                   <div key={m.id} className={cn("flex", m.direction === "outbound" ? "justify-end" : "justify-start")}>
                     <div className={cn(
-                      "max-w-md rounded-2xl px-4 py-2 text-sm",
+                      "max-w-md rounded-2xl px-3 py-2 text-sm space-y-2",
                       m.direction === "outbound"
                         ? "gradient-brand text-primary-foreground rounded-br-sm"
                         : m.sender_type === "ai"
                           ? "bg-accent/20 text-accent-foreground border border-accent/30 rounded-bl-sm"
                           : "bg-surface border border-border rounded-bl-sm"
                     )}>
-                      {m.content}
+                      {mediaUrl && (mediaType === "image" || mediaType === "sticker") && (
+                        <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={mediaUrl}
+                            alt={m.content ?? "imagem"}
+                            className={cn(
+                              "rounded-lg max-h-72 w-auto object-cover",
+                              mediaType === "sticker" && "max-h-32 bg-white/5",
+                            )}
+                          />
+                        </a>
+                      )}
+                      {mediaUrl && mediaType === "audio" && (
+                        <audio controls src={mediaUrl} className="w-full max-w-[280px]" />
+                      )}
+                      {mediaUrl && mediaType === "video" && (
+                        <video controls src={mediaUrl} className="rounded-lg max-h-72 w-full" />
+                      )}
+                      {mediaUrl && mediaType === "document" && (
+                        <a
+                          href={mediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-2 py-1.5 rounded bg-black/20 hover:bg-black/30 text-xs"
+                        >
+                          <span className="text-base">📎</span>
+                          <span className="truncate">{m.content?.replace(/^📎\s*/, "") ?? "documento"}</span>
+                          <span className="opacity-60 text-[10px]">{mediaMime?.split("/")[1]?.toUpperCase()}</span>
+                        </a>
+                      )}
+                      {m.content && !(mediaType === "document" && m.content?.startsWith("📎")) && (
+                        <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                      )}
                       <div className="mt-1 text-[10px] opacity-70 flex items-center justify-end gap-1">
                         <span>{new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
                         {m.direction === "outbound" && status === "sent" && <Check className="h-3 w-3" />}
@@ -660,6 +702,7 @@ function ConversationsPage() {
                   </div>
                 );
               })}
+
             </div>
             <div className="border-t border-border p-3 flex gap-2 shrink-0">
               <Input
