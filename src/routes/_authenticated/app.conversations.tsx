@@ -635,7 +635,16 @@ function ConversationsPage() {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</div>
-                <div className="text-xs text-muted-foreground">{active.channel} · {active.status}</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <span>{active.channel} · {active.status}</span>
+                  {(() => {
+                    const aid = (active as { assigned_to?: string | null }).assigned_to ?? null;
+                    const ag = aid ? membersQ.data?.get(aid) : null;
+                    if (ag) return <span className="text-primary/90">· Atendendo: <b className="text-foreground">{ag.name}</b></span>;
+                    if (!aid) return <span className="text-amber-400/80">· na fila</span>;
+                    return null;
+                  })()}
+                </div>
               </div>
               <div className="flex items-center gap-1">
                 <LabelPicker
