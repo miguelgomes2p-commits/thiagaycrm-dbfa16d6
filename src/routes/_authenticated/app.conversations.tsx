@@ -553,10 +553,14 @@ function ConversationsPage() {
               )}
               {g.items.map((c) => {
                 const Icon = channelIcon[c.channel as keyof typeof channelIcon] ?? MessageSquare;
-                const name = (c.contacts as { name?: string } | null)?.name ?? "Anônimo";
+                const contact = c.contacts as { name?: string; type?: string } | null;
+                const name = contact?.name ?? "Anônimo";
+                const isGroup = contact?.type === "group";
                 const ids = convLabelMap?.get(c.id) ?? [];
                 const pills = ids.map((id) => labelById.get(id)).filter(Boolean).slice(0, 3);
                 const extra = ids.length - pills.length;
+                const assignedId = (c as { assigned_to?: string | null }).assigned_to ?? null;
+                const agent = assignedId ? membersQ.data?.get(assignedId) : null;
                 return (
                   <button
                     key={c.id}
@@ -567,11 +571,16 @@ function ConversationsPage() {
                     )}
                   >
                     <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                        {isGroup ? "GR" : name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium truncate">{name}</span>
+                        <span className="text-sm font-medium truncate flex items-center gap-1.5">
+                          {isGroup && <span className="text-[9px] uppercase tracking-wider bg-primary/20 text-primary px-1.5 py-0.5 rounded">Grupo</span>}
+                          {name}
+                        </span>
                         {c.last_message_at && (
                           <span className="text-[10px] text-muted-foreground shrink-0">
                             {formatDistanceToNow(new Date(c.last_message_at), { locale: ptBR, addSuffix: false })}
@@ -579,8 +588,15 @@ function ConversationsPage() {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">{c.last_message_preview ?? "—"}</div>
-                      <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
                         <Icon className="h-3 w-3" /> {c.channel}
+                        {agent ? (
+                          <span className="flex items-center gap-1 text-primary/90">
+                            · <UserPlus className="h-2.5 w-2.5" /> {agent.name}
+                          </span>
+                        ) : assignedId ? null : (
+                          <span className="text-amber-400/80">· sem responsável</span>
+                        )}
                         {(c.unread_count ?? 0) > 0 && (
                           <span className="ml-auto text-[10px] bg-destructive text-destructive-foreground rounded-full px-1.5">{c.unread_count}</span>
                         )}
