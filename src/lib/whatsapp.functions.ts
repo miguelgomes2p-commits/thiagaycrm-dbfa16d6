@@ -166,6 +166,142 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
     }
   });
 
+function extOf(mime: string, fileName: string) {
+  const fromName = fileName.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  if (fromName) return fromName;
+  const clean = mime.split(";")[0]?.toLowerCase();
+  const map: Record<string, string> = {
+    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+    "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/webm": "webm", "audio/wav": "wav",
+    "video/mp4": "mp4", "video/webm": "webm", "application/pdf": "pdf", "text/plain": "txt",
+  };
+  return map[clean] ?? clean?.split("/")[1] ?? "bin";
+}
+
+function mediaTypeOf(mime: string): "image" | "audio" | "video" | "document" {
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("audio/")) return "audio";
+  if (mime.startsWith("video/")) return "video";
+  return "document";
+}
+
+export const sendWhatsappAttachment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      conversationId: z.string().uuid(),
+      fileName: z.string().min(1).max(180),
+      mimeType: z.string().min(3).max(120),
+      base64: z.string().min(4).max(25_000_000),
+      caption: z.string().max(1024).optional().nullable(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: conv, error: cerr } = await context.supabase
+      .from("conversations")
+      .select("id, workspace_id, whatsapp_number_id, wa_contact_wa_id")
+      .eq("id", data.conversationId)
+      .single();
+    if (cerr || !conv) throw new Error("Conversa não encontrada");
+    if (!conv.whatsapp_number_id || !conv.wa_contact_wa_id) {
+      throw new Error("Esta conversa não está vinculada a um número WhatsApp");
+    }
+
+    const { data: num, error: nerr } = await context.supabase
+      .from("whatsapp_numbers")
+      .select("id, provider, phone_number_id, access_token, provider_base_url, provider_api_key, instance_name")
+      .eq("id", conv.whatsapp_number_id)
+      .single();
+    if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
+
+    const cleanBase64 = data.base64.includes(",") ? data.base64.split(",").pop()! : data.base64;
+    const bytes = new Uint8Array(Buffer.from(cleanBase64, "base64"));
+    if (bytes.byteLength > 16 * 1024 * 1024) throw new Error("Arquivo muito grande. Use até 16 MB.");
+    const mediaType = mediaTypeOf(data.mimeType);
+    const ext = extOf(data.mimeType, data.fileName);
+    const safeName = data.fileName.replace(/[^\w.() -]/g, "_").slice(0, 140) || `arquivo.${ext}`;
+    const path = `${conv.workspace_id}/${conv.id}/${crypto.randomUUID()}-${safeName}`;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error: upErr } = await supabaseAdmin.storage
+      .from("wa-media")
+      .upload(path, bytes, { contentType: data.mimeType, upsert: false });
+    if (upErr) throw new Error(upErr.message);
+    const { data: signed } = await supabaseAdmin.storage.from("wa-media").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+    const mediaUrl = signed?.signedUrl ?? null;
+    const preview = mediaType === "image" ? "📷 Imagem"
+      : mediaType === "audio" ? "🎵 Áudio"
+      : mediaType === "video" ? "🎬 Vídeo"
+      : `📎 ${safeName}`;
+
+    let waId: string | null = null;
+    try {
+      if (num.provider === "cloud_api") {
+        if (!num.phone_number_id || !num.access_token) throw new Error("Credenciais Cloud API ausentes neste número.");
+        const { sendWaMedia } = await import("@/lib/whatsapp.server");
+        const resp = await sendWaMedia(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, bytes, data.mimeType, safeName, data.caption ?? undefined);
+        waId = resp.messages?.[0]?.id ?? null;
+      } else if (num.provider === "evolution") {
+        if (!num.provider_base_url || !num.provider_api_key || !num.instance_name) throw new Error("Configuração da instância Evolution ausente.");
+        const { evolutionSendMedia } = await import("@/lib/evolution.server");
+        const resp = await evolutionSendMedia(
+          num.provider_base_url,
+          num.provider_api_key,
+          num.instance_name,
+          conv.wa_contact_wa_id,
+          mediaType,
+          cleanBase64,
+          data.mimeType,
+          safeName,
+          data.caption ?? undefined,
+        );
+        waId = resp.key?.id ?? null;
+      } else {
+        throw new Error(`Provedor ${num.provider} não implementado`);
+      }
+
+      const { data: msg, error: merr } = await context.supabase
+        .from("messages")
+        .insert({
+          workspace_id: conv.workspace_id,
+          conversation_id: conv.id,
+          direction: "outbound",
+          sender_type: "user",
+          sender_user_id: context.userId,
+          content: data.caption || (mediaType === "document" ? `📎 ${safeName}` : preview),
+          wa_message_id: waId,
+          delivery_status: "sent",
+          media_url: mediaUrl,
+          media_type: mediaType,
+          media_mime_type: data.mimeType,
+        })
+        .select()
+        .single();
+      if (merr) throw new Error(merr.message);
+      await context.supabase
+        .from("conversations")
+        .update({ last_message_preview: preview.slice(0, 200), last_message_at: new Date().toISOString() })
+        .eq("id", conv.id);
+      return msg;
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      await context.supabase.from("messages").insert({
+        workspace_id: conv.workspace_id,
+        conversation_id: conv.id,
+        direction: "outbound",
+        sender_type: "user",
+        sender_user_id: context.userId,
+        content: data.caption || (mediaType === "document" ? `📎 ${safeName}` : preview),
+        delivery_status: "failed",
+        error_message: errorMessage,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        media_mime_type: data.mimeType,
+      });
+      throw new Error(errorMessage);
+    }
+  });
+
 export const sendWhatsappTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>

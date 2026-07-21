@@ -105,6 +105,35 @@ export function evolutionSendText(
   );
 }
 
+export function evolutionSendMedia(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string,
+  number: string,
+  mediaType: "image" | "audio" | "video" | "document",
+  base64: string,
+  mimeType: string,
+  fileName: string,
+  caption?: string,
+) {
+  return req<{ key?: { id?: string; remoteJid?: string; fromMe?: boolean } }>(
+    baseUrl,
+    apiKey,
+    `/message/sendMedia/${encodeURIComponent(instanceName)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        number,
+        mediatype: mediaType,
+        mimetype: mimeType,
+        media: base64,
+        fileName,
+        caption: caption || undefined,
+      }),
+    },
+  );
+}
+
 export function evolutionSetWebhook(
   baseUrl: string,
   apiKey: string,

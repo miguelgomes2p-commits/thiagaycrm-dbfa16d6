@@ -67,7 +67,9 @@ export async function sendWaMedia(
   fileName: string,
   caption?: string,
 ) {
-  const media = await graphUploadMedia(phoneNumberId, token, new Blob([file], { type: mimeType }), fileName);
+  const copy = new Uint8Array(file.byteLength);
+  copy.set(file);
+  const media = await graphUploadMedia(phoneNumberId, token, new Blob([copy.buffer], { type: mimeType }), fileName);
   const type = mimeType.startsWith("image/") ? "image"
     : mimeType.startsWith("audio/") ? "audio"
     : mimeType.startsWith("video/") ? "video"
