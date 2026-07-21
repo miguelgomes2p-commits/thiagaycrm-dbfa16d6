@@ -1201,6 +1201,52 @@ function ConversationsPage() {
           )}
         </aside>
       )}
+
+      <Dialog open={linkPickerOpen} onOpenChange={setLinkPickerOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Vincular a um card do pipeline</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Buscar por título ou contato..."
+            value={linkSearch}
+            onChange={(e) => setLinkSearch(e.target.value)}
+            className="mb-3"
+          />
+          <div className="max-h-[50vh] overflow-y-auto space-y-1">
+            {pipelineLeadsQ.isLoading && <div className="text-xs text-muted-foreground py-6 text-center">Carregando...</div>}
+            {(() => {
+              const q = linkSearch.trim().toLowerCase();
+              const filtered = (pipelineLeadsQ.data ?? []).filter((l) =>
+                !q || l.title.toLowerCase().includes(q) || (l.contacts?.name ?? "").toLowerCase().includes(q)
+              );
+              if (!pipelineLeadsQ.isLoading && filtered.length === 0) {
+                return <div className="text-xs text-muted-foreground py-6 text-center">Nenhum card encontrado.</div>;
+              }
+              const stageNameMap = new Map((leadContextQ.data?.stages ?? []).map((s) => [s.id, s.name]));
+              return filtered.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => linkExistingLead(l.id)}
+                  className="w-full text-left p-2 rounded-md border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{l.title}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        {l.contacts?.name ?? "sem contato"} · {stageNameMap.get(l.stage_id) ?? "—"}
+                      </div>
+                    </div>
+                    <span className="text-xs text-success font-medium shrink-0">
+                      {Number(l.value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </button>
+              ));
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
