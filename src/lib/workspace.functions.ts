@@ -1,40 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  assertWorkspaceAdmin,
+  getRequestOrigin,
+  hashInviteToken,
+  normalizeInviteEmail,
+  type WorkspaceRole,
+} from "@/lib/workspace.server";
 
-type Role = "owner" | "admin" | "manager" | "agent";
+type Role = WorkspaceRole;
 const ROLES: Role[] = ["owner", "admin", "manager", "agent"];
-
-async function assertAdmin(supabase: any, workspaceId: string, userId: string) {
-  const { data } = await supabase
-    .from("workspace_members")
-    .select("role")
-    .eq("workspace_id", workspaceId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!data || (data.role !== "owner" && data.role !== "admin")) {
-    throw new Error("Apenas owner/admin do workspace pode gerenciar membros.");
-  }
-}
-
-function normalizeEmail(email: string) {
-  const value = email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) throw new Error("Email inválido.");
-  return value;
-}
-
-async function hashInviteToken(token: string) {
-  const { createHash } = await import("crypto");
-  return createHash("sha256").update(token).digest("hex");
-}
-
-async function getOrigin() {
-  const { getRequest } = await import("@tanstack/react-start/server");
-  const req = getRequest();
-  const urlOrigin = req ? new URL(req.url).origin : "";
-  const host = req?.headers.get("x-forwarded-host") ?? req?.headers.get("host");
-  const proto = req?.headers.get("x-forwarded-proto") ?? "https";
-  return host ? `${proto}://${host}` : urlOrigin;
-}
 
 export const listWorkspaceMembers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -69,7 +44,7 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
   .inputValidator((d: { workspaceId: string; email: string; role: Role }) => d)
   .handler(async ({ data, context }) => {
     if (!ROLES.includes(data.role)) throw new Error("Papel inválido.");
-    await assertAdmin(context.supabase, data.workspaceId, context.userId);
+    await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // find user by email (paginated search)
     const emailLower = data.email.trim().toLowerCase();
@@ -97,14 +72,14 @@ export const inviteMemberByEmail = createServerFn({ method: "POST" })
   .inputValidator((d: { workspaceId: string; email: string; role: Role }) => d)
   .handler(async ({ data, context }) => {
     if (!ROLES.includes(data.role)) throw new Error("Papel inválido.");
-    await assertAdmin(context.supabase, data.workspaceId, context.userId);
+    await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
 
-    const email = normalizeEmail(data.email);
+    const email = normalizeInviteEmail(data.email);
     const { randomBytes } = await import("crypto");
     const token = randomBytes(32).toString("base64url");
-    const tokenHash = await hashInviteToken(token);
+    const tokenHash = hashInviteToken(token);
     const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-    const origin = await getOrigin();
+    const origin = getRequestOrigin();
     const inviteLink = `${origin}/auth?invite=${encodeURIComponent(token)}`;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -141,7 +116,7 @@ export const listWorkspaceInvitations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspaceId: string }) => d)
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, data.workspaceId, context.userId);
+    await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
     const { data: rows, error } = await context.supabase
       .from("workspace_invitations")
       .select("id, email, role, accepted_at, expires_at, created_at")
@@ -163,7 +138,7 @@ export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
     const { data: invite, error } = await supabaseAdmin
       .from("workspace_invitations")
       .select("id, workspace_id, email, role, accepted_at, expires_at")
-      .eq("token_hash", await hashInviteToken(token))
+      .eq("token_hash", hashInviteToken(token))
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!invite) throw new Error("Convite não encontrado ou expirado.");
@@ -172,7 +147,7 @@ export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
       throw new Error("Este convite expirou.");
     }
 
-    const signedEmail = normalizeEmail(String(context.claims.email ?? ""));
+    const signedEmail = normalizeInviteEmail(String(context.claims.email ?? ""));
     if (signedEmail !== invite.email) {
       throw new Error(`Entre com o email ${invite.email} para aceitar este convite.`);
     }
@@ -197,7 +172,7 @@ export const updateMemberRole = createServerFn({ method: "POST" })
   .inputValidator((d: { workspaceId: string; userId: string; role: Role }) => d)
   .handler(async ({ data, context }) => {
     if (!ROLES.includes(data.role)) throw new Error("Papel inválido.");
-    await assertAdmin(context.supabase, data.workspaceId, context.userId);
+    await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("workspace_members")
       .update({ role: data.role })
@@ -210,7 +185,7 @@ export const removeMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspaceId: string; userId: string }) => d)
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, data.workspaceId, context.userId);
+    await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
     if (data.userId === context.userId) throw new Error("Você não pode remover a si mesmo.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("workspace_members")
