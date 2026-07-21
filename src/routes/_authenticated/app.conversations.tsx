@@ -76,9 +76,12 @@ function ConversationsPage() {
   const [leadTitle, setLeadTitle] = useState("");
   const [leadValue, setLeadValue] = useState("");
   const [leadPriority, setLeadPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
+  const [leadStageId, setLeadStageId] = useState<string>("");
   const [leadNotes, setLeadNotes] = useState("");
   const [leadFields, setLeadFields] = useState<Record<string, string>>({});
   const [leadPaneOpen, setLeadPaneOpen] = useState(false);
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [linkSearch, setLinkSearch] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
