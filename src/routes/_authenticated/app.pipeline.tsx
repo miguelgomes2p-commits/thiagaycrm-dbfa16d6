@@ -198,10 +198,22 @@ function PipelinePage() {
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="text-sm font-medium leading-tight">{l.title}</div>
-                        <span className={cn("text-[10px] px-1.5 py-0.5 rounded", priorityColor[l.priority])}>
-                          {l.priority === "urgent" && <Flame className="h-3 w-3 inline" />}
-                        </span>
+                        <div className="text-sm font-medium leading-tight flex-1">{l.title}</div>
+                        <div className="flex items-center gap-1">
+                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded", priorityColor[l.priority])}>
+                            {l.priority === "urgent" && <Flame className="h-3 w-3 inline" />}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setInfoLead(l); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            draggable={false}
+                            className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                            title="Ver informações"
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                       {l.contacts?.name && (
                         <div className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1">
