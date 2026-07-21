@@ -3,11 +3,48 @@ import { createFileRoute } from "@tanstack/react-router";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = any;
 
-// Evolution API POSTa eventos como { event, instance, data }.
-// Eventos que tratamos:
-//   MESSAGES_UPSERT / messages.upsert  -> mensagens entrando (fromMe true|false)
-//   CONNECTION_UPDATE / connection.update -> state: open|connecting|close
-//   QRCODE_UPDATED / qrcode.updated -> novo QR base64
+const MEDIA_KEYS = ["imageMessage", "audioMessage", "videoMessage", "documentMessage", "stickerMessage"] as const;
+
+function extOf(mime?: string | null, fallback = "bin"): string {
+  if (!mime) return fallback;
+  const map: Record<string, string> = {
+    "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+    "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/wav": "wav", "audio/webm": "webm",
+    "video/mp4": "mp4", "video/webm": "webm", "video/3gpp": "3gp",
+    "application/pdf": "pdf",
+    "application/msword": "doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/zip": "zip",
+    "text/plain": "txt",
+  };
+  const clean = mime.split(";")[0]?.trim().toLowerCase();
+  return map[clean] ?? clean?.split("/")[1] ?? fallback;
+}
+
+function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; type: string | null; mime: string | null; caption: string | null; filename: string | null } {
+  for (const k of MEDIA_KEYS) {
+    const node = m.message?.[k];
+    if (node) {
+      const type =
+        k === "imageMessage" ? "image"
+        : k === "audioMessage" ? "audio"
+        : k === "videoMessage" ? "video"
+        : k === "stickerMessage" ? "sticker"
+        : "document";
+      return {
+        key: k,
+        type,
+        mime: node.mimetype ?? null,
+        caption: node.caption ?? null,
+        filename: node.fileName ?? null,
+      };
+    }
+  }
+  return { key: null, type: null, mime: null, caption: null, filename: null };
+}
+
 export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")({
   server: {
     handlers: {
@@ -24,7 +61,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: num } = await supabaseAdmin
           .from("whatsapp_numbers")
-          .select("id, workspace_id, provider, instance_name")
+          .select("id, workspace_id, provider, instance_name, provider_base_url, provider_api_key")
           .eq("id", params.numberId)
           .maybeSingle();
         if (!num || num.provider !== "evolution") return new Response("Unknown", { status: 404 });
@@ -41,13 +78,10 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
         if (event === "connection.update") {
           const state: string = payload.data?.state ?? "";
           const mapped =
-            state === "open"
-              ? "connected"
-              : state === "connecting"
-                ? "connecting"
-                : state === "close"
-                  ? "disconnected"
-                  : "error";
+            state === "open" ? "connected"
+            : state === "connecting" ? "connecting"
+            : state === "close" ? "disconnected"
+            : "error";
           await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: mapped }).eq("id", num.id);
           return new Response("ok");
         }
@@ -73,60 +107,63 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             const fromMe: boolean = !!m.key.fromMe;
             if (!remoteJid || remoteJid.includes("status@")) continue;
             const isGroup = remoteJid.endsWith("@g.us");
-            // Para grupos: usamos o JID do grupo como "waId" (identidade da conversa)
-            // e o participante real (m.key.participant) como sender.
             const waId: string = remoteJid.split("@")[0];
             const participantJid: string | undefined = m.key.participant;
             const participantId = participantJid ? participantJid.split("@")[0] : undefined;
             const pushName: string | undefined = m.pushName;
+
+            const media = detectMediaKind(m);
             let text: string =
               m.message?.conversation ??
               m.message?.extendedTextMessage?.text ??
-              m.message?.imageMessage?.caption ??
-              m.message?.videoMessage?.caption ??
-              (m.message?.imageMessage
-                ? "📷 Imagem"
-                : m.message?.audioMessage
-                  ? "🎵 Áudio"
-                  : m.message?.videoMessage
-                    ? "🎬 Vídeo"
-                    : m.message?.documentMessage
-                      ? `📎 ${m.message.documentMessage?.fileName ?? "documento"}`
-                      : m.message?.stickerMessage
-                        ? "🌟 Sticker"
-                        : m.messageType
-                          ? `[${m.messageType}]`
-                          : "");
-            // Em grupos, prefixa com o nome de quem enviou (útil pra saber quem falou)
+              media.caption ??
+              (media.type === "image" ? "📷 Imagem"
+                : media.type === "audio" ? "🎵 Áudio"
+                : media.type === "video" ? "🎬 Vídeo"
+                : media.type === "sticker" ? "🌟 Sticker"
+                : media.type === "document" ? `📎 ${media.filename ?? "documento"}`
+                : m.messageType ? `[${m.messageType}]` : "");
             if (isGroup && !fromMe && text) {
               const who = pushName ?? participantId ?? "membro";
               text = `${who}: ${text}`;
             }
-            if (!text) continue;
+            if (!text && !media.key) continue;
 
-            // Contato (ou "contato-grupo" quando for group chat)
+            // ── Contact (com foto de perfil quando possível) ─────
             let contactId: string;
             const { data: exContact } = await supabaseAdmin
               .from("contacts")
-              .select("id, name")
+              .select("id, name, avatar_url")
               .eq("workspace_id", num.workspace_id)
               .eq("phone", waId)
               .maybeSingle();
             if (exContact) {
               contactId = exContact.id;
-              // Se o contato ainda estava com o número como nome e agora temos um pushName real
-              // do próprio contato (inbound de conversa 1:1), atualiza o nome.
               if (!isGroup && !fromMe && pushName && exContact.name === waId) {
                 await supabaseAdmin.from("contacts").update({ name: pushName }).eq("id", contactId);
               }
+              // Backfill profile picture if missing
+              if (!isGroup && !exContact.avatar_url && num.provider_base_url && num.provider_api_key && num.instance_name) {
+                try {
+                  const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
+                  const pic = await evolutionFetchProfilePic(num.provider_base_url, num.provider_api_key, num.instance_name, waId);
+                  if (pic.profilePictureUrl) {
+                    await supabaseAdmin.from("contacts").update({ avatar_url: pic.profilePictureUrl }).eq("id", contactId);
+                  }
+                } catch { /* ignore — número sem foto ou API sem permissão */ }
+              }
             } else {
-              // NUNCA usar pushName quando fromMe=true — esse pushName é do dono do
-              // WhatsApp (você), não do contato. Isso causava "todo mundo vira Miguel".
               const initialName = isGroup
                 ? `Grupo ${waId.slice(-6)}`
-                : !fromMe && pushName
-                  ? pushName
-                  : waId;
+                : !fromMe && pushName ? pushName : waId;
+              let avatarUrl: string | null = null;
+              if (!isGroup && num.provider_base_url && num.provider_api_key && num.instance_name) {
+                try {
+                  const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
+                  const pic = await evolutionFetchProfilePic(num.provider_base_url, num.provider_api_key, num.instance_name, waId);
+                  avatarUrl = pic.profilePictureUrl ?? null;
+                } catch { /* sem foto */ }
+              }
               const { data: created } = await supabaseAdmin
                 .from("contacts")
                 .insert({
@@ -134,13 +171,14 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                   type: (isGroup ? "group" : "person") as "person" | "company",
                   name: initialName,
                   phone: waId,
+                  avatar_url: avatarUrl,
                 })
                 .select("id")
                 .single();
               contactId = created!.id;
             }
 
-            // Conversa
+            // ── Conversation ─────────────────────────────────────
             const { data: exConv } = await supabaseAdmin
               .from("conversations")
               .select("id")
@@ -168,21 +206,64 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
               convId = created!.id;
             }
 
-            // Mensagem (respeitando direção — o app do celular também gera eventos com fromMe=true)
+            // ── Media: baixa base64 e sobe no storage ────────────
+            let mediaUrl: string | null = null;
+            let mediaMime: string | null = media.mime;
+            if (media.key && num.provider_base_url && num.provider_api_key && num.instance_name) {
+              try {
+                // 1) Se o webhook já veio com base64=true, o próprio payload traz
+                //    m.message.base64 (Evolution v2). Se não, chama endpoint.
+                let base64: string | undefined = m.message?.base64;
+                if (!base64) {
+                  const { evolutionGetBase64FromMedia } = await import("@/lib/evolution.server");
+                  const resp = await evolutionGetBase64FromMedia(num.provider_base_url, num.provider_api_key, num.instance_name, m);
+                  base64 = resp.base64;
+                  if (resp.mimetype) mediaMime = resp.mimetype;
+                }
+                if (base64) {
+                  const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+                  const ext = extOf(mediaMime, media.filename?.split(".").pop() ?? "bin");
+                  const path = `${num.workspace_id}/${convId}/${m.key.id ?? crypto.randomUUID()}.${ext}`;
+                  const { error: upErr } = await supabaseAdmin.storage
+                    .from("wa-media")
+                    .upload(path, bin, { contentType: mediaMime ?? "application/octet-stream", upsert: true });
+                  if (!upErr) {
+                    // Signed URL de longa duração (10 anos). Bucket é privado
+                    // e o front pode gerar uma nova sob demanda a partir do path se necessário.
+                    const { data: signed } = await supabaseAdmin.storage
+                      .from("wa-media")
+                      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+                    mediaUrl = signed?.signedUrl ?? null;
+                  }
+                }
+              } catch { /* mídia falhou — mantém só o texto placeholder */ }
+            }
+
             await supabaseAdmin.from("messages").insert({
               workspace_id: num.workspace_id,
               conversation_id: convId,
               direction: fromMe ? "outbound" : "inbound",
               sender_type: fromMe ? "user" : "contact",
-              content: text,
+              content: text || null,
               wa_message_id: m.key.id ?? null,
               delivery_status: "delivered",
+              media_url: mediaUrl,
+              media_type: media.type,
+              media_mime_type: mediaMime,
             });
+
+            const previewText =
+              media.type === "image" ? "📷 Imagem"
+              : media.type === "audio" ? "🎵 Áudio"
+              : media.type === "video" ? "🎬 Vídeo"
+              : media.type === "sticker" ? "🌟 Sticker"
+              : media.type === "document" ? `📎 ${media.filename ?? "Documento"}`
+              : text;
 
             await supabaseAdmin
               .from("conversations")
               .update({
-                last_message_preview: text.slice(0, 200),
+                last_message_preview: (previewText ?? "").slice(0, 200),
                 last_message_at: new Date().toISOString(),
               })
               .eq("id", convId);
@@ -210,3 +291,4 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
     },
   },
 });
+
