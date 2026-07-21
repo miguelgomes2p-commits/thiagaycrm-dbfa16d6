@@ -282,7 +282,7 @@ export function PipelineStagesManager({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Excluir "{stage.name}"?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Só é possível excluir etapas sem leads. Mova os leads primeiro se necessário.
+                        Se houver leads nesta etapa, eles serão movidos automaticamente para outra etapa da pipeline.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
