@@ -131,7 +131,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                 .from("contacts")
                 .insert({
                   workspace_id: num.workspace_id,
-                  type: isGroup ? "group" : "person",
+                  type: (isGroup ? "group" : "person") as "person" | "company",
                   name: initialName,
                   phone: waId,
                 })
