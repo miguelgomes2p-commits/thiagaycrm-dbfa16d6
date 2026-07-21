@@ -641,17 +641,52 @@ function ConversationsPage() {
               {msgsQ.data?.map((m) => {
                 const status = (m as { delivery_status?: string }).delivery_status;
                 const err = (m as { error_message?: string | null }).error_message;
+                const mediaUrl = (m as { media_url?: string | null }).media_url;
+                const mediaType = (m as { media_type?: string | null }).media_type;
+                const mediaMime = (m as { media_mime_type?: string | null }).media_mime_type;
                 return (
                   <div key={m.id} className={cn("flex", m.direction === "outbound" ? "justify-end" : "justify-start")}>
                     <div className={cn(
-                      "max-w-md rounded-2xl px-4 py-2 text-sm",
+                      "max-w-md rounded-2xl px-3 py-2 text-sm space-y-2",
                       m.direction === "outbound"
                         ? "gradient-brand text-primary-foreground rounded-br-sm"
                         : m.sender_type === "ai"
                           ? "bg-accent/20 text-accent-foreground border border-accent/30 rounded-bl-sm"
                           : "bg-surface border border-border rounded-bl-sm"
                     )}>
-                      {m.content}
+                      {mediaUrl && (mediaType === "image" || mediaType === "sticker") && (
+                        <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={mediaUrl}
+                            alt={m.content ?? "imagem"}
+                            className={cn(
+                              "rounded-lg max-h-72 w-auto object-cover",
+                              mediaType === "sticker" && "max-h-32 bg-white/5",
+                            )}
+                          />
+                        </a>
+                      )}
+                      {mediaUrl && mediaType === "audio" && (
+                        <audio controls src={mediaUrl} className="w-full max-w-[280px]" />
+                      )}
+                      {mediaUrl && mediaType === "video" && (
+                        <video controls src={mediaUrl} className="rounded-lg max-h-72 w-full" />
+                      )}
+                      {mediaUrl && mediaType === "document" && (
+                        <a
+                          href={mediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-2 py-1.5 rounded bg-black/20 hover:bg-black/30 text-xs"
+                        >
+                          <span className="text-base">📎</span>
+                          <span className="truncate">{m.content?.replace(/^📎\s*/, "") ?? "documento"}</span>
+                          <span className="opacity-60 text-[10px]">{mediaMime?.split("/")[1]?.toUpperCase()}</span>
+                        </a>
+                      )}
+                      {m.content && !(mediaType === "document" && m.content?.startsWith("📎")) && (
+                        <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                      )}
                       <div className="mt-1 text-[10px] opacity-70 flex items-center justify-end gap-1">
                         <span>{new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
                         {m.direction === "outbound" && status === "sent" && <Check className="h-3 w-3" />}
@@ -667,6 +702,7 @@ function ConversationsPage() {
                   </div>
                 );
               })}
+
             </div>
             <div className="border-t border-border p-3 flex gap-2 shrink-0">
               <Input
