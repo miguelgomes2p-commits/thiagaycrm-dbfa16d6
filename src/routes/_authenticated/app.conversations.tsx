@@ -335,24 +335,66 @@ function ConversationsPage() {
     if (!text.trim() || !active || !ws) return;
     const content = text.trim();
     const isWa = active.channel === "whatsapp";
+    const activeIdLocal = active.id;
+    const wsId = ws.id;
     setText("");
     setSending(true);
+
+    // Optimistic message
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const nowIso = new Date().toISOString();
+    const optimistic = {
+      id: tempId,
+      workspace_id: wsId,
+      conversation_id: activeIdLocal,
+      direction: "outbound",
+      sender_type: "user",
+      content,
+      created_at: nowIso,
+      delivery_status: "sending",
+      _optimistic: true,
+    } as unknown as Record<string, unknown>;
+    const msgsKey = ["messages", activeIdLocal];
+    const prevMsgs = qc.getQueryData<Record<string, unknown>[]>(msgsKey);
+    qc.setQueryData<Record<string, unknown>[]>(msgsKey, [...(prevMsgs ?? []), optimistic]);
+    // Optimistic conversation preview + reorder
+    const convsKey = ["conversations", wsId];
+    const prevConvs = qc.getQueryData<Record<string, unknown>[]>(convsKey);
+    if (prevConvs) {
+      const updated = prevConvs.map((c) =>
+        (c as { id: string }).id === activeIdLocal
+          ? { ...c, last_message_preview: content.slice(0, 200), last_message_at: nowIso }
+          : c,
+      );
+      updated.sort((a, b) => {
+        const ta = new Date((a as { last_message_at?: string }).last_message_at ?? 0).getTime();
+        const tb = new Date((b as { last_message_at?: string }).last_message_at ?? 0).getTime();
+        return tb - ta;
+      });
+      qc.setQueryData(convsKey, updated);
+    }
+
     try {
       if (isWa) {
-        await sendWa({ data: { conversationId: active.id, body: content } });
+        await sendWa({ data: { conversationId: activeIdLocal, body: content } });
       } else {
         const { data: u } = await supabase.auth.getUser();
         await supabase.from("messages").insert({
-          workspace_id: ws.id, conversation_id: active.id, direction: "outbound", sender_type: "user",
+          workspace_id: wsId, conversation_id: activeIdLocal, direction: "outbound", sender_type: "user",
           sender_user_id: u.user?.id, content,
         });
         await supabase.from("conversations").update({
-          last_message_preview: content, last_message_at: new Date().toISOString(),
-        }).eq("id", active.id);
+          last_message_preview: content, last_message_at: nowIso,
+        }).eq("id", activeIdLocal);
       }
-      qc.invalidateQueries({ queryKey: ["messages", active.id] });
-      qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+      qc.invalidateQueries({ queryKey: msgsKey });
+      qc.invalidateQueries({ queryKey: convsKey });
     } catch (e) {
+      // Roll back optimistic entry
+      qc.setQueryData<Record<string, unknown>[]>(msgsKey, (cur) =>
+        (cur ?? []).filter((m) => (m as { id: string }).id !== tempId),
+      );
+      if (prevConvs) qc.setQueryData(convsKey, prevConvs);
       toast.error(e instanceof Error ? e.message : "Falha ao enviar");
       setText(content);
     } finally { setSending(false); }
