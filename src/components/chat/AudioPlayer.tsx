@@ -3,10 +3,34 @@ import { Play, Pause, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function fmt(s: number) {
-  if (!isFinite(s) || s < 0) s = 0;
+  if (!isFinite(s) || s < 0 || isNaN(s)) return "0:00";
   const m = Math.floor(s / 60);
   const r = Math.floor(s % 60);
   return `${m}:${r.toString().padStart(2, "0")}`;
+}
+
+// WhatsApp/Opus ogg files often report duration=Infinity until the browser
+// scans the whole stream. Force a scan by seeking past the end, then reset.
+async function forceDurationScan(a: HTMLAudioElement): Promise<number> {
+  return new Promise((resolve) => {
+    if (isFinite(a.duration) && a.duration > 0) return resolve(a.duration);
+    const done = (dur: number) => {
+      a.removeEventListener("durationchange", onDur);
+      try { a.currentTime = 0; } catch { /* noop */ }
+      resolve(dur);
+    };
+    const onDur = () => {
+      if (isFinite(a.duration) && a.duration > 0) done(a.duration);
+    };
+    a.addEventListener("durationchange", onDur);
+    try {
+      a.currentTime = 1e6;
+    } catch {
+      done(0);
+    }
+    // safety timeout
+    setTimeout(() => done(isFinite(a.duration) ? a.duration : 0), 3000);
+  });
 }
 
 export function AudioPlayer({
@@ -23,12 +47,20 @@ export function AudioPlayer({
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
   const [error, setError] = useState(false);
+  const [rate, setRate] = useState(1);
+  const scannedRef = useRef(false);
 
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
+    scannedRef.current = false;
     const onTime = () => setCurrent(a.currentTime);
-    const onLoaded = () => setDuration(a.duration || 0);
+    const onLoaded = async () => {
+      if (scannedRef.current) return;
+      scannedRef.current = true;
+      const dur = await forceDurationScan(a);
+      setDuration(dur);
+    };
     const onEnd = () => {
       setPlaying(false);
       setCurrent(0);
@@ -36,13 +68,12 @@ export function AudioPlayer({
     const onErr = () => setError(true);
     a.addEventListener("timeupdate", onTime);
     a.addEventListener("loadedmetadata", onLoaded);
-    a.addEventListener("durationchange", onLoaded);
     a.addEventListener("ended", onEnd);
     a.addEventListener("error", onErr);
+    if (a.readyState >= 1) onLoaded();
     return () => {
       a.removeEventListener("timeupdate", onTime);
       a.removeEventListener("loadedmetadata", onLoaded);
-      a.removeEventListener("durationchange", onLoaded);
       a.removeEventListener("ended", onEnd);
       a.removeEventListener("error", onErr);
     };
@@ -66,14 +97,28 @@ export function AudioPlayer({
 
   const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const a = audioRef.current;
-    if (!a || !duration) return;
+    if (!a || !duration || !isFinite(duration)) return;
     const v = Number(e.target.value);
     a.currentTime = (v / 100) * duration;
     setCurrent(a.currentTime);
   };
 
+  const cycleRate = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    const next = rate === 1 ? 1.5 : rate === 1.5 ? 2 : 1;
+    a.playbackRate = next;
+    setRate(next);
+  };
+
   const isDark = variant === "dark";
-  const pct = duration ? (current / duration) * 100 : 0;
+  const pct = duration && isFinite(duration) ? (current / duration) * 100 : 0;
+
+  // Fake waveform bars (deterministic, based on src hash)
+  const bars = Array.from({ length: 32 }, (_, i) => {
+    const seed = (src.charCodeAt((i * 3) % src.length) + i * 7) % 100;
+    return 30 + (seed % 60);
+  });
 
   if (error) {
     return (
@@ -88,7 +133,7 @@ export function AudioPlayer({
         )}
       >
         <Download className="h-4 w-4" />
-        <span>Áudio ({mime?.split("/")[1] ?? "arquivo"}) — baixar</span>
+        <span>Áudio ({mime?.split("/")[1]?.split(";")[0] ?? "arquivo"}) — baixar</span>
       </a>
     );
   }
@@ -96,8 +141,8 @@ export function AudioPlayer({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-full px-3 py-2 min-w-[240px]",
-        isDark ? "bg-white/15" : "bg-black/10",
+        "flex items-center gap-3 rounded-2xl px-3 py-2.5 min-w-[280px] max-w-[340px]",
+        isDark ? "bg-white/10" : "bg-black/5",
       )}
     >
       <button
@@ -105,7 +150,7 @@ export function AudioPlayer({
         onClick={toggle}
         aria-label={playing ? "Pausar" : "Reproduzir"}
         className={cn(
-          "flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition",
+          "flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition shadow-sm",
           isDark
             ? "bg-white text-primary hover:bg-white/90"
             : "bg-primary text-primary-foreground hover:opacity-90",
@@ -114,12 +159,26 @@ export function AudioPlayer({
         {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
       </button>
 
-      <div className="flex-1 flex flex-col gap-1 min-w-0">
-        <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.15)" }}>
-          <div
-            className={cn("absolute inset-y-0 left-0 rounded-full", isDark ? "bg-white" : "bg-primary")}
-            style={{ width: `${pct}%` }}
-          />
+      <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+        <div className="relative h-6 flex items-center">
+          <div className="flex items-center gap-[2px] w-full h-full">
+            {bars.map((h, i) => {
+              const barPct = ((i + 1) / bars.length) * 100;
+              const active = barPct <= pct;
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex-1 rounded-full transition-colors",
+                    active
+                      ? isDark ? "bg-white" : "bg-primary"
+                      : isDark ? "bg-white/30" : "bg-black/25",
+                  )}
+                  style={{ height: `${h}%` }}
+                />
+              );
+            })}
+          </div>
           <input
             type="range"
             min={0}
@@ -131,8 +190,18 @@ export function AudioPlayer({
             aria-label="Progresso"
           />
         </div>
-        <div className={cn("text-[10px] font-mono tabular-nums", isDark ? "text-white/80" : "text-muted-foreground")}>
-          {fmt(current)} / {fmt(duration)}
+        <div className={cn("flex items-center justify-between text-[10px] font-mono tabular-nums", isDark ? "text-white/70" : "text-muted-foreground")}>
+          <span>{fmt(current)} / {fmt(duration)}</span>
+          <button
+            type="button"
+            onClick={cycleRate}
+            className={cn(
+              "px-1.5 py-0.5 rounded text-[10px] font-semibold transition",
+              isDark ? "bg-white/20 hover:bg-white/30 text-white" : "bg-black/10 hover:bg-black/20",
+            )}
+          >
+            {rate}x
+          </button>
         </div>
       </div>
 
