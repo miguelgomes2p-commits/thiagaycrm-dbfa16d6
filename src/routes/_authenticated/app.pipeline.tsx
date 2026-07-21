@@ -239,6 +239,51 @@ function PipelinePage() {
           })}
         </div>
       </div>
+
+      <Dialog open={!!infoLead} onOpenChange={(o) => !o && setInfoLead(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{infoLead?.title}</DialogTitle>
+          </DialogHeader>
+          {infoLead && (
+            <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                <InfoRow label="Valor" value={Number(infoLead.value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
+                <InfoRow label="Prioridade" value={infoLead.priority} />
+                <InfoRow label="Origem" value={infoLead.source ?? "—"} />
+                <InfoRow label="Contato" value={infoLead.contacts?.name ?? "—"} />
+                {infoLead.contacts?.phone_e164 && <InfoRow label="Telefone" value={infoLead.contacts.phone_e164} />}
+                {infoLead.contacts?.company_name && <InfoRow label="Empresa" value={infoLead.contacts.company_name} />}
+              </div>
+              {infoLead.custom_fields && Object.keys(infoLead.custom_fields).length > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(infoLead.custom_fields).filter(([, v]) => v).map(([k, v]) => (
+                      <InfoRow key={k} label={k.replace(/_/g, " ")} value={String(v)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {infoLead.notes && (
+                <div className="pt-2 border-t border-border">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Anotações</h4>
+                  <p className="text-xs whitespace-pre-wrap text-muted-foreground">{infoLead.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-sm capitalize-first">{value}</div>
     </div>
   );
 }
