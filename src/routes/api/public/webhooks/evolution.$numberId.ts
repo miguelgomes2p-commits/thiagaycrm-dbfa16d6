@@ -224,7 +224,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                   avatarUrl = pic.profilePictureUrl ?? null;
                 } catch { /* sem foto */ }
               }
-              const { data: created } = await supabaseAdmin
+              const { data: created, error: cErr } = await supabaseAdmin
                 .from("contacts")
                 .insert({
                   workspace_id: num.workspace_id,
@@ -235,7 +235,11 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                 })
                 .select("id")
                 .single();
-              contactId = created!.id;
+              if (cErr || !created) {
+                console.log("[evolution webhook] contact insert error", { cErr, waId });
+                continue;
+              }
+              contactId = created.id;
             }
 
             // ── Conversation ─────────────────────────────────────
@@ -251,7 +255,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             if (exConv) {
               convId = exConv.id;
             } else {
-              const { data: created } = await supabaseAdmin
+              const { data: created, error: convErr } = await supabaseAdmin
                 .from("conversations")
                 .insert({
                   workspace_id: num.workspace_id,
@@ -263,7 +267,11 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                 })
                 .select("id")
                 .single();
-              convId = created!.id;
+              if (convErr || !created) {
+                console.log("[evolution webhook] conversation insert error", { convErr, waId, contactId, numberId: num.id });
+                continue;
+              }
+              convId = created.id;
             }
 
             // ── Media: baixa base64 e sobe no storage ────────────
