@@ -215,7 +215,7 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
 
     const cleanBase64 = data.base64.includes(",") ? data.base64.split(",").pop()! : data.base64;
-    const bytes = new Uint8Array(Buffer.from(cleanBase64, "base64"));
+    const bytes = Uint8Array.from(atob(cleanBase64), (c) => c.charCodeAt(0));
     if (bytes.byteLength > 16 * 1024 * 1024) throw new Error("Arquivo muito grande. Use até 16 MB.");
     const mediaType = mediaTypeOf(data.mimeType);
     const ext = extOf(data.mimeType, data.fileName);

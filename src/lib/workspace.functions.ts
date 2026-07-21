@@ -1,6 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
-import { createHash, randomBytes } from "crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type Role = "owner" | "admin" | "manager" | "agent";
@@ -24,11 +22,13 @@ function normalizeEmail(email: string) {
   return value;
 }
 
-function hashInviteToken(token: string) {
+async function hashInviteToken(token: string) {
+  const { createHash } = await import("crypto");
   return createHash("sha256").update(token).digest("hex");
 }
 
-function getOrigin() {
+async function getOrigin() {
+  const { getRequest } = await import("@tanstack/react-start/server");
   const req = getRequest();
   const urlOrigin = req ? new URL(req.url).origin : "";
   const host = req?.headers.get("x-forwarded-host") ?? req?.headers.get("host");
@@ -100,10 +100,11 @@ export const inviteMemberByEmail = createServerFn({ method: "POST" })
     await assertAdmin(context.supabase, data.workspaceId, context.userId);
 
     const email = normalizeEmail(data.email);
+    const { randomBytes } = await import("crypto");
     const token = randomBytes(32).toString("base64url");
-    const tokenHash = hashInviteToken(token);
+    const tokenHash = await hashInviteToken(token);
     const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-    const origin = getOrigin();
+    const origin = await getOrigin();
     const inviteLink = `${origin}/auth?invite=${encodeURIComponent(token)}`;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -162,7 +163,7 @@ export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
     const { data: invite, error } = await supabaseAdmin
       .from("workspace_invitations")
       .select("id, workspace_id, email, role, accepted_at, expires_at")
-      .eq("token_hash", hashInviteToken(token))
+      .eq("token_hash", await hashInviteToken(token))
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!invite) throw new Error("Convite não encontrado ou expirado.");

@@ -283,7 +283,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                   console.log("[evolution webhook] getBase64", { id: m.key?.id, gotBase64: !!base64, mimetype: resp.mimetype });
                 }
                 if (base64) {
-                  const bin = new Uint8Array(Buffer.from(base64, "base64"));
+                  const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
                   const ext = extOf(mediaMime, media.filename?.split(".").pop() ?? "bin");
                   const path = `${num.workspace_id}/${convId}/${m.key.id ?? crypto.randomUUID()}.${ext}`;
                   const { error: upErr } = await supabaseAdmin.storage
