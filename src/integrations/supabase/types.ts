@@ -363,6 +363,7 @@ export type Database = {
           contact_id: string | null
           created_at: string
           currency: string | null
+          custom_fields: Json
           deleted_at: string | null
           id: string
           last_interaction_at: string | null
@@ -386,6 +387,7 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           currency?: string | null
+          custom_fields?: Json
           deleted_at?: string | null
           id?: string
           last_interaction_at?: string | null
@@ -409,6 +411,7 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           currency?: string | null
+          custom_fields?: Json
           deleted_at?: string | null
           id?: string
           last_interaction_at?: string | null
