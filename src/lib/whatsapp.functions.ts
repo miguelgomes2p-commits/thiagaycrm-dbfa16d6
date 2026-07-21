@@ -351,7 +351,7 @@ export const repairWhatsappAudioMedia = createServerFn({ method: "POST" })
 
     const { data: conv, error: cerr } = await context.supabase
       .from("conversations")
-      .select("id, workspace_id, whatsapp_number_id")
+      .select("id, workspace_id, whatsapp_number_id, wa_contact_wa_id")
       .eq("id", data.conversationId)
       .single();
     if (cerr || !conv) throw new Error("Conversa não encontrada");
@@ -371,7 +371,7 @@ export const repairWhatsappAudioMedia = createServerFn({ method: "POST" })
 
     const { data: rows, error: merr } = await context.supabase
       .from("messages")
-      .select("id, wa_message_id, media_type, content")
+      .select("id, wa_message_id, direction, media_type, content")
       .eq("conversation_id", conv.id)
       .is("media_url", null)
       .not("wa_message_id", "is", null)
@@ -385,7 +385,11 @@ export const repairWhatsappAudioMedia = createServerFn({ method: "POST" })
     for (const msg of rows ?? []) {
       try {
         const resp = await evolutionGetBase64FromMedia(num.provider_base_url, num.provider_api_key, num.instance_name, {
-          key: { id: msg.wa_message_id },
+          key: {
+            id: msg.wa_message_id,
+            remoteJid: conv.wa_contact_wa_id ? `${conv.wa_contact_wa_id}@s.whatsapp.net` : undefined,
+            fromMe: msg.direction === "outbound",
+          },
         });
         const base64 = stripDataUrl(resp.base64 ?? resp.buffer);
         if (!base64) continue;
