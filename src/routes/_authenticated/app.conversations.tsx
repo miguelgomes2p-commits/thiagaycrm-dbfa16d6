@@ -824,6 +824,16 @@ function ConversationsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant={leadPaneOpen ? "outline" : "ghost"}
+                  className="h-8 gap-1.5"
+                  onClick={() => setLeadPaneOpen((v) => !v)}
+                  title={leadPaneOpen ? "Fechar anotações" : "Abrir anotações"}
+                >
+                  {leadPaneOpen ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
+                  Lead
+                </Button>
                 <LabelPicker
                   labels={labels ?? []}
                   activeIds={activeLabelIds}
@@ -933,7 +943,7 @@ function ConversationsPage() {
               })}
 
             </div>
-            <div className="border-t border-border p-3 flex gap-2 shrink-0">
+            <div className="border-t border-border p-3 shrink-0">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -941,30 +951,58 @@ function ConversationsPage() {
                 accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
                 onChange={(e) => sendAttachment(e.target.files?.[0])}
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                disabled={sending || uploading}
-                onClick={() => fileInputRef.current?.click()}
-                title="Anexar arquivo"
-              >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
-              </Button>
-              <Input
-                value={text} onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                placeholder="Digite uma mensagem..."
-                disabled={sending || uploading}
-              />
-              <Button onClick={sendMessage} disabled={sending || uploading} className="gradient-brand text-primary-foreground border-0">
-                <Send className="h-4 w-4" />
-              </Button>
+              {isRecording ? (
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-2">
+                  <Button type="button" variant="ghost" size="icon" onClick={cancelAudioRecording} title="Cancelar gravação">
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <div className="flex flex-1 items-center gap-2 text-sm text-destructive">
+                    <span className="h-2.5 w-2.5 rounded-full bg-destructive animate-pulse" />
+                    <span className="font-medium">Gravando áudio</span>
+                    <span className="font-mono text-xs">{formatRecordingTime(recordingSeconds)}</span>
+                  </div>
+                  <Button type="button" onClick={finishAudioRecording} className="gradient-brand text-primary-foreground border-0" title="Enviar áudio">
+                    <Square className="h-4 w-4 mr-1" /> Enviar
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={sending || uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Anexar arquivo"
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={sending || uploading || !active}
+                    onClick={startAudioRecording}
+                    title="Gravar áudio"
+                  >
+                    <Mic className="h-4 w-4" />
+                  </Button>
+                  <Input
+                    value={text} onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                    placeholder="Digite uma mensagem..."
+                    disabled={sending || uploading}
+                  />
+                  <Button onClick={sendMessage} disabled={sending || uploading} className="gradient-brand text-primary-foreground border-0">
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}
       </div>
-      {active && (
+      {active && leadPaneOpen && (
         <aside className="w-80 border-l border-border bg-surface/20 p-4 overflow-y-auto shrink-0">
           <div className="flex items-center gap-2 mb-4">
             <BriefcaseBusiness className="h-4 w-4 text-primary" />
