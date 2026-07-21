@@ -1094,13 +1094,39 @@ function ConversationsPage() {
                   </Select>
                 </div>
               </div>
+              <div className="pt-2 mt-2 border-t border-border">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h3>
+                <div className="space-y-2">
+                  <LeadTextField label="Origem" value={leadFields.origem} onChange={(v) => setLeadFields({ ...leadFields, origem: v })} placeholder="Instagram, Google, indicação..." />
+                  <LeadSelectField label="Canal" value={leadFields.canal} onChange={(v) => setLeadFields({ ...leadFields, canal: v })}
+                    options={["WhatsApp", "Instagram", "Facebook", "Site", "Ligação", "Indicação", "Outro"]} />
+                  <LeadSelectField label="Classificação" value={leadFields.classificacao} onChange={(v) => setLeadFields({ ...leadFields, classificacao: v })}
+                    options={["FRIO", "MORNO", "QUENTE"]} />
+                  <LeadTextField label="Campanha / Criativo" value={leadFields.campanha} onChange={(v) => setLeadFields({ ...leadFields, campanha: v })} />
+                  <LeadTextField label="Interesse" value={leadFields.interesse} onChange={(v) => setLeadFields({ ...leadFields, interesse: v })} placeholder="Ex: Polo" />
+                  <LeadTextField label="Categoria" value={leadFields.categoria} onChange={(v) => setLeadFields({ ...leadFields, categoria: v })} placeholder="Ex: Hatch, SUV..." />
+                  <LeadSelectField label="Forma de pagamento" value={leadFields.forma_pagamento} onChange={(v) => setLeadFields({ ...leadFields, forma_pagamento: v })}
+                    options={["À vista", "Financiamento", "Consórcio", "Cartão"]} />
+                  <LeadTextField label="Entrada" value={leadFields.entrada} onChange={(v) => setLeadFields({ ...leadFields, entrada: v })} placeholder="Valor ou 'veículo como entrada'" />
+                  <LeadSelectField label="Troca" value={leadFields.troca} onChange={(v) => setLeadFields({ ...leadFields, troca: v })} options={["sim", "não"]} />
+                  {leadFields.troca === "sim" && (
+                    <LeadTextField label="Veículo na troca" value={leadFields.veiculo_troca} onChange={(v) => setLeadFields({ ...leadFields, veiculo_troca: v })} placeholder="Ex: HB20 2017, 120mil km" />
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <LeadSelectField label="CNH" value={leadFields.cnh} onChange={(v) => setLeadFields({ ...leadFields, cnh: v })} options={["sim", "não"]} />
+                    <LeadSelectField label="Nome limpo" value={leadFields.nome_limpo} onChange={(v) => setLeadFields({ ...leadFields, nome_limpo: v })} options={["sim", "não"]} />
+                  </div>
+                  <LeadTextField label="Urgência" value={leadFields.urgencia} onChange={(v) => setLeadFields({ ...leadFields, urgencia: v })} placeholder="Essa semana, este mês..." />
+                  <LeadTextField label="Última mensagem" value={leadFields.ultima_mensagem} onChange={(v) => setLeadFields({ ...leadFields, ultima_mensagem: v })} />
+                </div>
+              </div>
               <div>
-                <Label className="text-xs">Informações do lead</Label>
+                <Label className="text-xs">Resumo / anotações livres</Label>
                 <Textarea
                   value={leadNotes}
                   onChange={(e) => setLeadNotes(e.target.value)}
-                  className="min-h-36 text-xs resize-none"
-                  placeholder="Necessidade, orçamento, prazo, objeções, próximos passos..."
+                  className="min-h-28 text-xs resize-none"
+                  placeholder="Resumo do atendimento, próximos passos, objeções..."
                 />
               </div>
               <Button onClick={saveLead} className="w-full gradient-brand text-primary-foreground border-0">
