@@ -113,6 +113,15 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             const pushName: string | undefined = m.pushName;
 
             const media = detectMediaKind(m);
+            console.log("[evolution webhook] msg", {
+              id: m.key?.id,
+              messageType: m.messageType,
+              messageKeys: m.message ? Object.keys(m.message) : [],
+              detectedMediaType: media.type,
+              detectedMediaKey: media.key,
+              detectedMime: media.mime,
+              hasInlineBase64: !!m.message?.base64,
+            });
             let text: string =
               m.message?.conversation ??
               m.message?.extendedTextMessage?.text ??
