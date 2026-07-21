@@ -147,7 +147,7 @@ export function evolutionSendWhatsAppAudio(
     `/message/sendWhatsAppAudio/${encodeURIComponent(instanceName)}`,
     {
       method: "POST",
-      body: JSON.stringify({ number, audio: audioBase64OrUrl }),
+      body: JSON.stringify({ number, audio: audioBase64OrUrl, encoding: true }),
     },
   );
 }
