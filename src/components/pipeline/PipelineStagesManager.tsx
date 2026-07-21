@@ -120,19 +120,36 @@ export function PipelineStagesManager({
       const originalIds = new Set(original.map((s) => s.id));
       const localIds = new Set(local.filter((s) => !s.id.startsWith("new-")).map((s) => s.id));
 
-      // Delete removed
+      // Delete removed — reassign any leads to a remaining stage first
       const toDelete = original.filter((s) => !localIds.has(s.id)).map((s) => s.id);
       if (toDelete.length) {
-        // Block delete if leads exist on that stage
-        const { count } = await supabase
-          .from("leads")
-          .select("id", { count: "exact", head: true })
-          .in("stage_id", toDelete);
-        if ((count ?? 0) > 0) {
-          toast.error("Não é possível excluir etapas com leads. Mova os leads primeiro.");
+        // Pick a fallback stage from the ones being kept (prefer an "open" one)
+        const remaining = local.filter((s) => !s.id.startsWith("new-"));
+        const fallback =
+          remaining.find((s) => s.type === "open") ?? remaining[0];
+
+        if (!fallback) {
+          toast.error("Deixe ao menos uma etapa antes de excluir as outras.");
           setSaving(false);
           return;
         }
+
+        const { data: affected, error: findErr } = await supabase
+          .from("leads")
+          .select("id")
+          .eq("pipeline_id", pipelineId)
+          .in("stage_id", toDelete);
+        if (findErr) throw findErr;
+
+        if (affected && affected.length > 0) {
+          const { error: moveErr } = await supabase
+            .from("leads")
+            .update({ stage_id: fallback.id })
+            .in("id", affected.map((l) => l.id));
+          if (moveErr) throw moveErr;
+          toast.message(`${affected.length} lead(s) movido(s) para "${fallback.name}"`);
+        }
+
         const { error } = await supabase.from("pipeline_stages").delete().in("id", toDelete);
         if (error) throw error;
       }
@@ -265,7 +282,7 @@ export function PipelineStagesManager({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Excluir "{stage.name}"?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Só é possível excluir etapas sem leads. Mova os leads primeiro se necessário.
+                        Se houver leads nesta etapa, eles serão movidos automaticamente para outra etapa da pipeline.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
