@@ -757,72 +757,78 @@ function QrSyncContent({
   onClose: () => void;
 }) {
   const checkStatus = useServerFn(checkEvolutionStatus);
-  const [autoState, setAutoState] = useState<string | null>(null);
-  const [scanConfirmed, setScanConfirmed] = useState(false);
-  const [syncStart, setSyncStart] = useState<number | null>(null);
-  const [syncElapsed, setSyncElapsed] = useState(0);
-  const [qrShownAt, setQrShownAt] = useState<number | null>(null);
+  const [state, setState] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [everSawNonOpen, setEverSawNonOpen] = useState(false);
+  const [connectedAt, setConnectedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [manualConfirm, setManualConfirm] = useState(false);
 
+  // Reset ao trocar de instância
   useEffect(() => {
-    setAutoState(null);
-    setScanConfirmed(false);
-    setSyncStart(null);
-    setSyncElapsed(0);
-    setQrShownAt(null);
+    setState(null);
+    setError(null);
+    setEverSawNonOpen(false);
+    setConnectedAt(null);
+    setManualConfirm(false);
   }, [qrModal?.id]);
 
-  // Marca quando o QR foi efetivamente exibido para o usuário
+  // Polling contínuo do estado da instância (não depende de clique).
   useEffect(() => {
-    if (qrModal?.qr && qrShownAt === null) setQrShownAt(Date.now());
-  }, [qrModal?.qr, qrShownAt]);
-
-  // Só começa a consultar o estado depois que o usuário confirma que escaneou.
-  // Isso evita pular o QR por causa de status/webhooks antigos da instância.
-  useEffect(() => {
-    if (!qrModal || !scanConfirmed) return;
+    if (!qrModal) return;
     let cancelled = false;
     const tick = async () => {
       try {
         const r = await checkStatus({ data: { id: qrModal.id } });
-        if (!cancelled) setAutoState(r.mapped);
-      } catch { /* ignore transient errors */ }
+        if (cancelled) return;
+        setError(null);
+        setState(r.mapped);
+        if (r.mapped !== "connected") setEverSawNonOpen(true);
+        if (r.mapped === "connected" && connectedAt === null) setConnectedAt(Date.now());
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      }
     };
     tick();
-    const iv = setInterval(tick, 3000);
+    const iv = setInterval(tick, 2500);
     return () => {
       cancelled = true;
       clearInterval(iv);
     };
-  }, [qrModal, scanConfirmed, checkStatus]);
+  }, [qrModal, checkStatus, connectedAt]);
 
-  // Status efetivo: antes da confirmação manual, ignore qualquer estado salvo.
-  const status = scanConfirmed ? (autoState ?? "checking") : "qr";
-  const qrWasShown = qrShownAt !== null;
-  const phase: "qr" | "checking" | "syncing" | "connected" =
-    !scanConfirmed || !qrWasShown
-      ? "qr"
-      : status === "connected"
-      ? "connected"
-      : status === "connecting"
-        ? "syncing"
-        : "checking";
-
-
-  // Cronômetro de sincronização
+  // Cronômetro simples
   useEffect(() => {
-    if (phase === "syncing" || phase === "checking") {
-      if (syncStart === null) setSyncStart(Date.now());
-    } else if (phase === "qr" && syncStart !== null) {
-      setSyncStart(null);
-      setSyncElapsed(0);
-    }
-  }, [phase, syncStart]);
-
-  useEffect(() => {
-    if ((phase !== "syncing" && phase !== "checking") || syncStart === null) return;
-    const iv = setInterval(() => setSyncElapsed(Math.floor((Date.now() - syncStart) / 1000)), 500);
+    const iv = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(iv);
-  }, [phase, syncStart]);
+  }, []);
+
+  // Regras de fase:
+  // - "connected": instância aberta E (vimos QR antes OU usuário confirmou OU já passou >=6s sincronizando)
+  // - "syncing": estado connecting, OU acabou de ficar open e ainda estamos aguardando os primeiros webhooks
+  // - "qr": QR disponível esperando leitura
+  // - "checking": ainda não sabemos (primeira consulta)
+  const syncingWindowMs = 6000;
+  const stableConnected =
+    state === "connected" &&
+    connectedAt !== null &&
+    (everSawNonOpen || manualConfirm) &&
+    now - connectedAt >= syncingWindowMs;
+
+  const phase: "qr" | "checking" | "syncing" | "connected" =
+    error && !state
+      ? "checking"
+      : stableConnected
+      ? "connected"
+      : state === "connected"
+      ? "syncing" // ficou open — mostrar sincronizando por alguns segundos
+      : state === "connecting"
+      ? "syncing"
+      : qrModal?.qr
+      ? "qr"
+      : "checking";
+
+  const elapsed = connectedAt !== null ? Math.max(0, Math.floor((now - connectedAt) / 1000)) : 0;
 
   return (
     <>
@@ -833,17 +839,17 @@ function QrSyncContent({
             : phase === "syncing"
               ? "Sincronizando conversas…"
               : phase === "checking"
-                ? "Aguardando leitura do QR…"
-              : "Escaneie no seu WhatsApp"}
+                ? "Preparando conexão…"
+                : "Escaneie no seu WhatsApp"}
         </DialogTitle>
         <DialogDescription>
           {phase === "connected"
             ? "Seu número está pronto para receber e enviar mensagens pelo CRM."
             : phase === "syncing"
-              ? "O QR foi lido. Estamos baixando as conversas e contatos do seu WhatsApp — isso pode levar alguns minutos na primeira vez."
+              ? "Estamos baixando as conversas e contatos do seu WhatsApp — pode levar alguns minutos na primeira vez."
               : phase === "checking"
-                ? "Ainda não detectamos uma conexão nova. Mantenha esta janela aberta e confirme no celular se o QR foi lido."
-              : "WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho. O celular pode continuar usando normalmente."}
+                ? "Aguardando resposta do servidor Evolution…"
+                : "WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho. O celular pode continuar em uso."}
         </DialogDescription>
       </DialogHeader>
 
@@ -860,18 +866,23 @@ function QrSyncContent({
 
         {(phase === "syncing" || phase === "checking") && (
           <div className="w-full flex flex-col items-center gap-4 py-4">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              </div>
+            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
             <div className="w-full space-y-2">
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div className="h-full w-1/3 bg-primary animate-[slide_1.4s_ease-in-out_infinite]" style={{ animation: "wa-sync 1.4s ease-in-out infinite" }} />
+                <div className="h-full w-1/3 bg-primary" style={{ animation: "wa-sync 1.4s ease-in-out infinite" }} />
               </div>
               <p className="text-xs text-center text-muted-foreground">
-                {phase === "syncing" ? "Sincronizando" : "Verificando leitura"} há {syncElapsed}s · não feche esta janela
+                {phase === "syncing"
+                  ? `Sincronizando${elapsed ? ` há ${elapsed}s` : ""} · não feche esta janela`
+                  : "Consultando estado da instância…"}
               </p>
+              {state && (
+                <p className="text-[10px] text-center text-muted-foreground/70 font-mono uppercase tracking-wider">
+                  estado: {state}
+                </p>
+              )}
             </div>
             <style>{`@keyframes wa-sync { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }`}</style>
           </div>
@@ -889,11 +900,22 @@ function QrSyncContent({
           </div>
         )}
 
+        {error && phase !== "connected" && (
+          <div className="w-full text-xs text-warning bg-warning/10 border border-warning/30 rounded-md p-2 text-center">
+            {error}
+          </div>
+        )}
+
         {phase !== "connected" && (
           <div className="flex flex-wrap justify-center gap-2">
             {phase === "qr" && (
-              <Button size="sm" onClick={() => setScanConfirmed(true)} disabled={!qrModal?.qr} className="gradient-brand text-primary-foreground border-0">
-                <Smartphone className="h-4 w-4 mr-1" /> Já escaneei o QR
+              <Button
+                size="sm"
+                onClick={() => setManualConfirm(true)}
+                disabled={!qrModal?.qr}
+                variant="outline"
+              >
+                <Smartphone className="h-4 w-4 mr-1" /> Já escaneei
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={onRefreshQr} disabled={refreshing}>
@@ -908,3 +930,4 @@ function QrSyncContent({
     </>
   );
 }
+

@@ -8,26 +8,57 @@ type Json = Record<string, unknown>;
 
 async function req<T>(baseUrl: string, apiKey: string, path: string, init?: RequestInit): Promise<T> {
   const url = baseUrl.replace(/\/+$/, "") + path;
-  const res = await fetch(url, {
-    ...init,
-    headers: {
-      apikey: apiKey,
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    let msg = text;
+  const maxAttempts = 3;
+  let lastErr: Error | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let res: Response;
     try {
-      const j = JSON.parse(text) as { message?: string | string[]; error?: string };
-      const raw = Array.isArray(j.message) ? j.message.join("; ") : j.message ?? j.error;
-      if (raw) msg = raw;
-    } catch { /* keep raw */ }
+      res = await fetch(url, {
+        ...init,
+        headers: {
+          apikey: apiKey,
+          "Content-Type": "application/json",
+          ...(init?.headers ?? {}),
+        },
+      });
+    } catch (e) {
+      lastErr = new Error(
+        `Não foi possível contatar a Evolution API (${e instanceof Error ? e.message : String(e)}). Verifique se o servidor está online.`,
+      );
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 800 * attempt));
+        continue;
+      }
+      throw lastErr;
+    }
+    const text = await res.text();
+    if (res.ok) return text ? (JSON.parse(text) as T) : ({} as T);
+
+    // Servidor acordando (Render/Railway cold start) — tenta de novo.
+    if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < maxAttempts) {
+      await new Promise((r) => setTimeout(r, 1200 * attempt));
+      continue;
+    }
+
+    let msg = text;
+    // Se veio HTML (página de erro de proxy), não jogue o HTML todo para o usuário.
+    if (text.trim().startsWith("<")) {
+      msg =
+        res.status === 502 || res.status === 503 || res.status === 504
+          ? "servidor Evolution indisponível no momento (provavelmente iniciando). Aguarde alguns segundos e tente novamente."
+          : `resposta inesperada do servidor (HTTP ${res.status}).`;
+    } else {
+      try {
+        const j = JSON.parse(text) as { message?: string | string[]; error?: string };
+        const raw = Array.isArray(j.message) ? j.message.join("; ") : j.message ?? j.error;
+        if (raw) msg = raw;
+      } catch { /* keep raw */ }
+    }
     throw new Error(`Evolution ${res.status}: ${msg}`);
   }
-  return text ? (JSON.parse(text) as T) : ({} as T);
+  throw lastErr ?? new Error("Evolution: falha desconhecida");
 }
+
 
 export type EvolutionInstanceCreate = {
   instance: { instanceName: string; instanceId?: string; status?: string };
