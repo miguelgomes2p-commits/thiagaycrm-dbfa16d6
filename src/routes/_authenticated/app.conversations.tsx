@@ -495,7 +495,7 @@ function ConversationsPage() {
               )}
               {g.items.map((c) => {
                 const Icon = channelIcon[c.channel as keyof typeof channelIcon] ?? MessageSquare;
-                const contact = c.contacts as { name?: string; type?: string } | null;
+                const contact = c.contacts as { name?: string; type?: string; avatar_url?: string | null } | null;
                 const name = contact?.name ?? "Anônimo";
                 const isGroup = contact?.type === "group";
                 const ids = convLabelMap?.get(c.id) ?? [];
@@ -513,10 +513,12 @@ function ConversationsPage() {
                     )}
                   >
                     <Avatar className="h-10 w-10 shrink-0">
+                      {contact?.avatar_url && <AvatarImage src={contact.avatar_url} alt={name} />}
                       <AvatarFallback className="bg-primary/20 text-primary text-xs">
                         {isGroup ? "GR" : name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-medium truncate flex items-center gap-1.5">
