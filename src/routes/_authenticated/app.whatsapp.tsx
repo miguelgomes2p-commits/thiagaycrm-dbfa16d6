@@ -248,7 +248,6 @@ function WhatsappPage() {
         <DialogContent className="max-w-md">
           <QrSyncContent
             qrModal={qrModal}
-            currentStatus={numbersQ.data?.find((n) => n.id === qrModal?.id)?.connection_status ?? null}
             onRefreshQr={() => qrModal && refreshQrM.mutate(qrModal.id)}
             refreshing={refreshQrM.isPending}
             onCheckStatus={() => qrModal && checkStatusM.mutate(qrModal.id)}
@@ -744,7 +743,6 @@ function SendTemplateDialog({
 
 function QrSyncContent({
   qrModal,
-  currentStatus,
   onRefreshQr,
   refreshing,
   onCheckStatus,
@@ -752,7 +750,6 @@ function QrSyncContent({
   onClose,
 }: {
   qrModal: { id: string; qr: string | null } | null;
-  currentStatus: string | null;
   onRefreshQr: () => void;
   refreshing: boolean;
   onCheckStatus: () => void;
