@@ -77,6 +77,7 @@ function ConversationsPage() {
   const [leadValue, setLeadValue] = useState("");
   const [leadPriority, setLeadPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [leadNotes, setLeadNotes] = useState("");
+  const [leadFields, setLeadFields] = useState<Record<string, string>>({});
   const [leadPaneOpen, setLeadPaneOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
