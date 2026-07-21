@@ -71,11 +71,15 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             if (!m?.key) continue;
             const remoteJid: string = m.key.remoteJid ?? "";
             const fromMe: boolean = !!m.key.fromMe;
-            // Ignora conversas em grupo e status
-            if (!remoteJid || remoteJid.endsWith("@g.us") || remoteJid.includes("status@")) continue;
+            if (!remoteJid || remoteJid.includes("status@")) continue;
+            const isGroup = remoteJid.endsWith("@g.us");
+            // Para grupos: usamos o JID do grupo como "waId" (identidade da conversa)
+            // e o participante real (m.key.participant) como sender.
             const waId: string = remoteJid.split("@")[0];
+            const participantJid: string | undefined = m.key.participant;
+            const participantId = participantJid ? participantJid.split("@")[0] : undefined;
             const pushName: string | undefined = m.pushName;
-            const text: string =
+            let text: string =
               m.message?.conversation ??
               m.message?.extendedTextMessage?.text ??
               m.message?.imageMessage?.caption ??
@@ -93,25 +97,42 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                         : m.messageType
                           ? `[${m.messageType}]`
                           : "");
+            // Em grupos, prefixa com o nome de quem enviou (útil pra saber quem falou)
+            if (isGroup && !fromMe && text) {
+              const who = pushName ?? participantId ?? "membro";
+              text = `${who}: ${text}`;
+            }
             if (!text) continue;
 
-            // Contato
+            // Contato (ou "contato-grupo" quando for group chat)
             let contactId: string;
             const { data: exContact } = await supabaseAdmin
               .from("contacts")
-              .select("id")
+              .select("id, name")
               .eq("workspace_id", num.workspace_id)
               .eq("phone", waId)
               .maybeSingle();
             if (exContact) {
               contactId = exContact.id;
+              // Se o contato ainda estava com o número como nome e agora temos um pushName real
+              // do próprio contato (inbound de conversa 1:1), atualiza o nome.
+              if (!isGroup && !fromMe && pushName && exContact.name === waId) {
+                await supabaseAdmin.from("contacts").update({ name: pushName }).eq("id", contactId);
+              }
             } else {
+              // NUNCA usar pushName quando fromMe=true — esse pushName é do dono do
+              // WhatsApp (você), não do contato. Isso causava "todo mundo vira Miguel".
+              const initialName = isGroup
+                ? `Grupo ${waId.slice(-6)}`
+                : !fromMe && pushName
+                  ? pushName
+                  : waId;
               const { data: created } = await supabaseAdmin
                 .from("contacts")
                 .insert({
                   workspace_id: num.workspace_id,
-                  type: "person",
-                  name: pushName ?? waId,
+                  type: (isGroup ? "group" : "person") as "person" | "company",
+                  name: initialName,
                   phone: waId,
                 })
                 .select("id")

@@ -1462,7 +1462,7 @@ export type Database = {
         | "email"
         | "webchat"
         | "sms"
-      contact_type: "person" | "company"
+      contact_type: "person" | "company" | "group"
       conversation_status: "open" | "pending" | "resolved" | "closed"
       label_kind: "system" | "custom"
       label_scope: "conversation" | "contact" | "lead"
@@ -1617,7 +1617,7 @@ export const Constants = {
         "webchat",
         "sms",
       ],
-      contact_type: ["person", "company"],
+      contact_type: ["person", "company", "group"],
       conversation_status: ["open", "pending", "resolved", "closed"],
       label_kind: ["system", "custom"],
       label_scope: ["conversation", "contact", "lead"],
