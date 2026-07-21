@@ -576,19 +576,22 @@ function ConversationsPage() {
     if (chosenStage.type === "lost") payload.lost_at = new Date().toISOString();
     try {
       if (lead) {
-        const { error } = await supabase.from("leads").update(payload).eq("id", lead.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await supabase.from("leads").update(payload as any).eq("id", lead.id);
         if (error) throw error;
       } else {
         const { data: user } = await supabase.auth.getUser();
-        const { data: created, error } = await supabase.from("leads").insert({
+        const insertPayload = {
           workspace_id: ws.id,
           pipeline_id: leadContextQ.data.pipe.id,
-          stage_id: leadContextQ.data.stages[0].id,
+          stage_id: chosenStage.id,
           contact_id: contactId,
           owner_id: user.user?.id,
           source: "WhatsApp",
           ...payload,
-        }).select("id").single();
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: created, error } = await supabase.from("leads").insert(insertPayload as any).select("id").single();
         if (error) throw error;
         await supabase.from("conversations").update({ lead_id: created?.id }).eq("id", active.id);
       }
