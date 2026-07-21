@@ -23,7 +23,8 @@ type Stage = { id: string; name: string; color: string; type: string; position: 
 type Lead = {
   id: string; title: string; value: number | null; stage_id: string; priority: string;
   source: string | null; tags: string[] | null; created_at: string; last_interaction_at: string | null;
-  contacts?: { name: string; company_name: string | null } | null;
+  notes: string | null; custom_fields: Record<string, string> | null;
+  contacts?: { name: string; company_name: string | null; phone_e164?: string | null } | null;
 };
 
 const priorityColor: Record<string, string> = {
