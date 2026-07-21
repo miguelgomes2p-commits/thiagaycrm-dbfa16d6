@@ -94,7 +94,6 @@ function ConversationsPage() {
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(200);
 
-        .limit(200);
       return data ?? [];
     },
   });
