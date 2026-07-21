@@ -315,7 +315,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             }
 
 
-            await supabaseAdmin.from("messages").insert({
+            const { error: msgErr } = await supabaseAdmin.from("messages").insert({
               workspace_id: num.workspace_id,
               conversation_id: convId,
               direction: fromMe ? "outbound" : "inbound",
@@ -327,6 +327,10 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
               media_type: media.type,
               media_mime_type: mediaMime,
             });
+            if (msgErr) {
+              console.log("[evolution webhook] message insert error", { msgErr, convId, waId });
+              continue;
+            }
 
             const previewText =
               media.type === "image" ? "📷 Imagem"
