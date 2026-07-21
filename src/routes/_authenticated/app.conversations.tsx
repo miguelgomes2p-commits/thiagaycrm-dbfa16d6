@@ -528,6 +528,7 @@ function ConversationsPage() {
       value: Number(leadValue || 0),
       priority: leadPriority,
       notes: leadNotes.trim() || null,
+      custom_fields: leadFields,
       last_interaction_at: new Date().toISOString(),
     };
     try {
