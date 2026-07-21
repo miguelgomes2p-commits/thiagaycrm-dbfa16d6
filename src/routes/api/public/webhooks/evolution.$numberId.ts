@@ -237,14 +237,16 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             let mediaMime: string | null = media.mime;
             if (media.key && num.provider_base_url && num.provider_api_key && num.instance_name) {
               try {
-                // 1) Se o webhook já veio com base64=true, o próprio payload traz
+                // 1) Se o webhook veio com base64=true, o próprio payload traz
                 //    m.message.base64 (Evolution v2). Se não, chama endpoint.
-                let base64: string | undefined = m.message?.base64;
+                let base64: string | undefined =
+                  m.message?.base64 ?? (m.message as { mediaBase64?: string })?.mediaBase64;
                 if (!base64) {
                   const { evolutionGetBase64FromMedia } = await import("@/lib/evolution.server");
                   const resp = await evolutionGetBase64FromMedia(num.provider_base_url, num.provider_api_key, num.instance_name, m);
                   base64 = resp.base64;
                   if (resp.mimetype) mediaMime = resp.mimetype;
+                  console.log("[evolution webhook] getBase64", { id: m.key?.id, gotBase64: !!base64, mimetype: resp.mimetype });
                 }
                 if (base64) {
                   const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
@@ -253,17 +255,23 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                   const { error: upErr } = await supabaseAdmin.storage
                     .from("wa-media")
                     .upload(path, bin, { contentType: mediaMime ?? "application/octet-stream", upsert: true });
-                  if (!upErr) {
-                    // Signed URL de longa duração (10 anos). Bucket é privado
-                    // e o front pode gerar uma nova sob demanda a partir do path se necessário.
+                  if (upErr) {
+                    console.log("[evolution webhook] upload error", upErr.message);
+                  } else {
                     const { data: signed } = await supabaseAdmin.storage
                       .from("wa-media")
                       .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
                     mediaUrl = signed?.signedUrl ?? null;
+                    console.log("[evolution webhook] uploaded", { id: m.key?.id, path, gotSigned: !!mediaUrl });
                   }
+                } else {
+                  console.log("[evolution webhook] no base64 for", m.key?.id);
                 }
-              } catch { /* mídia falhou — mantém só o texto placeholder */ }
+              } catch (e) {
+                console.log("[evolution webhook] media error", (e as Error).message);
+              }
             }
+
 
             await supabaseAdmin.from("messages").insert({
               workspace_id: num.workspace_id,
