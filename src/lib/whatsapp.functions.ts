@@ -6,7 +6,16 @@ export const listWhatsappNumbers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ workspaceId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
+    const { data: member } = await context.supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!member) throw new Error("Workspace não encontrado");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
       .from("whatsapp_numbers")
       .select(
         "id, label, display_number, phone_number_id, waba_id, is_active, webhook_verify_token, auto_reply_enabled, last_webhook_at, created_at, provider, instance_name, connection_status, last_qr_at",
@@ -319,7 +328,16 @@ export const sendWhatsappTemplate = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { data: num, error: nerr } = await context.supabase
+    const { data: member } = await context.supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!member) throw new Error("Workspace não encontrado");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: num, error: nerr } = await supabaseAdmin
       .from("whatsapp_numbers")
       .select("id, workspace_id, phone_number_id, access_token")
       .eq("id", data.whatsappNumberId)
@@ -401,7 +419,16 @@ export const syncWhatsappTemplates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ whatsappNumberId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: num, error: nerr } = await context.supabase
+    const { data: member } = await context.supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!member || (member.role !== "owner" && member.role !== "admin")) throw new Error("Apenas admins podem sincronizar templates.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: num, error: nerr } = await supabaseAdmin
       .from("whatsapp_numbers")
       .select("id, workspace_id, waba_id, access_token")
       .eq("id", data.whatsappNumberId)
@@ -439,12 +466,20 @@ export const subscribeWhatsappWebhook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ whatsappNumberId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: num, error: nerr } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: num, error: nerr } = await supabaseAdmin
       .from("whatsapp_numbers")
-      .select("id, waba_id, access_token")
+      .select("id, workspace_id, waba_id, access_token")
       .eq("id", data.whatsappNumberId)
       .single();
     if (nerr || !num) throw new Error("Número não encontrado");
+    const { data: member } = await context.supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", num.workspace_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!member || (member.role !== "owner" && member.role !== "admin")) throw new Error("Apenas admins podem assinar a WABA.");
     if (!num.waba_id || !num.access_token) throw new Error("Este número não usa Cloud API.");
 
     const { subscribeWabaToMessages, listWabaSubscriptions } = await import("@/lib/whatsapp.server");
