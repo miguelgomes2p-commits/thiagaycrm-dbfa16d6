@@ -283,6 +283,39 @@ function ConversationsPage() {
     },
   });
 
+  const pipelineLeadsQ = useQuery({
+    enabled: !!ws?.id && !!leadContextQ.data?.pipe && linkPickerOpen,
+    queryKey: ["pipeline-leads-picker", ws?.id, leadContextQ.data?.pipe?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("leads")
+        .select("id, title, value, stage_id, contacts:contact_id(name)")
+        .eq("pipeline_id", leadContextQ.data!.pipe!.id)
+        .order("last_interaction_at", { ascending: false })
+        .limit(200);
+      return (data ?? []) as Array<{ id: string; title: string; value: number | null; stage_id: string; contacts: { name: string } | null }>;
+    },
+  });
+
+  async function linkExistingLead(leadId: string) {
+    if (!active || !ws) return;
+    const { error } = await supabase.from("conversations").update({ lead_id: leadId }).eq("id", active.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Card vinculado à conversa");
+    setLinkPickerOpen(false);
+    qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
+    qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+  }
+
+  async function unlinkLead() {
+    if (!active || !ws) return;
+    const { error } = await supabase.from("conversations").update({ lead_id: null }).eq("id", active.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Card desvinculado");
+    qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
+    qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+  }
+
   useEffect(() => {
     const lead = leadContextQ.data?.lead;
     const stages = leadContextQ.data?.stages ?? [];
