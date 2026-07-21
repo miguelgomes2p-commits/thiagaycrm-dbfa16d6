@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { PipelineStagesManager } from "@/components/pipeline/PipelineStagesManager";
 
 export const Route = createFileRoute("/_authenticated/app/pipeline")({
   component: PipelinePage,
@@ -114,10 +115,14 @@ function PipelinePage() {
           <h1 className="text-2xl font-bold tracking-tight">Pipeline</h1>
           <p className="text-sm text-muted-foreground">Arraste os cartões entre etapas.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="gradient-brand text-primary-foreground border-0"><Plus className="h-4 w-4 mr-1" /> Novo lead</Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          {pipelineQ.data?.pipe && ws && (
+            <PipelineStagesManager pipelineId={pipelineQ.data.pipe.id} workspaceId={ws.id} />
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="gradient-brand text-primary-foreground border-0"><Plus className="h-4 w-4 mr-1" /> Novo lead</Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Criar lead</DialogTitle></DialogHeader>
             <form onSubmit={createLead} className="space-y-4">
@@ -148,8 +153,10 @@ function PipelinePage() {
               <Button type="submit" className="w-full gradient-brand text-primary-foreground border-0">Criar</Button>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
+
 
       <div className="flex-1 overflow-x-auto -mx-6 px-6">
         <div className="flex gap-4 h-full min-w-max">

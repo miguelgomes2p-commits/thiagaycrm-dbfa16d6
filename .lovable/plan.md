@@ -1,67 +1,73 @@
-## Objetivo
+# Plano: Pipeline customizável + Automações
 
-Transformar o Inbox de "lista plana única" para uma central organizada por **etiquetas customizáveis**, onde o número WhatsApp de origem é uma etiqueta automática (do sistema) e o usuário pode criar quantas etiquetas quiser (ex.: "VIP", "Aguardando pagamento", "Suporte técnico", "Frio", "Quente").
+O áudio já foi corrigido nesta rodada (fix do `duration=Infinity` do WhatsApp/Opus + waveform + velocidade 1x/1.5x/2x). O restante entra em 3 fases porque **fluxo visual de automação é ~3-4x o trabalho de uma cadência simples** — recomendo entregar em partes para você já usar cada fase.
 
-## O que muda no banco
+---
 
-Três tabelas novas:
+## Fase 1 — Pipeline personalizável (etapas)
 
-- `labels` — etiquetas do workspace. Campos de domínio: `name`, `color` (hex/oklch), `kind` (`system` p/ auto-geradas como número WA e canal, `custom` p/ criadas pelo usuário), `scope` (`conversation` | `contact` | `lead` — começaremos com `conversation`, mas deixamos preparado), `sort_order`.
-- `conversation_labels` — N:N entre `conversations` e `labels`. Campos: `conversation_id`, `label_id`, `assigned_by` (user ou `system`), `assigned_at`.
-- (opcional futuro) `contact_labels` / `lead_labels` — mesma estrutura, para a fase 2.
+Página nova em `/app/pipeline/settings` (ou modal dentro do Kanban).
 
-Automatismo: quando uma conversa WhatsApp é criada pelo webhook, insere automaticamente uma `conversation_labels` apontando pra etiqueta system daquele `whatsapp_number_id` (criada on-the-fly se não existir, cor derivada do número).
+- CRUD de etapas: nome, cor (color-picker), tipo (`open` | `won` | `lost`), posição
+- Reordenação drag-and-drop (atualiza `position`)
+- Múltiplas etapas `won`/`lost` permitidas (ex: "Ganho — pago", "Ganho — cortesia")
+- Botão "Restaurar padrão" (recria as 5 etapas base)
+- Kanban lê a cor da etapa via style inline (já usa `stage.color`, só precisa da UI de edição)
 
-## O que muda no CRM
+Sem mexer em: campos do card, múltiplas pipelines, tags coloridas — ficam para depois quando você pedir.
 
-### 1. Página nova: `Configurações → Etiquetas` (`/app/settings/labels`)
-- Lista todas as etiquetas do workspace
-- Criar / editar / arquivar etiqueta (nome, cor via color-picker, escopo)
-- Etiquetas `system` são visíveis mas não editáveis (nome/cor travados; só dá pra ocultar)
-- Reordenar via drag (define `sort_order` — usado como ordem padrão de agrupamento no Inbox)
+---
 
-### 2. Inbox (`/app/conversations`) — nova UX
+## Fase 2 — Motor de automação (backend)
 
-**Sidebar esquerda vira 2 colunas colapsáveis:**
+**Regra fixa desta fase:** só envia se a conversa está **em janela de 24h** (última msg inbound do cliente há menos de 24h). Fora disso, marca a execução como `skipped_out_of_window`.
 
-```text
-┌──────────┬───────────────┬─────────────────────┐
-│ Etiquetas│  Conversas    │  Thread ativa       │
-│  (chips) │  (agrupadas)  │                     │
-└──────────┴───────────────┴─────────────────────┘
-```
+Tabelas novas:
 
-- **Coluna 1 (Etiquetas)** — chips clicáveis com contador de não-lidas por etiqueta. Multi-seleção (AND/OR configurável). Seção "Números WhatsApp" (system) e "Personalizadas" separadas visualmente. Botão "+ Nova etiqueta" abre modal rápido.
-- **Coluna 2 (Conversas)** — lista filtrada + agrupada. Header com dois controles:
-  - **Agrupar por:** Nenhum · Etiqueta · Número WA · Status · Responsável
-  - **Ordenar por:** Mais recente · Mais antiga · Não lidas primeiro · Nome do contato
-- Cada card ganha uma linha de "pills" coloridas com as etiquetas da conversa (máx 3 visíveis + "+N").
+- `automations` — nó do fluxo. Campos: `workspace_id`, `pipeline_id`, `name`, `trigger_type` (`stage_enter` | `stage_leave` | `won` | `lost` | `no_reply`), `trigger_stage_id`, `active`, `graph_json` (o fluxo visual serializado).
+- `automation_runs` — uma execução. Campos: `automation_id`, `lead_id`, `conversation_id`, `current_node_id`, `status` (`running` | `waiting` | `completed` | `failed` | `stopped_by_reply`), `next_run_at`, `context_json`.
+- `automation_run_events` — log de cada nó executado (auditoria).
 
-**Header da thread ativa** ganha um `LabelPicker` (combobox) — o agente adiciona/remove etiquetas em 1 clique enquanto atende.
+**Nós suportados no fluxo:**
 
-### 3. Realtime
-Assinar mudanças em `conversation_labels` pra atualizar chips/contadores sem reload.
+| Nó | O que faz |
+|---|---|
+| `send_message` | Envia texto/mídia com variáveis (`{{contact.name}}`, `{{lead.title}}`, `{{lead.value}}`, `{{review_link}}`) |
+| `wait` | Aguarda X minutos/horas/dias |
+| `condition` | Ramifica por: cliente respondeu?, valor do lead >/< X, tag presente, dia da semana |
+| `stop_if_replied` | Para toda a run se o cliente respondeu desde o disparo anterior |
+| `move_stage` | Move lead para outra etapa (ex: automaticamente para "Follow-up") |
+| `add_tag` / `remove_tag` | Etiqueta o lead/conversa |
+| `end` | Termina a run |
 
-## Detalhes técnicos
+**Worker:** endpoint `/api/public/hooks/automation-tick` disparado por `pg_cron` a cada 1 min. Lê `automation_runs` com `next_run_at <= now()` e `status='waiting'`, executa o próximo nó, agenda o seguinte.
 
-- Contador de não-lidas por etiqueta: view SQL `label_unread_counts` (workspace_id, label_id, unread_count) baseada em `messages.direction='inbound'` + last read timestamp da conversa.
-- Cores: usamos oklch tokens quando `system`; hex custom quando `custom`. Renderização via CSS var inline no chip.
-- Persistência dos filtros/ordem: `localStorage` por workspace (`inbox-view-v1`) — não precisa de tabela.
-- Componente reutilizável `<LabelBadge>` e `<LabelPicker>` em `src/components/labels/` — será usado depois em Contatos, Leads e Tarefas (por isso o campo `scope` desde já).
-- Migration com GRANTs + RLS (member do workspace pode ler; admin/owner cria/edita/apaga; qualquer member atribui/remove etiquetas).
+**Gatilhos:** trigger SQL em `leads` (após update de `stage_id`) chama função `enqueue_automation` que cria a `automation_run`. Trigger em `messages` (inbound) marca runs como `stopped_by_reply` quando o nó atual é `stop_if_replied` ou uma condição de reply.
 
-## Fora do escopo desta fase
-- Etiquetas em Contatos, Leads e Tarefas (fica preparado mas UI vem depois)
-- Regras automáticas ("se mensagem contém X, aplicar etiqueta Y") — próxima fase
-- Relatórios por etiqueta
+Envio real usa o `sendWhatsappMessage` que já existe. Se retornar erro (fora da janela / número desconectado), a run vai para `failed` com o motivo.
 
-## Passos de implementação
+---
 
-1. Migration: `labels`, `conversation_labels`, view `label_unread_counts`, trigger que aplica label do número WA ao criar conversa.
-2. Server function que, no webhook do WhatsApp, garante label `system` do número.
-3. Componentes: `LabelBadge`, `LabelPicker`, `LabelChipRail`.
-4. Página `/app/settings/labels` (CRUD + drag reorder).
-5. Refatorar `/app/conversations`: chips lateral, agrupamento, ordenação, picker no header, pills no card.
-6. Realtime de `conversation_labels`.
+## Fase 3 — Editor visual de fluxo (UI)
 
-Posso disparar a migration (passo 1) agora?
+Página `/app/automations` com lista + editor.
+
+Escolha técnica: **React Flow** (`@xyflow/react`) — biblioteca padrão pra editores nó-e-aresta, leve, com pan/zoom/minimap prontos.
+
+- Sidebar de nós arrastáveis para o canvas
+- Cada nó tem painel de propriedades à direita
+- Editor de mensagem com preview e inserção de variáveis
+- Botão "Testar" — executa a run com um lead de exemplo em modo dry-run (não envia, só loga)
+- Templates prontos ao criar automação:
+  - **"Pedido de avaliação Google"** — gatilho `won`, wait Xd (configurável), send_message com `{{review_link}}`
+  - **"Follow-up cadenciado"** — gatilho `stage_enter` em qualquer etapa, 3-5 send_message com waits e `stop_if_replied` entre cada
+
+Link do Google Reviews fica em `workspaces.settings_json` (campo `google_review_url`) — configurado uma vez por workspace, usado por todas as automações via variável.
+
+---
+
+## Ordem de entrega
+
+Recomendo eu entregar **Fase 1 primeiro** (pipeline editável), depois **Fase 2 + template "Google Review" com editor simples de formulário** (não visual ainda) — assim você já tem o caso de uso mais crítico rodando. A **Fase 3 (editor visual React Flow)** vem por último porque é o pedaço mais caro em tokens.
+
+Se preferir tudo de uma vez, também dá — só quero deixar claro que fluxo visual dobra o tempo. Confirma como quer que eu proceda?
