@@ -496,9 +496,6 @@ function ConversationsPage() {
         <div className="p-3 border-b border-border space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h1 className="font-semibold text-sm">Conversas</h1>
-            <Button size="sm" variant="outline" onClick={simulateNewConversation} className="h-7 gap-1.5 text-xs">
-              <Sparkles className="h-3 w-3" /> Simular
-            </Button>
           </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -660,11 +657,6 @@ function ConversationsPage() {
                     </Button>
                   }
                 />
-                {active.channel === "webchat" && (
-                  <Button size="sm" variant="ghost" onClick={simulateIncomingReply} title="Simular resposta">
-                    <MessageCirclePlus className="h-4 w-4 mr-1" />Simular
-                  </Button>
-                )}
                 {(active as { assigned_to?: string | null }).assigned_to ? (
                   <>
                     <Button size="sm" variant="ghost" onClick={release}><UserMinus className="h-4 w-4 mr-1" />Devolver</Button>
