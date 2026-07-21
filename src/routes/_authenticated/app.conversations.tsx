@@ -89,9 +89,11 @@ function ConversationsPage() {
     queryKey: ["conversations", ws?.id],
     queryFn: async () => {
       const { data } = await supabase.from("conversations")
-        .select("*, contacts:contact_id(name, type)")
+        .select("*, contacts:contact_id(name, type, avatar_url)")
         .eq("workspace_id", ws!.id)
         .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(200);
+
         .limit(200);
       return data ?? [];
     },
