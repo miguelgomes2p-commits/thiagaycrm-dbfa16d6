@@ -1114,11 +1114,29 @@ function ConversationsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {leadContextQ.data.lead && (
-                <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
-                  Lead vinculado ao pipeline.
+              {leadContextQ.data.lead ? (
+                <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 flex items-center justify-between gap-2">
+                  <span className="text-xs text-success">Card vinculado ao pipeline</span>
+                  <Button size="sm" variant="ghost" onClick={unlinkLead} className="h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive">
+                    <Unlink className="h-3 w-3 mr-1" /> Desvincular
+                  </Button>
                 </div>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => setLinkPickerOpen(true)} className="w-full h-8 text-xs">
+                  <Link2 className="h-3.5 w-3.5 mr-1.5" /> Vincular a card existente
+                </Button>
               )}
+              <div>
+                <Label className="text-xs flex items-center gap-1"><Kanban className="h-3 w-3" /> Etapa do pipeline</Label>
+                <Select value={leadStageId} onValueChange={setLeadStageId}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar etapa" /></SelectTrigger>
+                  <SelectContent>
+                    {leadContextQ.data.stages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label className="text-xs">Título</Label>
                 <Input value={leadTitle} onChange={(e) => setLeadTitle(e.target.value)} className="h-8 text-xs" />
