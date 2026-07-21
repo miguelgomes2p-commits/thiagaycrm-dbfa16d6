@@ -23,9 +23,24 @@ function extOf(mime?: string | null, fallback = "bin"): string {
   return map[clean] ?? clean?.split("/")[1] ?? fallback;
 }
 
-function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; type: string | null; mime: string | null; caption: string | null; filename: string | null } {
+function unwrapMessage(msg: Json | undefined): Json | undefined {
+  if (!msg) return msg;
+  // WhatsApp wraps some messages: ephemeral, viewOnce, deviceSent, etc.
+  return (
+    msg.ephemeralMessage?.message ??
+    msg.viewOnceMessage?.message ??
+    msg.viewOnceMessageV2?.message ??
+    msg.viewOnceMessageV2Extension?.message ??
+    msg.deviceSentMessage?.message ??
+    msg.documentWithCaptionMessage?.message ??
+    msg
+  );
+}
+
+function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; type: string | null; mime: string | null; caption: string | null; filename: string | null; inner: Json | undefined } {
+  const inner = unwrapMessage(m.message);
   for (const k of MEDIA_KEYS) {
-    const node = m.message?.[k];
+    const node = inner?.[k] ?? m.message?.[k];
     if (node) {
       const type =
         k === "imageMessage" ? "image"
@@ -39,11 +54,13 @@ function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; ty
         mime: node.mimetype ?? null,
         caption: node.caption ?? null,
         filename: node.fileName ?? null,
+        inner,
       };
     }
   }
-  return { key: null, type: null, mime: null, caption: null, filename: null };
+  return { key: null, type: null, mime: null, caption: null, filename: null, inner };
 }
+
 
 export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")({
   server: {
@@ -113,6 +130,15 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             const pushName: string | undefined = m.pushName;
 
             const media = detectMediaKind(m);
+            console.log("[evolution webhook] msg", {
+              id: m.key?.id,
+              messageType: m.messageType,
+              messageKeys: m.message ? Object.keys(m.message) : [],
+              detectedMediaType: media.type,
+              detectedMediaKey: media.key,
+              detectedMime: media.mime,
+              hasInlineBase64: !!m.message?.base64,
+            });
             let text: string =
               m.message?.conversation ??
               m.message?.extendedTextMessage?.text ??
@@ -211,14 +237,16 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             let mediaMime: string | null = media.mime;
             if (media.key && num.provider_base_url && num.provider_api_key && num.instance_name) {
               try {
-                // 1) Se o webhook já veio com base64=true, o próprio payload traz
+                // 1) Se o webhook veio com base64=true, o próprio payload traz
                 //    m.message.base64 (Evolution v2). Se não, chama endpoint.
-                let base64: string | undefined = m.message?.base64;
+                let base64: string | undefined =
+                  m.message?.base64 ?? (m.message as { mediaBase64?: string })?.mediaBase64;
                 if (!base64) {
                   const { evolutionGetBase64FromMedia } = await import("@/lib/evolution.server");
                   const resp = await evolutionGetBase64FromMedia(num.provider_base_url, num.provider_api_key, num.instance_name, m);
                   base64 = resp.base64;
                   if (resp.mimetype) mediaMime = resp.mimetype;
+                  console.log("[evolution webhook] getBase64", { id: m.key?.id, gotBase64: !!base64, mimetype: resp.mimetype });
                 }
                 if (base64) {
                   const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
@@ -227,17 +255,23 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                   const { error: upErr } = await supabaseAdmin.storage
                     .from("wa-media")
                     .upload(path, bin, { contentType: mediaMime ?? "application/octet-stream", upsert: true });
-                  if (!upErr) {
-                    // Signed URL de longa duração (10 anos). Bucket é privado
-                    // e o front pode gerar uma nova sob demanda a partir do path se necessário.
+                  if (upErr) {
+                    console.log("[evolution webhook] upload error", upErr.message);
+                  } else {
                     const { data: signed } = await supabaseAdmin.storage
                       .from("wa-media")
                       .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
                     mediaUrl = signed?.signedUrl ?? null;
+                    console.log("[evolution webhook] uploaded", { id: m.key?.id, path, gotSigned: !!mediaUrl });
                   }
+                } else {
+                  console.log("[evolution webhook] no base64 for", m.key?.id);
                 }
-              } catch { /* mídia falhou — mantém só o texto placeholder */ }
+              } catch (e) {
+                console.log("[evolution webhook] media error", (e as Error).message);
+              }
             }
+
 
             await supabaseAdmin.from("messages").insert({
               workspace_id: num.workspace_id,
