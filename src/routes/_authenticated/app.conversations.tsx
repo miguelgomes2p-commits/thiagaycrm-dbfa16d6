@@ -333,7 +333,7 @@ function ConversationsPage() {
   async function sendMessage() {
     if (!text.trim() || !active || !ws) return;
     const content = text.trim();
-    const isWa = active.channel === "whatsapp" && !!(active as { whatsapp_number_id?: string | null }).whatsapp_number_id;
+    const isWa = active.channel === "whatsapp";
     setText("");
     setSending(true);
     try {
