@@ -249,7 +249,6 @@ function WhatsappPage() {
           <QrSyncContent
             qrModal={qrModal}
             currentStatus={numbersQ.data?.find((n) => n.id === qrModal?.id)?.connection_status ?? null}
-            lastWebhookAt={numbersQ.data?.find((n) => n.id === qrModal?.id)?.last_webhook_at ?? null}
             onRefreshQr={() => qrModal && refreshQrM.mutate(qrModal.id)}
             refreshing={refreshQrM.isPending}
             onCheckStatus={() => qrModal && checkStatusM.mutate(qrModal.id)}
@@ -800,7 +799,7 @@ function QrSyncContent({
   }, [qrModal, scanConfirmed, checkStatus]);
 
   // Status efetivo: antes da confirmação manual, ignore qualquer estado salvo.
-  const status = autoState ?? currentStatus ?? "qr";
+  const status = scanConfirmed ? (autoState ?? "checking") : "qr";
   const qrWasShown = qrShownAt !== null;
   const phase: "qr" | "checking" | "syncing" | "connected" =
     !scanConfirmed || !qrWasShown
