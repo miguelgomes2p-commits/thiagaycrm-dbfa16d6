@@ -798,7 +798,7 @@ function QrSyncContent({
   useEffect(() => {
     if (phase === "syncing") {
       if (syncStart === null) setSyncStart(Date.now());
-    } else if (phase !== "syncing" && syncStart !== null && phase !== "connected") {
+    } else if (phase === "qr" && syncStart !== null) {
       setSyncStart(null);
       setSyncElapsed(0);
     }
