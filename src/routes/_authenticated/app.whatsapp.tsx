@@ -766,6 +766,12 @@ function QrSyncContent({
   const [autoState, setAutoState] = useState<string | null>(null);
   const [syncStart, setSyncStart] = useState<number | null>(null);
   const [syncElapsed, setSyncElapsed] = useState(0);
+  const [qrShownAt, setQrShownAt] = useState<number | null>(null);
+
+  // Marca quando o QR foi efetivamente exibido para o usuário
+  useEffect(() => {
+    if (qrModal?.qr && qrShownAt === null) setQrShownAt(Date.now());
+  }, [qrModal?.qr, qrShownAt]);
 
   // Poll the Evolution status every 3s while the modal is open
   useEffect(() => {
@@ -785,14 +791,20 @@ function QrSyncContent({
     };
   }, [qrModal, checkStatus]);
 
-  // Status "efetivo": prefere o polling; cai no que veio do listNumbers
+  // Status efetivo: prefere o polling ao vivo
   const status = autoState ?? currentStatus ?? "qr";
+  // Só consideramos "conectado" quando a Evolution reporta connected explicitamente
+  // após o QR ter sido exibido (evita falso-positivo de webhooks antigos).
+  // Só consideramos "sincronizando" depois que o usuário viu o QR e o status
+  // mudou (evita mostrar "sincronizando" no estado inicial "connecting" da instância).
+  const qrWasShown = qrShownAt !== null;
   const phase: "qr" | "syncing" | "connected" =
-    status === "connected" || !!lastWebhookAt
+    status === "connected" && qrWasShown
       ? "connected"
-      : status === "connecting"
+      : qrWasShown && status !== "qr" && status !== "disconnected"
         ? "syncing"
         : "qr";
+
 
   // Cronômetro de sincronização
   useEffect(() => {
