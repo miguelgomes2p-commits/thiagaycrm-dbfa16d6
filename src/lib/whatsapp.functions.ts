@@ -325,6 +325,90 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     }
   });
 
+export const repairWhatsappAudioMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ conversationId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    function stripDataUrl(value?: string | null) {
+      if (!value) return undefined;
+      return value.includes(",") ? value.split(",").pop() : value;
+    }
+
+    function extOf(mime?: string | null) {
+      const clean = mime?.split(";")[0]?.trim().toLowerCase();
+      const map: Record<string, string> = {
+        "audio/ogg": "ogg",
+        "audio/opus": "opus",
+        "audio/mpeg": "mp3",
+        "audio/mp4": "m4a",
+        "audio/aac": "aac",
+        "audio/wav": "wav",
+        "audio/webm": "webm",
+      };
+      return (clean && (map[clean] ?? clean.split("/")[1])) || "ogg";
+    }
+
+    const { data: conv, error: cerr } = await context.supabase
+      .from("conversations")
+      .select("id, workspace_id, whatsapp_number_id")
+      .eq("id", data.conversationId)
+      .single();
+    if (cerr || !conv) throw new Error("Conversa não encontrada");
+    if (!conv.whatsapp_number_id) return { repaired: 0, attempted: 0 };
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: num, error: nerr } = await supabaseAdmin
+      .from("whatsapp_numbers")
+      .select("id, provider, provider_base_url, provider_api_key, instance_name")
+      .eq("id", conv.whatsapp_number_id)
+      .eq("workspace_id", conv.workspace_id)
+      .single();
+    if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
+    if (num.provider !== "evolution" || !num.provider_base_url || !num.provider_api_key || !num.instance_name) {
+      return { repaired: 0, attempted: 0 };
+    }
+
+    const { data: rows, error: merr } = await context.supabase
+      .from("messages")
+      .select("id, wa_message_id, media_type, content")
+      .eq("conversation_id", conv.id)
+      .is("media_url", null)
+      .not("wa_message_id", "is", null)
+      .or("media_type.eq.audio,content.ilike.%Áudio%,content.ilike.%Audio%,content.ilike.%audio%")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (merr) throw new Error(merr.message);
+
+    const { evolutionGetBase64FromMedia } = await import("@/lib/evolution.server");
+    let repaired = 0;
+    for (const msg of rows ?? []) {
+      try {
+        const resp = await evolutionGetBase64FromMedia(num.provider_base_url, num.provider_api_key, num.instance_name, {
+          key: { id: msg.wa_message_id },
+        });
+        const base64 = stripDataUrl(resp.base64 ?? resp.buffer);
+        if (!base64) continue;
+        const mime = resp.mimetype || "audio/ogg";
+        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+        const path = `${conv.workspace_id}/${conv.id}/${msg.id}.${extOf(mime)}`;
+        const { error: upErr } = await supabaseAdmin.storage
+          .from("wa-media")
+          .upload(path, bytes, { contentType: mime, upsert: true });
+        if (upErr) continue;
+        const { data: signed } = await supabaseAdmin.storage.from("wa-media").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+        if (!signed?.signedUrl) continue;
+        const { error: uerr } = await context.supabase
+          .from("messages")
+          .update({ media_url: signed.signedUrl, media_type: "audio", media_mime_type: mime })
+          .eq("id", msg.id);
+        if (!uerr) repaired += 1;
+      } catch {
+        // Keep the chat usable even when Evolution can no longer return an old audio blob.
+      }
+    }
+    return { repaired, attempted: rows?.length ?? 0 };
+  });
+
 export const sendWhatsappTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
