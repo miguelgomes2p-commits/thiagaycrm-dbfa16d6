@@ -103,22 +103,54 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: conv, error: cerr } = await context.supabase
       .from("conversations")
-      .select("id, workspace_id, whatsapp_number_id, wa_contact_wa_id")
+      .select("id, workspace_id, whatsapp_number_id, wa_contact_wa_id, contact_id")
       .eq("id", data.conversationId)
       .single();
     if (cerr || !conv) throw new Error("Conversa não encontrada");
-    if (!conv.whatsapp_number_id || !conv.wa_contact_wa_id) {
-      throw new Error("Esta conversa não está vinculada a um número WhatsApp");
-    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Auto-heal: se a conversa perdeu o vínculo com o número, tenta resolver o
+    // único número conectado do workspace.
+    let whatsappNumberId = conv.whatsapp_number_id;
+    let waContactId = conv.wa_contact_wa_id;
+    if (!whatsappNumberId) {
+      const { data: candidates } = await supabaseAdmin
+        .from("whatsapp_numbers")
+        .select("id")
+        .eq("workspace_id", conv.workspace_id)
+        .eq("connection_status", "connected");
+      if (!candidates || candidates.length !== 1) {
+        throw new Error("Conversa sem número WhatsApp vinculado. Conecte/selecione um número.");
+      }
+      whatsappNumberId = candidates[0].id;
+    }
+    if (!waContactId && conv.contact_id) {
+      const { data: ct } = await supabaseAdmin
+        .from("contacts")
+        .select("phone")
+        .eq("id", conv.contact_id)
+        .maybeSingle();
+      waContactId = ct?.phone ?? null;
+    }
+    if (!waContactId) throw new Error("Contato sem número de WhatsApp.");
+
+    // Persiste o backfill para não repetir a resolução.
+    if (whatsappNumberId !== conv.whatsapp_number_id || waContactId !== conv.wa_contact_wa_id) {
+      await supabaseAdmin
+        .from("conversations")
+        .update({ whatsapp_number_id: whatsappNumberId, wa_contact_wa_id: waContactId })
+        .eq("id", conv.id);
+    }
+
     const { data: num, error: nerr } = await supabaseAdmin
       .from("whatsapp_numbers")
       .select("id, provider, phone_number_id, access_token, provider_base_url, provider_api_key, instance_name")
-      .eq("id", conv.whatsapp_number_id)
+      .eq("id", whatsappNumberId)
       .eq("workspace_id", conv.workspace_id)
       .single();
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
+    conv.wa_contact_wa_id = waContactId;
 
     let waId: string | null = null;
     try {
