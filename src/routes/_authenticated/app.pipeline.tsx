@@ -24,7 +24,7 @@ type Lead = {
   id: string; title: string; value: number | null; stage_id: string; priority: string;
   source: string | null; tags: string[] | null; created_at: string; last_interaction_at: string | null;
   notes: string | null; custom_fields: Record<string, string> | null;
-  contacts?: { name: string; company_name: string | null; phone_e164?: string | null } | null;
+  contacts?: { name: string; company_name: string | null; phone?: string | null } | null;
 };
 
 const priorityColor: Record<string, string> = {
@@ -49,10 +49,12 @@ function PipelinePage() {
       const { data: pipes } = await supabase.from("pipelines").select("id, name").eq("workspace_id", ws!.id).order("position").limit(1);
       const pipe = pipes?.[0];
       if (!pipe) return { pipe: null, stages: [] as Stage[], leads: [] as Lead[] };
-      const [{ data: stages }, { data: leads }] = await Promise.all([
+      const [{ data: stages, error: stagesError }, { data: leads, error: leadsError }] = await Promise.all([
         supabase.from("pipeline_stages").select("id, name, color, type, position").eq("pipeline_id", pipe.id).order("position"),
-        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, contacts:contact_id(name, company_name, phone_e164)").eq("pipeline_id", pipe.id).order("position"),
+        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, contacts:contact_id(name, company_name, phone)").eq("pipeline_id", pipe.id).order("position"),
       ]);
+      if (stagesError) throw stagesError;
+      if (leadsError) throw leadsError;
       return { pipe, stages: (stages ?? []) as Stage[], leads: (leads ?? []) as unknown as Lead[] };
     },
   });
@@ -252,7 +254,7 @@ function PipelinePage() {
                 <InfoRow label="Prioridade" value={infoLead.priority} />
                 <InfoRow label="Origem" value={infoLead.source ?? "—"} />
                 <InfoRow label="Contato" value={infoLead.contacts?.name ?? "—"} />
-                {infoLead.contacts?.phone_e164 && <InfoRow label="Telefone" value={infoLead.contacts.phone_e164} />}
+                {infoLead.contacts?.phone && <InfoRow label="Telefone" value={infoLead.contacts.phone} />}
                 {infoLead.contacts?.company_name && <InfoRow label="Empresa" value={infoLead.contacts.company_name} />}
               </div>
               {infoLead.custom_fields && Object.keys(infoLead.custom_fields).length > 0 && (
