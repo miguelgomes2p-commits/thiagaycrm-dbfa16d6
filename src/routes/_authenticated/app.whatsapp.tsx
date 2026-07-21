@@ -742,3 +742,146 @@ function SendTemplateDialog({
     </DialogContent>
   );
 }
+
+function QrSyncContent({
+  qrModal,
+  currentStatus,
+  lastWebhookAt,
+  onRefreshQr,
+  refreshing,
+  onCheckStatus,
+  checking,
+  onClose,
+}: {
+  qrModal: { id: string; qr: string | null } | null;
+  currentStatus: string | null;
+  lastWebhookAt: string | null;
+  onRefreshQr: () => void;
+  refreshing: boolean;
+  onCheckStatus: () => void;
+  checking: boolean;
+  onClose: () => void;
+}) {
+  const checkStatus = useServerFn(checkEvolutionStatus);
+  const [autoState, setAutoState] = useState<string | null>(null);
+  const [syncStart, setSyncStart] = useState<number | null>(null);
+  const [syncElapsed, setSyncElapsed] = useState(0);
+
+  // Poll the Evolution status every 3s while the modal is open
+  useEffect(() => {
+    if (!qrModal) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const r = await checkStatus({ data: { id: qrModal.id } });
+        if (!cancelled) setAutoState(r.mapped);
+      } catch { /* ignore transient errors */ }
+    };
+    tick();
+    const iv = setInterval(tick, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, [qrModal, checkStatus]);
+
+  // Status "efetivo": prefere o polling; cai no que veio do listNumbers
+  const status = autoState ?? currentStatus ?? "qr";
+  const phase: "qr" | "syncing" | "connected" =
+    status === "connected" || !!lastWebhookAt
+      ? "connected"
+      : status === "connecting"
+        ? "syncing"
+        : "qr";
+
+  // Cronômetro de sincronização
+  useEffect(() => {
+    if (phase === "syncing") {
+      if (syncStart === null) setSyncStart(Date.now());
+    } else if (phase !== "syncing" && syncStart !== null && phase !== "connected") {
+      setSyncStart(null);
+      setSyncElapsed(0);
+    }
+  }, [phase, syncStart]);
+
+  useEffect(() => {
+    if (phase !== "syncing" || syncStart === null) return;
+    const iv = setInterval(() => setSyncElapsed(Math.floor((Date.now() - syncStart) / 1000)), 500);
+    return () => clearInterval(iv);
+  }, [phase, syncStart]);
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>
+          {phase === "connected"
+            ? "WhatsApp conectado!"
+            : phase === "syncing"
+              ? "Sincronizando conversas…"
+              : "Escaneie no seu WhatsApp"}
+        </DialogTitle>
+        <DialogDescription>
+          {phase === "connected"
+            ? "Seu número está pronto para receber e enviar mensagens pelo CRM."
+            : phase === "syncing"
+              ? "O QR foi lido. Estamos baixando as conversas e contatos do seu WhatsApp — isso pode levar alguns minutos na primeira vez."
+              : "WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho. O celular pode continuar usando normalmente."}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="flex flex-col items-center gap-4">
+        {phase === "qr" && (
+          qrModal?.qr ? (
+            <img src={qrModal.qr} alt="QR Code de conexão" className="w-64 h-64 rounded-lg bg-white p-2" />
+          ) : (
+            <div className="w-64 h-64 rounded-lg bg-muted flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )
+        )}
+
+        {phase === "syncing" && (
+          <div className="w-full flex flex-col items-center gap-4 py-4">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              </div>
+            </div>
+            <div className="w-full space-y-2">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full w-1/3 bg-primary animate-[slide_1.4s_ease-in-out_infinite]" style={{ animation: "wa-sync 1.4s ease-in-out infinite" }} />
+              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                Sincronizando há {syncElapsed}s · não feche esta janela
+              </p>
+            </div>
+            <style>{`@keyframes wa-sync { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }`}</style>
+          </div>
+        )}
+
+        {phase === "connected" && (
+          <div className="w-full flex flex-col items-center gap-3 py-6">
+            <div className="w-20 h-20 rounded-full bg-success/15 flex items-center justify-center">
+              <CheckCircle2 className="h-10 w-10 text-success" />
+            </div>
+            <p className="text-sm font-medium">Conexão estabelecida com sucesso</p>
+            <Button size="sm" onClick={onClose} className="gradient-brand text-primary-foreground border-0">
+              Ir para conversas
+            </Button>
+          </div>
+        )}
+
+        {phase !== "connected" && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onRefreshQr} disabled={refreshing}>
+              <RefreshCw className={cn("h-4 w-4 mr-1", refreshing && "animate-spin")} /> Novo QR
+            </Button>
+            <Button variant="outline" size="sm" onClick={onCheckStatus} disabled={checking}>
+              <CheckCircle2 className="h-4 w-4 mr-1" /> Verificar agora
+            </Button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
