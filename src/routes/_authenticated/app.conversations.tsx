@@ -7,6 +7,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   sendWhatsappMessage,
   sendWhatsappAttachment,
+  repairWhatsappAudioMedia,
   takeConversation,
   releaseConversation,
   resolveConversation,
@@ -25,6 +26,7 @@ import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
   Tag, Filter, ChevronRight, Paperclip, BriefcaseBusiness, Save, Loader2,
+  Mic, Square, PanelRightOpen, PanelRightClose, X,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -74,10 +76,19 @@ function ConversationsPage() {
   const [leadValue, setLeadValue] = useState("");
   const [leadPriority, setLeadPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [leadNotes, setLeadNotes] = useState("");
+  const [leadPaneOpen, setLeadPaneOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<BlobPart[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
+  const repairingAudioRef = useRef(new Set<string>());
   const qc = useQueryClient();
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
+  const repairAudio = useServerFn(repairWhatsappAudioMedia);
   const takeFn = useServerFn(takeConversation);
   const releaseFn = useServerFn(releaseConversation);
   const resolveFn = useServerFn(resolveConversation);
@@ -279,6 +290,31 @@ function ConversationsPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgsQ.data]);
 
+  useEffect(() => () => {
+    if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  useEffect(() => {
+    if (!activeId || !msgsQ.data || repairingAudioRef.current.has(activeId)) return;
+    const needsRepair = msgsQ.data.some((m) => {
+      const mediaUrl = (m as { media_url?: string | null }).media_url;
+      const mediaType = (m as { media_type?: string | null }).media_type;
+      const content = (m.content ?? "").toLowerCase();
+      return !mediaUrl && (mediaType === "audio" || content.includes("áudio") || content.includes("audio"));
+    });
+    if (!needsRepair) return;
+    repairingAudioRef.current.add(activeId);
+    repairAudio({ data: { conversationId: activeId } })
+      .then((result) => {
+        if (result.repaired > 0) {
+          qc.invalidateQueries({ queryKey: ["messages", activeId] });
+          toast.success(`${result.repaired} áudio(s) recuperado(s)`);
+        }
+      })
+      .catch(() => undefined);
+  }, [activeId, msgsQ.data, qc, repairAudio]);
+
   // Counts per label (unread inbound-first proxy: use unread_count)
   const labelCounts = useMemo(() => {
     const map = new Map<string, { total: number; unread: number }>();
@@ -356,6 +392,86 @@ function ConversationsPage() {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  function preferredAudioMime() {
+    const options = [
+      "audio/ogg;codecs=opus",
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+    ];
+    return options.find((mime) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(mime)) ?? "";
+  }
+
+  function stopRecordingTracks() {
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingStreamRef.current = null;
+    if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+    setIsRecording(false);
+  }
+
+  async function startAudioRecording() {
+    if (!active || sending || uploading || isRecording) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("Gravação de áudio não é suportada neste navegador.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = preferredAudioMime();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recordingStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const type = recorder.mimeType || mimeType || "audio/webm";
+        const blob = new Blob(recordingChunksRef.current, { type });
+        recordingChunksRef.current = [];
+        if (blob.size > 0) {
+          const ext = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
+          void sendAttachment(new File([blob], `audio-${Date.now()}.${ext}`, { type }));
+        }
+        stopRecordingTracks();
+      };
+      recorder.start(500);
+      setRecordingSeconds(0);
+      setIsRecording(true);
+      recordingTimerRef.current = window.setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+    } catch (e) {
+      stopRecordingTracks();
+      toast.error(e instanceof Error && e.name === "NotAllowedError" ? "Permita o microfone para gravar áudio." : "Não foi possível iniciar a gravação.");
+    }
+  }
+
+  function finishAudioRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    } else {
+      stopRecordingTracks();
+    }
+  }
+
+  function cancelAudioRecording() {
+    recordingChunksRef.current = [];
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.onstop = stopRecordingTracks;
+      recorder.stop();
+    } else {
+      stopRecordingTracks();
+    }
+  }
+
+  function formatRecordingTime(seconds: number) {
+    const min = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const sec = (seconds % 60).toString().padStart(2, "0");
+    return `${min}:${sec}`;
   }
 
   async function saveLead() {
