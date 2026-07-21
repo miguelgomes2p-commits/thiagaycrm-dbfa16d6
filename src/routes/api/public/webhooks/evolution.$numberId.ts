@@ -37,10 +37,25 @@ function unwrapMessage(msg: Json | undefined): Json | undefined {
   );
 }
 
+function findDeep(obj: Json, predicate: (value: Json, key: string) => boolean, depth = 0): Json | undefined {
+  if (!obj || typeof obj !== "object" || depth > 8) return undefined;
+  for (const [key, value] of Object.entries(obj)) {
+    if (predicate(value, key)) return value;
+    const nested = findDeep(value, predicate, depth + 1);
+    if (nested) return nested;
+  }
+  return undefined;
+}
+
+function stripDataUrl(value?: string | null) {
+  if (!value) return undefined;
+  return value.includes(",") ? value.split(",").pop() : value;
+}
+
 function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; type: string | null; mime: string | null; caption: string | null; filename: string | null; inner: Json | undefined } {
   const inner = unwrapMessage(m.message);
   for (const k of MEDIA_KEYS) {
-    const node = inner?.[k] ?? m.message?.[k];
+    const node = inner?.[k] ?? m.message?.[k] ?? findDeep(m, (_value, key) => key === k);
     if (node) {
       const type =
         k === "imageMessage" ? "image"
@@ -57,6 +72,17 @@ function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; ty
         inner,
       };
     }
+  }
+  const rawType = String(m.messageType ?? m.type ?? "").toLowerCase();
+  const inferred = rawType.includes("image") ? "image"
+    : rawType.includes("audio") || rawType.includes("ptt") ? "audio"
+    : rawType.includes("video") ? "video"
+    : rawType.includes("document") ? "document"
+    : rawType.includes("sticker") ? "sticker"
+    : null;
+  if (inferred) {
+    const node = findDeep(m, (value, key) => key === "mimetype" && typeof value === "string");
+    return { key: null, type: inferred, mime: typeof node === "string" ? node : null, caption: null, filename: null, inner };
   }
   return { key: null, type: null, mime: null, caption: null, filename: null, inner };
 }
@@ -137,9 +163,11 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
               detectedMediaType: media.type,
               detectedMediaKey: media.key,
               detectedMime: media.mime,
-              hasInlineBase64: !!m.message?.base64,
+              hasInlineBase64: !!findDeep(m, (_value, key) => key === "base64" || key === "mediaBase64"),
             });
             let text: string =
+              media.inner?.conversation ??
+              media.inner?.extendedTextMessage?.text ??
               m.message?.conversation ??
               m.message?.extendedTextMessage?.text ??
               media.caption ??
@@ -172,7 +200,10 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
               if (!isGroup && !exContact.avatar_url && num.provider_base_url && num.provider_api_key && num.instance_name) {
                 try {
                   const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
-                  const pic = await evolutionFetchProfilePic(num.provider_base_url, num.provider_api_key, num.instance_name, waId);
+                  let pic = await evolutionFetchProfilePic(num.provider_base_url, num.provider_api_key, num.instance_name, waId);
+                  if (!pic.profilePictureUrl) {
+                    pic = await evolutionFetchProfilePic(num.provider_base_url, num.provider_api_key, num.instance_name, `${waId}@s.whatsapp.net`);
+                  }
                   if (pic.profilePictureUrl) {
                     await supabaseAdmin.from("contacts").update({ avatar_url: pic.profilePictureUrl }).eq("id", contactId);
                   }
@@ -186,7 +217,10 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
               if (!isGroup && num.provider_base_url && num.provider_api_key && num.instance_name) {
                 try {
                   const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
-                  const pic = await evolutionFetchProfilePic(num.provider_base_url, num.provider_api_key, num.instance_name, waId);
+                  let pic = await evolutionFetchProfilePic(num.provider_base_url, num.provider_api_key, num.instance_name, waId);
+                  if (!pic.profilePictureUrl) {
+                    pic = await evolutionFetchProfilePic(num.provider_base_url, num.provider_api_key, num.instance_name, `${waId}@s.whatsapp.net`);
+                  }
                   avatarUrl = pic.profilePictureUrl ?? null;
                 } catch { /* sem foto */ }
               }
@@ -235,16 +269,16 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             // ── Media: baixa base64 e sobe no storage ────────────
             let mediaUrl: string | null = null;
             let mediaMime: string | null = media.mime;
-            if (media.key && num.provider_base_url && num.provider_api_key && num.instance_name) {
+            if (media.type && num.provider_base_url && num.provider_api_key && num.instance_name) {
               try {
                 // 1) Se o webhook veio com base64=true, o próprio payload traz
                 //    m.message.base64 (Evolution v2). Se não, chama endpoint.
-                let base64: string | undefined =
-                  m.message?.base64 ?? (m.message as { mediaBase64?: string })?.mediaBase64;
+                const inlineBase64 = findDeep(m, (value, key) => (key === "base64" || key === "mediaBase64") && typeof value === "string");
+                let base64: string | undefined = stripDataUrl(typeof inlineBase64 === "string" ? inlineBase64 : undefined);
                 if (!base64) {
                   const { evolutionGetBase64FromMedia } = await import("@/lib/evolution.server");
                   const resp = await evolutionGetBase64FromMedia(num.provider_base_url, num.provider_api_key, num.instance_name, m);
-                  base64 = resp.base64;
+                  base64 = stripDataUrl(resp.base64);
                   if (resp.mimetype) mediaMime = resp.mimetype;
                   console.log("[evolution webhook] getBase64", { id: m.key?.id, gotBase64: !!base64, mimetype: resp.mimetype });
                 }

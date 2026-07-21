@@ -44,6 +44,54 @@ export function sendWaText(phoneNumberId: string, token: string, to: string, bod
   );
 }
 
+async function graphUploadMedia(phoneNumberId: string, token: string, file: Blob, fileName: string) {
+  const form = new FormData();
+  form.append("messaging_product", "whatsapp");
+  form.append("file", file, fileName);
+  const res = await fetch(`${GRAPH}/${phoneNumberId}/media`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const body = await res.text();
+  if (!res.ok) throw new Error(`Meta ${res.status}: ${body}`);
+  return JSON.parse(body) as { id: string };
+}
+
+export async function sendWaMedia(
+  phoneNumberId: string,
+  token: string,
+  to: string,
+  file: Uint8Array,
+  mimeType: string,
+  fileName: string,
+  caption?: string,
+) {
+  const arrayBuffer = new ArrayBuffer(file.byteLength);
+  const copy = new Uint8Array(arrayBuffer);
+  copy.set(file);
+  const media = await graphUploadMedia(phoneNumberId, token, new Blob([arrayBuffer], { type: mimeType }), fileName);
+  const type = mimeType.startsWith("image/") ? "image"
+    : mimeType.startsWith("audio/") ? "audio"
+    : mimeType.startsWith("video/") ? "video"
+    : "document";
+  const body: Record<string, unknown> = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to,
+    type,
+    [type]: {
+      id: media.id,
+      ...(caption && type !== "audio" ? { caption } : {}),
+      ...(type === "document" ? { filename: fileName } : {}),
+    },
+  };
+  return graphRequest<{ messages: { id: string }[] }>(`/${phoneNumberId}/messages`, token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export function sendWaTemplate(
   phoneNumberId: string,
   token: string,
