@@ -237,6 +237,7 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     const mediaType = mediaTypeOf(data.mimeType);
     const ext = extOf(data.mimeType, data.fileName);
     const safeName = data.fileName.replace(/[^\w.() -]/g, "_").slice(0, 140) || `arquivo.${ext}`;
+    const evolutionAudioPayload = data.base64.includes(",") ? data.base64 : `data:${data.mimeType};base64,${cleanBase64}`;
     const path = `${conv.workspace_id}/${conv.id}/${crypto.randomUUID()}-${safeName}`;
     const { error: upErr } = await supabaseAdmin.storage
       .from("wa-media")
@@ -265,7 +266,7 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
               num.provider_api_key,
               num.instance_name,
               conv.wa_contact_wa_id,
-              cleanBase64,
+              evolutionAudioPayload,
             )
           : await evolutionSendMedia(
               num.provider_base_url,
