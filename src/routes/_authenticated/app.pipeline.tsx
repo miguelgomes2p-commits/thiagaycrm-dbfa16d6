@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, DollarSign, User as UserIcon, Flame, Clock } from "lucide-react";
+import { Plus, DollarSign, User as UserIcon, Flame, Clock, Info } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -23,7 +23,8 @@ type Stage = { id: string; name: string; color: string; type: string; position: 
 type Lead = {
   id: string; title: string; value: number | null; stage_id: string; priority: string;
   source: string | null; tags: string[] | null; created_at: string; last_interaction_at: string | null;
-  contacts?: { name: string; company_name: string | null } | null;
+  notes: string | null; custom_fields: Record<string, string> | null;
+  contacts?: { name: string; company_name: string | null; phone_e164?: string | null } | null;
 };
 
 const priorityColor: Record<string, string> = {
@@ -39,6 +40,7 @@ function PipelinePage() {
   const qc = useQueryClient();
   const [dragging, setDragging] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [infoLead, setInfoLead] = useState<Lead | null>(null);
 
   const pipelineQ = useQuery({
     enabled: !!ws?.id,
@@ -49,7 +51,7 @@ function PipelinePage() {
       if (!pipe) return { pipe: null, stages: [] as Stage[], leads: [] as Lead[] };
       const [{ data: stages }, { data: leads }] = await Promise.all([
         supabase.from("pipeline_stages").select("id, name, color, type, position").eq("pipeline_id", pipe.id).order("position"),
-        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, contacts:contact_id(name, company_name)").eq("pipeline_id", pipe.id).order("position"),
+        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, contacts:contact_id(name, company_name, phone_e164)").eq("pipeline_id", pipe.id).order("position"),
       ]);
       return { pipe, stages: (stages ?? []) as Stage[], leads: (leads ?? []) as unknown as Lead[] };
     },
@@ -196,10 +198,22 @@ function PipelinePage() {
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="text-sm font-medium leading-tight">{l.title}</div>
-                        <span className={cn("text-[10px] px-1.5 py-0.5 rounded", priorityColor[l.priority])}>
-                          {l.priority === "urgent" && <Flame className="h-3 w-3 inline" />}
-                        </span>
+                        <div className="text-sm font-medium leading-tight flex-1">{l.title}</div>
+                        <div className="flex items-center gap-1">
+                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded", priorityColor[l.priority])}>
+                            {l.priority === "urgent" && <Flame className="h-3 w-3 inline" />}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setInfoLead(l); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            draggable={false}
+                            className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                            title="Ver informações"
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                       {l.contacts?.name && (
                         <div className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1">
@@ -225,6 +239,51 @@ function PipelinePage() {
           })}
         </div>
       </div>
+
+      <Dialog open={!!infoLead} onOpenChange={(o) => !o && setInfoLead(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{infoLead?.title}</DialogTitle>
+          </DialogHeader>
+          {infoLead && (
+            <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                <InfoRow label="Valor" value={Number(infoLead.value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
+                <InfoRow label="Prioridade" value={infoLead.priority} />
+                <InfoRow label="Origem" value={infoLead.source ?? "—"} />
+                <InfoRow label="Contato" value={infoLead.contacts?.name ?? "—"} />
+                {infoLead.contacts?.phone_e164 && <InfoRow label="Telefone" value={infoLead.contacts.phone_e164} />}
+                {infoLead.contacts?.company_name && <InfoRow label="Empresa" value={infoLead.contacts.company_name} />}
+              </div>
+              {infoLead.custom_fields && Object.keys(infoLead.custom_fields).length > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(infoLead.custom_fields).filter(([, v]) => v).map(([k, v]) => (
+                      <InfoRow key={k} label={k.replace(/_/g, " ")} value={String(v)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {infoLead.notes && (
+                <div className="pt-2 border-t border-border">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Anotações</h4>
+                  <p className="text-xs whitespace-pre-wrap text-muted-foreground">{infoLead.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-sm capitalize-first">{value}</div>
     </div>
   );
 }

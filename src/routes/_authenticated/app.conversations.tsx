@@ -20,13 +20,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
   Tag, Filter, ChevronRight, Paperclip, BriefcaseBusiness, Save, Loader2,
-  Mic, Square, PanelRightOpen, PanelRightClose, X,
+  Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -76,9 +77,12 @@ function ConversationsPage() {
   const [leadTitle, setLeadTitle] = useState("");
   const [leadValue, setLeadValue] = useState("");
   const [leadPriority, setLeadPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
+  const [leadStageId, setLeadStageId] = useState<string>("");
   const [leadNotes, setLeadNotes] = useState("");
   const [leadFields, setLeadFields] = useState<Record<string, string>>({});
   const [leadPaneOpen, setLeadPaneOpen] = useState(false);
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [linkSearch, setLinkSearch] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -274,21 +278,56 @@ function ConversationsPage() {
       ]);
       const pipe = pipes?.[0] ?? null;
       const { data: stages } = pipe
-        ? await supabase.from("pipeline_stages").select("id, name, position").eq("pipeline_id", pipe.id).order("position")
+        ? await supabase.from("pipeline_stages").select("id, name, position, type").eq("pipeline_id", pipe.id).order("position")
         : { data: [] };
       return { pipe, stages: stages ?? [], lead: lead as { id: string; title: string; value: number | null; priority: "low" | "medium" | "high" | "urgent"; notes?: string | null; stage_id: string; pipeline_id: string; custom_fields?: Record<string, string> | null } | null };
     },
   });
 
+  const pipelineLeadsQ = useQuery({
+    enabled: !!ws?.id && !!leadContextQ.data?.pipe && linkPickerOpen,
+    queryKey: ["pipeline-leads-picker", ws?.id, leadContextQ.data?.pipe?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("leads")
+        .select("id, title, value, stage_id, contacts:contact_id(name)")
+        .eq("pipeline_id", leadContextQ.data!.pipe!.id)
+        .order("last_interaction_at", { ascending: false })
+        .limit(200);
+      return (data ?? []) as Array<{ id: string; title: string; value: number | null; stage_id: string; contacts: { name: string } | null }>;
+    },
+  });
+
+  async function linkExistingLead(leadId: string) {
+    if (!active || !ws) return;
+    const { error } = await supabase.from("conversations").update({ lead_id: leadId }).eq("id", active.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Card vinculado à conversa");
+    setLinkPickerOpen(false);
+    qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
+    qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+  }
+
+  async function unlinkLead() {
+    if (!active || !ws) return;
+    const { error } = await supabase.from("conversations").update({ lead_id: null }).eq("id", active.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Card desvinculado");
+    qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
+    qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+  }
+
   useEffect(() => {
     const lead = leadContextQ.data?.lead;
+    const stages = leadContextQ.data?.stages ?? [];
     const contactName = (active?.contacts as { name?: string } | null)?.name ?? "Lead WhatsApp";
     setLeadTitle(lead?.title ?? contactName);
     setLeadValue(lead?.value ? String(lead.value) : "");
     setLeadPriority(lead?.priority ?? "medium");
+    setLeadStageId(lead?.stage_id ?? stages[0]?.id ?? "");
     setLeadNotes(lead?.notes ?? "");
     setLeadFields((lead?.custom_fields ?? {}) as Record<string, string>);
-  }, [leadContextQ.data?.lead, active?.id, active?.contacts]);
+  }, [leadContextQ.data?.lead, leadContextQ.data?.stages, active?.id, active?.contacts]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgsQ.data]);
@@ -523,29 +562,37 @@ function ConversationsPage() {
     if (!active || !ws || !leadContextQ.data?.pipe || !leadContextQ.data.stages[0]) return;
     const contactId = (active as { contact_id?: string | null }).contact_id ?? null;
     const lead = leadContextQ.data.lead;
-    const payload = {
+    const stages = leadContextQ.data.stages as Array<{ id: string; type?: string }>;
+    const chosenStage = stages.find((s) => s.id === leadStageId) ?? stages[0];
+    const payload: Record<string, unknown> = {
       title: leadTitle.trim() || ((active.contacts as { name?: string } | null)?.name ?? "Lead WhatsApp"),
       value: Number(leadValue || 0),
       priority: leadPriority,
       notes: leadNotes.trim() || null,
       custom_fields: leadFields,
+      stage_id: chosenStage.id,
       last_interaction_at: new Date().toISOString(),
     };
+    if (chosenStage.type === "won") payload.won_at = new Date().toISOString();
+    if (chosenStage.type === "lost") payload.lost_at = new Date().toISOString();
     try {
       if (lead) {
-        const { error } = await supabase.from("leads").update(payload).eq("id", lead.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await supabase.from("leads").update(payload as any).eq("id", lead.id);
         if (error) throw error;
       } else {
         const { data: user } = await supabase.auth.getUser();
-        const { data: created, error } = await supabase.from("leads").insert({
+        const insertPayload = {
           workspace_id: ws.id,
           pipeline_id: leadContextQ.data.pipe.id,
-          stage_id: leadContextQ.data.stages[0].id,
+          stage_id: chosenStage.id,
           contact_id: contactId,
           owner_id: user.user?.id,
           source: "WhatsApp",
           ...payload,
-        }).select("id").single();
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: created, error } = await supabase.from("leads").insert(insertPayload as any).select("id").single();
         if (error) throw error;
         await supabase.from("conversations").update({ lead_id: created?.id }).eq("id", active.id);
       }
@@ -1067,11 +1114,29 @@ function ConversationsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {leadContextQ.data.lead && (
-                <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
-                  Lead vinculado ao pipeline.
+              {leadContextQ.data.lead ? (
+                <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 flex items-center justify-between gap-2">
+                  <span className="text-xs text-success">Card vinculado ao pipeline</span>
+                  <Button size="sm" variant="ghost" onClick={unlinkLead} className="h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive">
+                    <Unlink className="h-3 w-3 mr-1" /> Desvincular
+                  </Button>
                 </div>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => setLinkPickerOpen(true)} className="w-full h-8 text-xs">
+                  <Link2 className="h-3.5 w-3.5 mr-1.5" /> Vincular a card existente
+                </Button>
               )}
+              <div>
+                <Label className="text-xs flex items-center gap-1"><Kanban className="h-3 w-3" /> Etapa do pipeline</Label>
+                <Select value={leadStageId} onValueChange={setLeadStageId}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar etapa" /></SelectTrigger>
+                  <SelectContent>
+                    {leadContextQ.data.stages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label className="text-xs">Título</Label>
                 <Input value={leadTitle} onChange={(e) => setLeadTitle(e.target.value)} className="h-8 text-xs" />
@@ -1136,6 +1201,52 @@ function ConversationsPage() {
           )}
         </aside>
       )}
+
+      <Dialog open={linkPickerOpen} onOpenChange={setLinkPickerOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Vincular a um card do pipeline</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Buscar por título ou contato..."
+            value={linkSearch}
+            onChange={(e) => setLinkSearch(e.target.value)}
+            className="mb-3"
+          />
+          <div className="max-h-[50vh] overflow-y-auto space-y-1">
+            {pipelineLeadsQ.isLoading && <div className="text-xs text-muted-foreground py-6 text-center">Carregando...</div>}
+            {(() => {
+              const q = linkSearch.trim().toLowerCase();
+              const filtered = (pipelineLeadsQ.data ?? []).filter((l) =>
+                !q || l.title.toLowerCase().includes(q) || (l.contacts?.name ?? "").toLowerCase().includes(q)
+              );
+              if (!pipelineLeadsQ.isLoading && filtered.length === 0) {
+                return <div className="text-xs text-muted-foreground py-6 text-center">Nenhum card encontrado.</div>;
+              }
+              const stageNameMap = new Map((leadContextQ.data?.stages ?? []).map((s) => [s.id, s.name]));
+              return filtered.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => linkExistingLead(l.id)}
+                  className="w-full text-left p-2 rounded-md border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{l.title}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        {l.contacts?.name ?? "sem contato"} · {stageNameMap.get(l.stage_id) ?? "—"}
+                      </div>
+                    </div>
+                    <span className="text-xs text-success font-medium shrink-0">
+                      {Number(l.value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </button>
+              ));
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
