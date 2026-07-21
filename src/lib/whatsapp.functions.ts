@@ -419,14 +419,6 @@ export const syncWhatsappTemplates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ whatsappNumberId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: member } = await context.supabase
-      .from("workspace_members")
-      .select("role")
-      .eq("workspace_id", data.workspaceId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (!member || (member.role !== "owner" && member.role !== "admin")) throw new Error("Apenas admins podem sincronizar templates.");
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: num, error: nerr } = await supabaseAdmin
       .from("whatsapp_numbers")
@@ -434,6 +426,14 @@ export const syncWhatsappTemplates = createServerFn({ method: "POST" })
       .eq("id", data.whatsappNumberId)
       .single();
     if (nerr || !num) throw new Error("Número não encontrado");
+
+    const { data: member } = await context.supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", num.workspace_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!member || (member.role !== "owner" && member.role !== "admin")) throw new Error("Apenas admins podem sincronizar templates.");
     if (!num.waba_id || !num.access_token) throw new Error("Este número não usa Cloud API.");
 
     const { listWaTemplates } = await import("@/lib/whatsapp.server");
