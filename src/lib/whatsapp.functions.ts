@@ -98,10 +98,12 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
       throw new Error("Esta conversa não está vinculada a um número WhatsApp");
     }
 
-    const { data: num, error: nerr } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: num, error: nerr } = await supabaseAdmin
       .from("whatsapp_numbers")
       .select("id, provider, phone_number_id, access_token, provider_base_url, provider_api_key, instance_name")
       .eq("id", conv.whatsapp_number_id)
+      .eq("workspace_id", conv.workspace_id)
       .single();
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
 
@@ -207,10 +209,12 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
       throw new Error("Esta conversa não está vinculada a um número WhatsApp");
     }
 
-    const { data: num, error: nerr } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: num, error: nerr } = await supabaseAdmin
       .from("whatsapp_numbers")
       .select("id, provider, phone_number_id, access_token, provider_base_url, provider_api_key, instance_name")
       .eq("id", conv.whatsapp_number_id)
+      .eq("workspace_id", conv.workspace_id)
       .single();
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
 
@@ -221,8 +225,6 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     const ext = extOf(data.mimeType, data.fileName);
     const safeName = data.fileName.replace(/[^\w.() -]/g, "_").slice(0, 140) || `arquivo.${ext}`;
     const path = `${conv.workspace_id}/${conv.id}/${crypto.randomUUID()}-${safeName}`;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
     const { error: upErr } = await supabaseAdmin.storage
       .from("wa-media")
       .upload(path, bytes, { contentType: data.mimeType, upsert: false });
