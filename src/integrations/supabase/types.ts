@@ -368,6 +368,7 @@ export type Database = {
           last_interaction_at: string | null
           lost_at: string | null
           lost_reason: string | null
+          notes: string | null
           owner_id: string | null
           pipeline_id: string
           position: number
@@ -390,6 +391,7 @@ export type Database = {
           last_interaction_at?: string | null
           lost_at?: string | null
           lost_reason?: string | null
+          notes?: string | null
           owner_id?: string | null
           pipeline_id: string
           position?: number
@@ -412,6 +414,7 @@ export type Database = {
           last_interaction_at?: string | null
           lost_at?: string | null
           lost_reason?: string | null
+          notes?: string | null
           owner_id?: string | null
           pipeline_id?: string
           position?: number
