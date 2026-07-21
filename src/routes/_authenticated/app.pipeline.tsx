@@ -51,7 +51,7 @@ function PipelinePage() {
       if (!pipe) return { pipe: null, stages: [] as Stage[], leads: [] as Lead[] };
       const [{ data: stages }, { data: leads }] = await Promise.all([
         supabase.from("pipeline_stages").select("id, name, color, type, position").eq("pipeline_id", pipe.id).order("position"),
-        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, contacts:contact_id(name, company_name)").eq("pipeline_id", pipe.id).order("position"),
+        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, contacts:contact_id(name, company_name, phone_e164)").eq("pipeline_id", pipe.id).order("position"),
       ]);
       return { pipe, stages: (stages ?? []) as Stage[], leads: (leads ?? []) as unknown as Lead[] };
     },
