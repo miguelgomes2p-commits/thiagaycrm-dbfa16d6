@@ -81,7 +81,21 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             const pushName: string | undefined = m.pushName;
             let text: string =
               m.message?.conversation ??
-...
+              m.message?.extendedTextMessage?.text ??
+              m.message?.imageMessage?.caption ??
+              m.message?.videoMessage?.caption ??
+              (m.message?.imageMessage
+                ? "📷 Imagem"
+                : m.message?.audioMessage
+                  ? "🎵 Áudio"
+                  : m.message?.videoMessage
+                    ? "🎬 Vídeo"
+                    : m.message?.documentMessage
+                      ? `📎 ${m.message.documentMessage?.fileName ?? "documento"}`
+                      : m.message?.stickerMessage
+                        ? "🌟 Sticker"
+                        : m.messageType
+                          ? `[${m.messageType}]`
                           : "");
             // Em grupos, prefixa com o nome de quem enviou (útil pra saber quem falou)
             if (isGroup && !fromMe && text) {
