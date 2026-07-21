@@ -306,6 +306,7 @@ function ConversationsPage() {
     setLinkPickerOpen(false);
     qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
     qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+    qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
   }
 
   async function unlinkLead() {
@@ -315,6 +316,7 @@ function ConversationsPage() {
     toast.success("Card desvinculado");
     qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
     qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+    qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
   }
 
   useEffect(() => {
@@ -327,7 +329,9 @@ function ConversationsPage() {
     setLeadStageId(lead?.stage_id ?? stages[0]?.id ?? "");
     setLeadNotes(lead?.notes ?? "");
     setLeadFields((lead?.custom_fields ?? {}) as Record<string, string>);
-  }, [leadContextQ.data?.lead, leadContextQ.data?.stages, active?.id, active?.contacts]);
+    // Only reset when the underlying lead/conversation identity actually changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadContextQ.data?.lead?.id, active?.id, active?.lead_id]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgsQ.data]);
