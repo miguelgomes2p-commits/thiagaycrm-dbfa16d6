@@ -23,7 +23,11 @@ export const listWhatsappNumbers = createServerFn({ method: "POST" })
       .eq("workspace_id", data.workspaceId)
       .order("created_at");
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    const isAdmin = member.role === "owner" || member.role === "admin";
+    return (rows ?? []).map((row) => ({
+      ...row,
+      webhook_verify_token: isAdmin ? row.webhook_verify_token : null,
+    }));
   });
 
 export const connectWhatsappNumber = createServerFn({ method: "POST" })
