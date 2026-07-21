@@ -153,8 +153,10 @@ function PipelinePage() {
               <Button type="submit" className="w-full gradient-brand text-primary-foreground border-0">Criar</Button>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
+
 
       <div className="flex-1 overflow-x-auto -mx-6 px-6">
         <div className="flex gap-4 h-full min-w-max">
