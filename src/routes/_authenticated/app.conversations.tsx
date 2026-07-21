@@ -561,14 +561,19 @@ function ConversationsPage() {
     if (!active || !ws || !leadContextQ.data?.pipe || !leadContextQ.data.stages[0]) return;
     const contactId = (active as { contact_id?: string | null }).contact_id ?? null;
     const lead = leadContextQ.data.lead;
-    const payload = {
+    const stages = leadContextQ.data.stages as Array<{ id: string; type?: string }>;
+    const chosenStage = stages.find((s) => s.id === leadStageId) ?? stages[0];
+    const payload: Record<string, unknown> = {
       title: leadTitle.trim() || ((active.contacts as { name?: string } | null)?.name ?? "Lead WhatsApp"),
       value: Number(leadValue || 0),
       priority: leadPriority,
       notes: leadNotes.trim() || null,
       custom_fields: leadFields,
+      stage_id: chosenStage.id,
       last_interaction_at: new Date().toISOString(),
     };
+    if (chosenStage.type === "won") payload.won_at = new Date().toISOString();
+    if (chosenStage.type === "lost") payload.lost_at = new Date().toISOString();
     try {
       if (lead) {
         const { error } = await supabase.from("leads").update(payload).eq("id", lead.id);
