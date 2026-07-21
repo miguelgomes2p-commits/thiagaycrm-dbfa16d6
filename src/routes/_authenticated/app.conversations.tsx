@@ -20,8 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
-  Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2, Sparkles, MessageCirclePlus,
-  Tag, Filter, ChevronDown, ChevronRight,
+  Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
+  Tag, Filter, ChevronRight,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
