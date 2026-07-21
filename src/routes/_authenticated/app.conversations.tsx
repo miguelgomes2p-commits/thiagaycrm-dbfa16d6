@@ -573,10 +573,14 @@ function ConversationsPage() {
           <>
             <div className="h-14 border-b border-border px-4 flex items-center gap-3 shrink-0">
               <Avatar className="h-9 w-9">
+                {(active.contacts as { avatar_url?: string | null } | null)?.avatar_url && (
+                  <AvatarImage src={(active.contacts as { avatar_url?: string | null }).avatar_url!} />
+                )}
                 <AvatarFallback className="bg-primary/20 text-primary text-xs">
                   {((active.contacts as { name?: string } | null)?.name ?? "??").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1.5">
