@@ -238,7 +238,7 @@ function WhatsappPage() {
         open={openWizard}
         onOpenChange={setOpenWizard}
         webhookUrl={numbersQ.data?.[0] ? `${origin}/api/public/webhooks/whatsapp/${numbersQ.data[0].id}` : undefined}
-        verifyToken={numbersQ.data?.[0]?.webhook_verify_token}
+        verifyToken={numbersQ.data?.[0]?.webhook_verify_token ?? undefined}
         onConnect={(v) => connectM.mutate(v)}
         connecting={connectM.isPending}
       />
@@ -410,7 +410,7 @@ function WhatsappPage() {
                 {!isEvo && (
                   <div className="grid sm:grid-cols-2 gap-3">
                     <CopyField label="Callback URL (Webhook)" value={webhookUrl} />
-                    <CopyField label="Verify Token" value={n.webhook_verify_token} mono />
+                    <CopyField label="Verify Token" value={n.webhook_verify_token ?? "Disponível apenas para admins"} mono />
                   </div>
                 )}
                 {isEvo && (
