@@ -27,7 +27,7 @@ import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
   Tag, Filter, ChevronRight, Paperclip, BriefcaseBusiness, Save, Loader2,
-  Mic, Square, PanelRightOpen, PanelRightClose, X,
+  Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
