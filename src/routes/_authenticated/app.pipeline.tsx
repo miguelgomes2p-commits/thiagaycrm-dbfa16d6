@@ -40,6 +40,7 @@ function PipelinePage() {
   const qc = useQueryClient();
   const [dragging, setDragging] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [infoLead, setInfoLead] = useState<Lead | null>(null);
 
   const pipelineQ = useQuery({
     enabled: !!ws?.id,
