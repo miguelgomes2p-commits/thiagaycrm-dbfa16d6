@@ -6,6 +6,7 @@ import { useMyWorkspaces } from "@/hooks/useWorkspace";
 import { useServerFn } from "@tanstack/react-start";
 import {
   sendWhatsappMessage,
+  sendWhatsappAttachment,
   takeConversation,
   releaseConversation,
   resolveConversation,
@@ -16,12 +17,14 @@ import { LabelPicker } from "@/components/labels/LabelPicker";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
-  Tag, Filter, ChevronRight,
+  Tag, Filter, ChevronRight, Paperclip, BriefcaseBusiness, Save, Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -64,10 +67,17 @@ function ConversationsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [view, setView] = useState(loadView);
   const [labelPaneOpen, setLabelPaneOpen] = useState(true);
+  const [leadTitle, setLeadTitle] = useState("");
+  const [leadValue, setLeadValue] = useState("");
+  const [leadPriority, setLeadPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
+  const [leadNotes, setLeadNotes] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
   const sendWa = useServerFn(sendWhatsappMessage);
+  const sendWaFile = useServerFn(sendWhatsappAttachment);
   const takeFn = useServerFn(takeConversation);
   const releaseFn = useServerFn(releaseConversation);
   const resolveFn = useServerFn(resolveConversation);
@@ -237,6 +247,34 @@ function ConversationsPage() {
   const active = useMemo(() => convsQ.data?.find((c) => c.id === activeId), [convsQ.data, activeId]);
   const activeLabelIds = active ? (convLabelMap?.get(active.id) ?? []) : [];
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const leadContextQ = useQuery({
+    enabled: !!ws?.id && !!active,
+    queryKey: ["conversation-lead-context", ws?.id, active?.id, (active as { lead_id?: string | null } | undefined)?.lead_id],
+    queryFn: async () => {
+      const leadId = (active as { lead_id?: string | null } | undefined)?.lead_id ?? null;
+      const [{ data: pipes }, { data: lead }] = await Promise.all([
+        supabase.from("pipelines").select("id, name").eq("workspace_id", ws!.id).order("position").limit(1),
+        leadId
+          ? supabase.from("leads").select("id, title, value, priority, notes, stage_id, pipeline_id").eq("id", leadId).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      const pipe = pipes?.[0] ?? null;
+      const { data: stages } = pipe
+        ? await supabase.from("pipeline_stages").select("id, name, position").eq("pipeline_id", pipe.id).order("position")
+        : { data: [] };
+      return { pipe, stages: stages ?? [], lead: lead as { id: string; title: string; value: number | null; priority: "low" | "medium" | "high" | "urgent"; notes?: string | null; stage_id: string; pipeline_id: string } | null };
+    },
+  });
+
+  useEffect(() => {
+    const lead = leadContextQ.data?.lead;
+    const contactName = (active?.contacts as { name?: string } | null)?.name ?? "Lead WhatsApp";
+    setLeadTitle(lead?.title ?? contactName);
+    setLeadValue(lead?.value ? String(lead.value) : "");
+    setLeadPriority(lead?.priority ?? "medium");
+    setLeadNotes(lead?.notes ?? "");
+  }, [leadContextQ.data?.lead, active?.id, active?.contacts]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgsQ.data]);
@@ -281,6 +319,81 @@ function ConversationsPage() {
       toast.error(e instanceof Error ? e.message : "Falha ao enviar");
       setText(content);
     } finally { setSending(false); }
+  }
+
+  function fileToBase64(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? "").split(",").pop() ?? "");
+      reader.onerror = () => reject(new Error("Falha ao ler arquivo"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function sendAttachment(file: File | undefined) {
+    if (!file || !active || !ws) return;
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Use até 16 MB.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const base64 = await fileToBase64(file);
+      await sendWaFile({ data: {
+        conversationId: active.id,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        base64,
+        caption: text.trim() || null,
+      }});
+      setText("");
+      qc.invalidateQueries({ queryKey: ["messages", active.id] });
+      qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+      toast.success("Anexo enviado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao enviar anexo");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function saveLead() {
+    if (!active || !ws || !leadContextQ.data?.pipe || !leadContextQ.data.stages[0]) return;
+    const contactId = (active as { contact_id?: string | null }).contact_id ?? null;
+    const lead = leadContextQ.data.lead;
+    const payload = {
+      title: leadTitle.trim() || ((active.contacts as { name?: string } | null)?.name ?? "Lead WhatsApp"),
+      value: Number(leadValue || 0),
+      priority: leadPriority,
+      notes: leadNotes.trim() || null,
+      last_interaction_at: new Date().toISOString(),
+    };
+    try {
+      if (lead) {
+        const { error } = await supabase.from("leads").update(payload).eq("id", lead.id);
+        if (error) throw error;
+      } else {
+        const { data: user } = await supabase.auth.getUser();
+        const { data: created, error } = await supabase.from("leads").insert({
+          workspace_id: ws.id,
+          pipeline_id: leadContextQ.data.pipe.id,
+          stage_id: leadContextQ.data.stages[0].id,
+          contact_id: contactId,
+          owner_id: user.user?.id,
+          source: "WhatsApp",
+          ...payload,
+        }).select("id").single();
+        if (error) throw error;
+        await supabase.from("conversations").update({ lead_id: created?.id }).eq("id", active.id);
+      }
+      toast.success("Lead salvo");
+      qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
+      qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+      qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao salvar lead");
+    }
   }
 
   async function take() {
@@ -705,19 +818,94 @@ function ConversationsPage() {
 
             </div>
             <div className="border-t border-border p-3 flex gap-2 shrink-0">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                onChange={(e) => sendAttachment(e.target.files?.[0])}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled={sending || uploading}
+                onClick={() => fileInputRef.current?.click()}
+                title="Anexar arquivo"
+              >
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+              </Button>
               <Input
                 value={text} onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                 placeholder="Digite uma mensagem..."
-                disabled={sending}
+                disabled={sending || uploading}
               />
-              <Button onClick={sendMessage} disabled={sending} className="gradient-brand text-primary-foreground border-0">
+              <Button onClick={sendMessage} disabled={sending || uploading} className="gradient-brand text-primary-foreground border-0">
                 <Send className="h-4 w-4" />
               </Button>
             </div>
           </>
         )}
       </div>
+      {active && (
+        <aside className="w-80 border-l border-border bg-surface/20 p-4 overflow-y-auto shrink-0">
+          <div className="flex items-center gap-2 mb-4">
+            <BriefcaseBusiness className="h-4 w-4 text-primary" />
+            <div>
+              <h2 className="text-sm font-semibold">Lead</h2>
+              <p className="text-[11px] text-muted-foreground">Informações comerciais da conversa</p>
+            </div>
+          </div>
+          {!leadContextQ.data?.pipe || !leadContextQ.data.stages[0] ? (
+            <div className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
+              Crie um pipeline antes de salvar leads.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {leadContextQ.data.lead && (
+                <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
+                  Lead vinculado ao pipeline.
+                </div>
+              )}
+              <div>
+                <Label className="text-xs">Título</Label>
+                <Input value={leadTitle} onChange={(e) => setLeadTitle(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Valor</Label>
+                  <Input value={leadValue} onChange={(e) => setLeadValue(e.target.value)} type="number" step="0.01" className="h-8 text-xs" placeholder="0,00" />
+                </div>
+                <div>
+                  <Label className="text-xs">Prioridade</Label>
+                  <Select value={leadPriority} onValueChange={(v) => setLeadPriority(v as typeof leadPriority)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Baixa</SelectItem>
+                      <SelectItem value="medium">Média</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                      <SelectItem value="urgent">Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Informações do lead</Label>
+                <Textarea
+                  value={leadNotes}
+                  onChange={(e) => setLeadNotes(e.target.value)}
+                  className="min-h-36 text-xs resize-none"
+                  placeholder="Necessidade, orçamento, prazo, objeções, próximos passos..."
+                />
+              </div>
+              <Button onClick={saveLead} className="w-full gradient-brand text-primary-foreground border-0">
+                <Save className="h-4 w-4 mr-1" /> Salvar lead
+              </Button>
+            </div>
+          )}
+        </aside>
+      )}
     </div>
   );
 }
