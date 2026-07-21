@@ -269,14 +269,14 @@ function ConversationsPage() {
       const [{ data: pipes }, { data: lead }] = await Promise.all([
         supabase.from("pipelines").select("id, name").eq("workspace_id", ws!.id).order("position").limit(1),
         leadId
-          ? supabase.from("leads").select("id, title, value, priority, notes, stage_id, pipeline_id").eq("id", leadId).maybeSingle()
+          ? supabase.from("leads").select("id, title, value, priority, notes, stage_id, pipeline_id, custom_fields").eq("id", leadId).maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
       const pipe = pipes?.[0] ?? null;
       const { data: stages } = pipe
         ? await supabase.from("pipeline_stages").select("id, name, position").eq("pipeline_id", pipe.id).order("position")
         : { data: [] };
-      return { pipe, stages: stages ?? [], lead: lead as { id: string; title: string; value: number | null; priority: "low" | "medium" | "high" | "urgent"; notes?: string | null; stage_id: string; pipeline_id: string } | null };
+      return { pipe, stages: stages ?? [], lead: lead as { id: string; title: string; value: number | null; priority: "low" | "medium" | "high" | "urgent"; notes?: string | null; stage_id: string; pipeline_id: string; custom_fields?: Record<string, string> | null } | null };
     },
   });
 
@@ -287,6 +287,7 @@ function ConversationsPage() {
     setLeadValue(lead?.value ? String(lead.value) : "");
     setLeadPriority(lead?.priority ?? "medium");
     setLeadNotes(lead?.notes ?? "");
+    setLeadFields((lead?.custom_fields ?? {}) as Record<string, string>);
   }, [leadContextQ.data?.lead, active?.id, active?.contacts]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
