@@ -301,63 +301,7 @@ function ConversationsPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
 
-  async function simulateNewConversation() {
-    if (!ws) return;
-    const names = ["Ana Souza", "Carlos Lima", "Beatriz Rocha", "Diego Alves", "Fernanda Melo", "Rafael Costa"];
-    const firstMsgs = [
-      "Oi! Vi o site de vocês, ainda têm horário essa semana?",
-      "Bom dia, quanto custa o plano mensal?",
-      "Olá, gostaria de mais informações por favor 🙂",
-      "Vocês atendem também aos sábados?",
-      "Oi, meu amigo indicou vocês — como funciona?",
-    ];
-    const name = names[Math.floor(Math.random() * names.length)];
-    const phone = "+55119" + Math.floor(10000000 + Math.random() * 89999999);
-    const first = firstMsgs[Math.floor(Math.random() * firstMsgs.length)];
-    try {
-      const { data: contact, error: cErr } = await supabase.from("contacts")
-        .insert({ workspace_id: ws.id, type: "person", name, phone })
-        .select("id").single();
-      if (cErr) throw cErr;
-      const { data: conv, error: convErr } = await supabase.from("conversations")
-        .insert({
-          workspace_id: ws.id, contact_id: contact.id, channel: "webchat", status: "open",
-          last_message_preview: first, last_message_at: new Date().toISOString(),
-        })
-        .select("id").single();
-      if (convErr) throw convErr;
-      await supabase.from("messages").insert({
-        workspace_id: ws.id, conversation_id: conv.id, direction: "inbound",
-        sender_type: "contact", content: first,
-      });
-      qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
-      setActiveId(conv.id);
-      toast.success(`Nova conversa simulada de ${name}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao simular");
-    }
-  }
 
-  async function simulateIncomingReply() {
-    if (!active || !ws) return;
-    const replies = [
-      "Perfeito, obrigado!",
-      "Entendi, e como faço pra reservar?",
-      "Legal, pode me mandar por escrito?",
-      "Hmm, vou pensar e te aviso 👍",
-      "Ah ótimo! Tem desconto pra pagamento à vista?",
-    ];
-    const content = replies[Math.floor(Math.random() * replies.length)];
-    await supabase.from("messages").insert({
-      workspace_id: ws.id, conversation_id: active.id, direction: "inbound",
-      sender_type: "contact", content,
-    });
-    await supabase.from("conversations").update({
-      last_message_preview: content, last_message_at: new Date().toISOString(),
-    }).eq("id", active.id);
-    qc.invalidateQueries({ queryKey: ["messages", active.id] });
-    qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
-  }
 
   function toggleLabelFilter(id: string) {
     setView((v) => ({
