@@ -89,11 +89,35 @@ function ConversationsPage() {
     queryKey: ["conversations", ws?.id],
     queryFn: async () => {
       const { data } = await supabase.from("conversations")
-        .select("*, contacts:contact_id(name)")
+        .select("*, contacts:contact_id(name, type)")
         .eq("workspace_id", ws!.id)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(200);
       return data ?? [];
+    },
+  });
+
+  // Membros do workspace + perfis para mostrar quem está atendendo cada conversa
+  const membersQ = useQuery({
+    enabled: !!ws?.id,
+    queryKey: ["workspace-members-profiles", ws?.id],
+    queryFn: async () => {
+      const { data: members } = await supabase
+        .from("workspace_members")
+        .select("user_id, role")
+        .eq("workspace_id", ws!.id);
+      const ids = (members ?? []).map((m) => m.user_id);
+      if (ids.length === 0) return new Map<string, { name: string; role: string }>();
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", ids);
+      const byId = new Map<string, { name: string; role: string }>();
+      (members ?? []).forEach((m) => {
+        const p = (profiles ?? []).find((x) => x.id === m.user_id);
+        byId.set(m.user_id, { name: p?.full_name ?? "Membro", role: m.role });
+      });
+      return byId;
     },
   });
 
