@@ -746,7 +746,6 @@ function SendTemplateDialog({
 function QrSyncContent({
   qrModal,
   currentStatus,
-  lastWebhookAt,
   onRefreshQr,
   refreshing,
   onCheckStatus,
@@ -755,7 +754,6 @@ function QrSyncContent({
 }: {
   qrModal: { id: string; qr: string | null } | null;
   currentStatus: string | null;
-  lastWebhookAt: string | null;
   onRefreshQr: () => void;
   refreshing: boolean;
   onCheckStatus: () => void;
@@ -764,18 +762,28 @@ function QrSyncContent({
 }) {
   const checkStatus = useServerFn(checkEvolutionStatus);
   const [autoState, setAutoState] = useState<string | null>(null);
+  const [scanConfirmed, setScanConfirmed] = useState(false);
   const [syncStart, setSyncStart] = useState<number | null>(null);
   const [syncElapsed, setSyncElapsed] = useState(0);
   const [qrShownAt, setQrShownAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    setAutoState(null);
+    setScanConfirmed(false);
+    setSyncStart(null);
+    setSyncElapsed(0);
+    setQrShownAt(null);
+  }, [qrModal?.id]);
 
   // Marca quando o QR foi efetivamente exibido para o usuário
   useEffect(() => {
     if (qrModal?.qr && qrShownAt === null) setQrShownAt(Date.now());
   }, [qrModal?.qr, qrShownAt]);
 
-  // Poll the Evolution status every 3s while the modal is open
+  // Só começa a consultar o estado depois que o usuário confirma que escaneou.
+  // Isso evita pular o QR por causa de status/webhooks antigos da instância.
   useEffect(() => {
-    if (!qrModal) return;
+    if (!qrModal || !scanConfirmed) return;
     let cancelled = false;
     const tick = async () => {
       try {
@@ -789,26 +797,24 @@ function QrSyncContent({
       cancelled = true;
       clearInterval(iv);
     };
-  }, [qrModal, checkStatus]);
+  }, [qrModal, scanConfirmed, checkStatus]);
 
-  // Status efetivo: prefere o polling ao vivo
+  // Status efetivo: antes da confirmação manual, ignore qualquer estado salvo.
   const status = autoState ?? currentStatus ?? "qr";
-  // Só consideramos "conectado" quando a Evolution reporta connected explicitamente
-  // após o QR ter sido exibido (evita falso-positivo de webhooks antigos).
-  // Só consideramos "sincronizando" depois que o usuário viu o QR e o status
-  // mudou (evita mostrar "sincronizando" no estado inicial "connecting" da instância).
   const qrWasShown = qrShownAt !== null;
-  const phase: "qr" | "syncing" | "connected" =
-    status === "connected" && qrWasShown
+  const phase: "qr" | "checking" | "syncing" | "connected" =
+    !scanConfirmed || !qrWasShown
+      ? "qr"
+      : status === "connected"
       ? "connected"
-      : qrWasShown && status !== "qr" && status !== "disconnected"
+      : status === "connecting"
         ? "syncing"
-        : "qr";
+        : "checking";
 
 
   // Cronômetro de sincronização
   useEffect(() => {
-    if (phase === "syncing") {
+    if (phase === "syncing" || phase === "checking") {
       if (syncStart === null) setSyncStart(Date.now());
     } else if (phase === "qr" && syncStart !== null) {
       setSyncStart(null);
@@ -817,7 +823,7 @@ function QrSyncContent({
   }, [phase, syncStart]);
 
   useEffect(() => {
-    if (phase !== "syncing" || syncStart === null) return;
+    if ((phase !== "syncing" && phase !== "checking") || syncStart === null) return;
     const iv = setInterval(() => setSyncElapsed(Math.floor((Date.now() - syncStart) / 1000)), 500);
     return () => clearInterval(iv);
   }, [phase, syncStart]);
@@ -830,6 +836,8 @@ function QrSyncContent({
             ? "WhatsApp conectado!"
             : phase === "syncing"
               ? "Sincronizando conversas…"
+              : phase === "checking"
+                ? "Aguardando leitura do QR…"
               : "Escaneie no seu WhatsApp"}
         </DialogTitle>
         <DialogDescription>
@@ -837,6 +845,8 @@ function QrSyncContent({
             ? "Seu número está pronto para receber e enviar mensagens pelo CRM."
             : phase === "syncing"
               ? "O QR foi lido. Estamos baixando as conversas e contatos do seu WhatsApp — isso pode levar alguns minutos na primeira vez."
+              : phase === "checking"
+                ? "Ainda não detectamos uma conexão nova. Mantenha esta janela aberta e confirme no celular se o QR foi lido."
               : "WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho. O celular pode continuar usando normalmente."}
         </DialogDescription>
       </DialogHeader>
@@ -852,7 +862,7 @@ function QrSyncContent({
           )
         )}
 
-        {phase === "syncing" && (
+        {(phase === "syncing" || phase === "checking") && (
           <div className="w-full flex flex-col items-center gap-4 py-4">
             <div className="relative">
               <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
@@ -864,7 +874,7 @@ function QrSyncContent({
                 <div className="h-full w-1/3 bg-primary animate-[slide_1.4s_ease-in-out_infinite]" style={{ animation: "wa-sync 1.4s ease-in-out infinite" }} />
               </div>
               <p className="text-xs text-center text-muted-foreground">
-                Sincronizando há {syncElapsed}s · não feche esta janela
+                {phase === "syncing" ? "Sincronizando" : "Verificando leitura"} há {syncElapsed}s · não feche esta janela
               </p>
             </div>
             <style>{`@keyframes wa-sync { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }`}</style>
@@ -884,7 +894,12 @@ function QrSyncContent({
         )}
 
         {phase !== "connected" && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
+            {phase === "qr" && (
+              <Button size="sm" onClick={() => setScanConfirmed(true)} disabled={!qrModal?.qr} className="gradient-brand text-primary-foreground border-0">
+                <Smartphone className="h-4 w-4 mr-1" /> Já escaneei o QR
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={onRefreshQr} disabled={refreshing}>
               <RefreshCw className={cn("h-4 w-4 mr-1", refreshing && "animate-spin")} /> Novo QR
             </Button>
