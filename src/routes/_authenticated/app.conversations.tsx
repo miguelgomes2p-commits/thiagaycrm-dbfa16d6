@@ -565,16 +565,19 @@ function ConversationsPage() {
   async function saveLead() {
     if (!active || !ws || !leadContextQ.data?.pipe || !leadContextQ.data.stages[0]) return;
     const contactId = (active as { contact_id?: string | null }).contact_id ?? null;
+    const currentContactName = (active.contacts as { name?: string } | null)?.name ?? "";
     const lead = leadContextQ.data.lead;
     const stages = leadContextQ.data.stages as Array<{ id: string; type?: string }>;
     const chosenStage = stages.find((s) => s.id === leadStageId) ?? stages[0];
+    const finalTitle = leadTitle.trim() || currentContactName || "Lead WhatsApp";
     const payload: Record<string, unknown> = {
-      title: leadTitle.trim() || ((active.contacts as { name?: string } | null)?.name ?? "Lead WhatsApp"),
+      title: finalTitle,
       value: Number(leadValue || 0),
       priority: leadPriority,
       notes: leadNotes.trim() || null,
       custom_fields: leadFields,
       stage_id: chosenStage.id,
+      pipeline_id: leadContextQ.data.pipe.id,
       last_interaction_at: new Date().toISOString(),
     };
     if (chosenStage.type === "won") payload.won_at = new Date().toISOString();
@@ -588,8 +591,6 @@ function ConversationsPage() {
         const { data: user } = await supabase.auth.getUser();
         const insertPayload = {
           workspace_id: ws.id,
-          pipeline_id: leadContextQ.data.pipe.id,
-          stage_id: chosenStage.id,
           contact_id: contactId,
           owner_id: user.user?.id,
           source: "WhatsApp",
@@ -600,10 +601,19 @@ function ConversationsPage() {
         if (error) throw error;
         await supabase.from("conversations").update({ lead_id: created?.id }).eq("id", active.id);
       }
+      // Sync contact name when the lead title changed
+      if (contactId && finalTitle && finalTitle !== currentContactName && finalTitle !== "Lead WhatsApp") {
+        const { error: contactErr } = await supabase
+          .from("contacts")
+          .update({ name: finalTitle })
+          .eq("id", contactId);
+        if (contactErr) console.warn("Falha ao sincronizar nome do contato:", contactErr.message);
+      }
       toast.success("Lead salvo");
       qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
       qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
       qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
+      qc.invalidateQueries({ queryKey: ["dashboard", ws.id] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao salvar lead");
     }
