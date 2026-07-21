@@ -170,7 +170,7 @@ export function evolutionGetBase64FromMedia(
     `/chat/getBase64FromMediaMessage/${encodeURIComponent(instanceName)}`,
     {
       method: "POST",
-      body: JSON.stringify({ message: { key: message.key }, convertToMp4: false }),
+      body: JSON.stringify({ message, convertToMp4: false }),
     },
   );
 }
