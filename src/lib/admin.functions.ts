@@ -39,3 +39,40 @@ export const deleteUserById = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+export const listAllWorkspaces = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    assertSuperAdmin(context.claims as Record<string, unknown>);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: workspaces, error } = await supabaseAdmin
+      .from("workspaces")
+      .select("id, name, slug, created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const { data: members } = await supabaseAdmin
+      .from("workspace_members").select("workspace_id, user_id, role");
+    const byWs = new Map<string, { count: number; roles: Record<string, number> }>();
+    for (const m of members ?? []) {
+      const cur = byWs.get(m.workspace_id) ?? { count: 0, roles: {} };
+      cur.count++;
+      cur.roles[m.role] = (cur.roles[m.role] ?? 0) + 1;
+      byWs.set(m.workspace_id, cur);
+    }
+    return (workspaces ?? []).map((w) => ({
+      ...w,
+      member_count: byWs.get(w.id)?.count ?? 0,
+      roles: byWs.get(w.id)?.roles ?? {},
+    }));
+  });
+
+export const deleteWorkspaceById = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { workspaceId: string }) => data)
+  .handler(async ({ data, context }) => {
+    assertSuperAdmin(context.claims as Record<string, unknown>);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("workspaces").delete().eq("id", data.workspaceId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
