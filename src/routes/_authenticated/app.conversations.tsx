@@ -277,7 +277,7 @@ function ConversationsPage() {
       ]);
       const pipe = pipes?.[0] ?? null;
       const { data: stages } = pipe
-        ? await supabase.from("pipeline_stages").select("id, name, position").eq("pipeline_id", pipe.id).order("position")
+        ? await supabase.from("pipeline_stages").select("id, name, position, type").eq("pipeline_id", pipe.id).order("position")
         : { data: [] };
       return { pipe, stages: stages ?? [], lead: lead as { id: string; title: string; value: number | null; priority: "low" | "medium" | "high" | "urgent"; notes?: string | null; stage_id: string; pipeline_id: string; custom_fields?: Record<string, string> | null } | null };
     },
