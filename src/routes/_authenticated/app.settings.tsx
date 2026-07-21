@@ -3,14 +3,14 @@ import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, Users, Palette, UserPlus, Trash2, Shield } from "lucide-react";
+import { Building2, Users, Palette, UserPlus, Trash2, Shield, Copy, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { listWorkspaceMembers, addMemberByEmail, updateMemberRole, removeMember } from "@/lib/workspace.functions";
+import { listWorkspaceMembers, inviteMemberByEmail, listWorkspaceInvitations, updateMemberRole, removeMember } from "@/lib/workspace.functions";
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
   component: SettingsPage,
@@ -31,7 +31,8 @@ function SettingsPage() {
   const qc = useQueryClient();
 
   const listFn = useServerFn(listWorkspaceMembers);
-  const addFn = useServerFn(addMemberByEmail);
+  const inviteFn = useServerFn(inviteMemberByEmail);
+  const listInvitesFn = useServerFn(listWorkspaceInvitations);
   const updFn = useServerFn(updateMemberRole);
   const rmFn = useServerFn(removeMember);
 
@@ -44,16 +45,34 @@ function SettingsPage() {
   const canManage = ws?.role === "owner" || ws?.role === "admin";
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("agent");
+  const [lastInviteLink, setLastInviteLink] = useState("");
 
-  const addM = useMutation({
-    mutationFn: () => addFn({ data: { workspaceId: ws!.id, email, role } }),
-    onSuccess: () => {
-      toast.success("Membro adicionado ao workspace");
+  const invitationsQ = useQuery({
+    enabled: !!ws?.id && canManage,
+    queryKey: ["ws-invitations", ws?.id],
+    queryFn: () => listInvitesFn({ data: { workspaceId: ws!.id } }),
+  });
+
+  const inviteM = useMutation({
+    mutationFn: () => inviteFn({ data: { workspaceId: ws!.id, email, role } }),
+    onSuccess: (result) => {
+      setLastInviteLink(result.inviteLink);
+      if (result.emailSent) {
+        toast.success("Convite enviado por e-mail");
+      } else {
+        toast.warning("Convite gerado. Copie o link e envie ao membro.");
+      }
       setEmail(""); setRole("agent");
-      qc.invalidateQueries({ queryKey: ["ws-members-full"] });
+      qc.invalidateQueries({ queryKey: ["ws-invitations"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  async function copyInviteLink(link = lastInviteLink) {
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    toast.success("Link copiado");
+  }
 
   const updM = useMutation({
     mutationFn: (p: { userId: string; role: Role }) =>
@@ -101,11 +120,11 @@ function SettingsPage() {
 
         {canManage && (
           <form
-            onSubmit={(e) => { e.preventDefault(); if (email.trim()) addM.mutate(); }}
+            onSubmit={(e) => { e.preventDefault(); if (email.trim()) inviteM.mutate(); }}
             className="flex flex-col sm:flex-row gap-2 mb-4 p-3 rounded-lg bg-surface/40 border border-border"
           >
             <div className="flex-1">
-              <Label className="text-xs">Email do usuário (deve ter conta criada)</Label>
+              <Label className="text-xs">Email do convidado</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="fulano@empresa.com" required />
             </div>
             <div className="sm:w-56">
@@ -119,10 +138,24 @@ function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" disabled={addM.isPending} className="gradient-brand text-primary-foreground border-0 sm:self-end">
-              <UserPlus className="h-4 w-4 mr-1" /> {addM.isPending ? "Adicionando..." : "Adicionar"}
+            <Button type="submit" disabled={inviteM.isPending} className="gradient-brand text-primary-foreground border-0 sm:self-end">
+              <UserPlus className="h-4 w-4 mr-1" /> {inviteM.isPending ? "Gerando..." : "Convidar"}
             </Button>
           </form>
+        )}
+
+        {lastInviteLink && (
+          <div className="mb-4 rounded-lg border border-primary/30 bg-primary/10 p-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-primary">
+              <CheckCircle2 className="h-4 w-4" /> Convite pronto
+            </div>
+            <div className="mt-2 flex gap-2">
+              <Input value={lastInviteLink} readOnly className="h-8 text-xs font-mono" />
+              <Button type="button" size="sm" variant="outline" onClick={() => copyInviteLink()}>
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
         )}
 
         <div className="divide-y divide-border">
@@ -166,6 +199,29 @@ function SettingsPage() {
           <p className="text-xs text-muted-foreground mt-3">
             Apenas owner/admin do workspace podem adicionar ou remover membros.
           </p>
+        )}
+
+        {canManage && (invitationsQ.data?.length ?? 0) > 0 && (
+          <div className="mt-5 border-t border-border pt-4">
+            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Convites recentes</div>
+            <div className="space-y-2">
+              {invitationsQ.data?.map((inv) => {
+                const accepted = !!inv.accepted_at;
+                const expired = !accepted && inv.expires_at && new Date(inv.expires_at).getTime() < Date.now();
+                return (
+                  <div key={inv.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface/30 px-3 py-2 text-xs">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{inv.email}</div>
+                      <div className="text-muted-foreground">{inv.role}</div>
+                    </div>
+                    <span className={accepted ? "text-success" : expired ? "text-destructive" : "text-amber-400"}>
+                      {accepted ? "aceito" : expired ? "expirado" : "pendente"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
       </section>
 

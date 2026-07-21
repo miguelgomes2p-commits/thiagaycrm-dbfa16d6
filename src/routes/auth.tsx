@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -6,17 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { acceptWorkspaceInvitation } from "@/lib/workspace.functions";
 import { toast } from "sonner";
-import { Loader2, Mail, ArrowLeft } from "lucide-react";
+import { Loader2, Mail, ArrowLeft, UserPlus } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search) => ({
+    invite: typeof search.invite === "string" ? search.invite : undefined,
+  }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { invite } = Route.useSearch();
+  const acceptInvite = useServerFn(acceptWorkspaceInvitation);
   const [loading, setLoading] = useState(false);
   const [existingSession, setExistingSession] = useState<null | { email: string | null }>(null);
+  const [inviteAccepted, setInviteAccepted] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -26,7 +34,22 @@ function AuthPage() {
     });
   }, []);
 
+  async function acceptInviteIfNeeded() {
+    if (!invite || inviteAccepted) return;
+    await acceptInvite({ data: { token: invite } });
+    setInviteAccepted(true);
+    toast.success("Convite aceito. Você já está no workspace.");
+  }
+
   async function handleContinue() {
+    try {
+      setLoading(true);
+      await acceptInviteIfNeeded();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao aceitar convite");
+      setLoading(false);
+      return;
+    }
     navigate({ to: "/app" });
   }
 
@@ -36,6 +59,7 @@ function AuthPage() {
     localStorage.removeItem("lupus:lastActivity");
     localStorage.removeItem("lupus:sessionStart");
     setExistingSession(null);
+    setInviteAccepted(false);
     setLoading(false);
   }
 
@@ -43,7 +67,7 @@ function AuthPage() {
   async function handleGoogle() {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/auth",
+      redirect_uri: window.location.origin + "/auth" + (invite ? `?invite=${encodeURIComponent(invite)}` : ""),
     });
     if (result.error) {
       toast.error("Falha no login com Google");
@@ -51,7 +75,13 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/app" });
+    try {
+      await acceptInviteIfNeeded();
+      navigate({ to: "/app" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao aceitar convite");
+      setLoading(false);
+    }
   }
 
   async function handleEmail(e: React.FormEvent<HTMLFormElement>, mode: "signin" | "signup") {
@@ -66,7 +96,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email, password,
           options: {
-            emailRedirectTo: window.location.origin + "/auth",
+            emailRedirectTo: window.location.origin + "/auth" + (invite ? `?invite=${encodeURIComponent(invite)}` : ""),
             data: { full_name: fullName },
           },
         });
@@ -76,6 +106,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
+      await acceptInviteIfNeeded();
       navigate({ to: "/app" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro na autenticação");
@@ -118,6 +149,17 @@ function AuthPage() {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Bem-vindo</h1>
           <p className="text-sm text-muted-foreground mt-1">Entre ou crie sua conta para continuar.</p>
+
+          {invite && (
+            <div className="mt-5 rounded-lg border border-primary/30 bg-primary/10 p-4 text-sm">
+              <div className="flex items-center gap-2 font-medium text-primary">
+                <UserPlus className="h-4 w-4" /> Convite de workspace
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use o mesmo email que recebeu o convite para entrar diretamente na equipe.
+              </p>
+            </div>
+          )}
 
           {existingSession && (
             <div className="mt-6 rounded-lg border border-border bg-card p-4">
