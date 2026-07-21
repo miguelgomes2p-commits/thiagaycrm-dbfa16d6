@@ -1139,3 +1139,27 @@ function ConversationsPage() {
     </div>
   );
 }
+
+function LeadTextField({ label, value, onChange, placeholder }: { label: string; value?: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <div>
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="h-7 text-xs mt-0.5" placeholder={placeholder} />
+    </div>
+  );
+}
+
+function LeadSelectField({ label, value, onChange, options }: { label: string; value?: string; onChange: (v: string) => void; options: string[] }) {
+  return (
+    <div>
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Select value={value ?? ""} onValueChange={onChange}>
+        <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue placeholder="—" /></SelectTrigger>
+        <SelectContent>
+          {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
