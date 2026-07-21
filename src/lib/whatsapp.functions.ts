@@ -258,18 +258,26 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
         waId = resp.messages?.[0]?.id ?? null;
       } else if (num.provider === "evolution") {
         if (!num.provider_base_url || !num.provider_api_key || !num.instance_name) throw new Error("Configuração da instância Evolution ausente.");
-        const { evolutionSendMedia } = await import("@/lib/evolution.server");
-        const resp = await evolutionSendMedia(
-          num.provider_base_url,
-          num.provider_api_key,
-          num.instance_name,
-          conv.wa_contact_wa_id,
-          mediaType,
-          cleanBase64,
-          data.mimeType,
-          safeName,
-          data.caption ?? undefined,
-        );
+        const { evolutionSendMedia, evolutionSendWhatsAppAudio } = await import("@/lib/evolution.server");
+        const resp = mediaType === "audio"
+          ? await evolutionSendWhatsAppAudio(
+              num.provider_base_url,
+              num.provider_api_key,
+              num.instance_name,
+              conv.wa_contact_wa_id,
+              cleanBase64,
+            )
+          : await evolutionSendMedia(
+              num.provider_base_url,
+              num.provider_api_key,
+              num.instance_name,
+              conv.wa_contact_wa_id,
+              mediaType,
+              cleanBase64,
+              data.mimeType,
+              safeName,
+              data.caption ?? undefined,
+            );
         waId = resp.key?.id ?? null;
       } else {
         throw new Error(`Provedor ${num.provider} não implementado`);
