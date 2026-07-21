@@ -166,25 +166,6 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
     }
   });
 
-function extOf(mime: string, fileName: string) {
-  const fromName = fileName.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  if (fromName) return fromName;
-  const clean = mime.split(";")[0]?.toLowerCase();
-  const map: Record<string, string> = {
-    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
-    "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/webm": "webm", "audio/wav": "wav",
-    "video/mp4": "mp4", "video/webm": "webm", "application/pdf": "pdf", "text/plain": "txt",
-  };
-  return map[clean] ?? clean?.split("/")[1] ?? "bin";
-}
-
-function mediaTypeOf(mime: string): "image" | "audio" | "video" | "document" {
-  if (mime.startsWith("image/")) return "image";
-  if (mime.startsWith("audio/")) return "audio";
-  if (mime.startsWith("video/")) return "video";
-  return "document";
-}
-
 export const sendWhatsappAttachment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -197,6 +178,25 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
+    function extOf(mime: string, fileName: string) {
+      const fromName = fileName.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase();
+      if (fromName) return fromName;
+      const clean = mime.split(";")[0]?.toLowerCase();
+      const map: Record<string, string> = {
+        "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+        "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/webm": "webm", "audio/wav": "wav",
+        "video/mp4": "mp4", "video/webm": "webm", "application/pdf": "pdf", "text/plain": "txt",
+      };
+      return map[clean] ?? clean?.split("/")[1] ?? "bin";
+    }
+
+    function mediaTypeOf(mime: string): "image" | "audio" | "video" | "document" {
+      if (mime.startsWith("image/")) return "image";
+      if (mime.startsWith("audio/")) return "audio";
+      if (mime.startsWith("video/")) return "video";
+      return "document";
+    }
+
     const { data: conv, error: cerr } = await context.supabase
       .from("conversations")
       .select("id, workspace_id, whatsapp_number_id, wa_contact_wa_id")
