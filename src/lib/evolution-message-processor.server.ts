@@ -400,7 +400,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
       await supabaseAdmin.from("conversations").update({
         last_message_preview: (previewText ?? "").slice(0, 200),
         last_message_at: new Date().toISOString(),
-        unread_count: fromMe ? 0 : undefined,
+        ...(fromMe ? { unread_count: 0 } : {}),
       }).eq("id", convId);
 
       if (isNew && !fromMe) {
