@@ -301,6 +301,56 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
     }
   });
 
+export const syncEvolutionMessages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), webhookOrigin: z.string().url(), limit: z.number().int().positive().max(500).optional() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: num, error } = await context.supabase
+      .from("whatsapp_numbers")
+      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name")
+      .eq("id", data.id)
+      .single();
+    if (error || !num) throw new Error("Número não encontrado");
+    if (num.provider !== "evolution" || !num.provider_base_url || !num.provider_api_key || !num.instance_name) {
+      throw new Error("Este número não é uma instância Evolution");
+    }
+
+    const webhookUrl = evolutionWebhookUrl(data.webhookOrigin, data.id);
+    try {
+      const { evolutionFindMessages, evolutionSetWebhook } = await import("@/lib/evolution.server");
+      await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl).catch((webhookError) =>
+        logEvolutionError({
+          workspaceId: num.workspace_id,
+          whatsappNumberId: data.id,
+          operation: "syncMessages.setWebhook",
+          baseUrl: num.provider_base_url,
+          instanceName: num.instance_name,
+          error: webhookError,
+        }),
+      );
+      const payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, data.limit ?? 100);
+      const res = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event: "MESSAGES_SET", data: payload }),
+      });
+      if (!res.ok) throw new Error(`Processador de webhook respondeu ${res.status}: ${(await res.text()).slice(0, 500)}`);
+      return { ok: true };
+    } catch (e) {
+      await logEvolutionError({
+        workspaceId: num.workspace_id,
+        whatsappNumberId: data.id,
+        operation: "syncMessages",
+        baseUrl: num.provider_base_url,
+        instanceName: num.instance_name,
+        error: e,
+      });
+      throw new Error((e as { friendlyMessage?: string; message?: string })?.friendlyMessage ?? (e as Error)?.message ?? String(e));
+    }
+  });
+
 /**
  * Faz logout na Evolution (mantém a instância). Usuário precisará escanear QR de novo.
  */
