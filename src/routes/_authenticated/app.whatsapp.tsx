@@ -19,6 +19,7 @@ import {
   checkEvolutionStatus,
   logoutEvolutionInstance,
   listEvolutionErrorLogs,
+  syncEvolutionWebhook,
 } from "@/lib/evolution.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,7 @@ function WhatsappPage() {
   const refreshQr = useServerFn(refreshEvolutionQr);
   const checkStatus = useServerFn(checkEvolutionStatus);
   const logoutEvo = useServerFn(logoutEvolutionInstance);
+  const syncEvoWebhook = useServerFn(syncEvolutionWebhook);
 
   const numbersQ = useQuery({
     enabled: !!ws?.id,
@@ -188,9 +190,18 @@ function WhatsappPage() {
   });
 
   const checkStatusM = useMutation({
-    mutationFn: (id: string) => checkStatus({ data: { id } }),
+    mutationFn: (id: string) => checkStatus({ data: { id, webhookOrigin: origin } }),
     onSuccess: (r) => {
-      toast.info(`Estado: ${r.mapped}`);
+      toast.info(r.webhookUpdated ? `Estado: ${r.mapped} · webhook sincronizado` : `Estado: ${r.mapped}`);
+      qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const syncEvoWebhookM = useMutation({
+    mutationFn: (id: string) => syncEvoWebhook({ data: { id, webhookOrigin: origin } }),
+    onSuccess: () => {
+      toast.success("Webhook sincronizado. Envie uma mensagem de teste agora.");
       qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -364,6 +375,14 @@ function WhatsappPage() {
                           disabled={checkStatusM.isPending}
                         >
                           <RefreshCw className="h-4 w-4 mr-1" /> Status
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => syncEvoWebhookM.mutate(n.id)}
+                          disabled={syncEvoWebhookM.isPending}
+                        >
+                          <BellRing className="h-4 w-4 mr-1" /> Webhook
                         </Button>
                         <Button
                           size="sm"
