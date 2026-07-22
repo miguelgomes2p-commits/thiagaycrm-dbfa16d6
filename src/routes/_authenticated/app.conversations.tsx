@@ -1058,7 +1058,19 @@ function ConversationsPage() {
               </Avatar>
 
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</div>
+                <div className="text-sm font-medium truncate flex items-center gap-1.5">
+                  <span className="truncate">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</span>
+                  {(active as { contact_id?: string | null }).contact_id && (
+                    <button
+                      type="button"
+                      onClick={openRename}
+                      className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                      title="Renomear contato"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <span>{active.channel} · {active.status}</span>
                   {(() => {
