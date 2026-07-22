@@ -305,6 +305,69 @@ export type Database = {
           },
         ]
       }
+      evolution_error_logs: {
+        Row: {
+          base_url: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          instance_name: string | null
+          method: string | null
+          operation: string
+          request_body: Json | null
+          response_body: string | null
+          status: number | null
+          url: string | null
+          whatsapp_number_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          base_url?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          instance_name?: string | null
+          method?: string | null
+          operation: string
+          request_body?: Json | null
+          response_body?: string | null
+          status?: number | null
+          url?: string | null
+          whatsapp_number_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          base_url?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          instance_name?: string | null
+          method?: string | null
+          operation?: string
+          request_body?: Json | null
+          response_body?: string | null
+          status?: number | null
+          url?: string | null
+          whatsapp_number_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolution_error_logs_whatsapp_number_id_fkey"
+            columns: ["whatsapp_number_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolution_error_logs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labels: {
         Row: {
           archived: boolean
