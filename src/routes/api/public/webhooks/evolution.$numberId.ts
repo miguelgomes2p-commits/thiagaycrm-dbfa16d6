@@ -426,6 +426,16 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             }
 
 
+            if (key.id) {
+              const { data: existingMessage } = await supabaseAdmin
+                .from("messages")
+                .select("id")
+                .eq("workspace_id", num.workspace_id)
+                .eq("wa_message_id", key.id)
+                .maybeSingle();
+              if (existingMessage) continue;
+            }
+
             const { error: msgErr } = await supabaseAdmin.from("messages").insert({
               workspace_id: num.workspace_id,
               conversation_id: convId,
