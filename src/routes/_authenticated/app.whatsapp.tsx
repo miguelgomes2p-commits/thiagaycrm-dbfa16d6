@@ -92,6 +92,7 @@ function WhatsappPage() {
   const [openWizard, setOpenWizard] = useState(false);
   const [openSend, setOpenSend] = useState(false);
   const [qrModal, setQrModal] = useState<{ id: string; qr: string | null } | null>(null);
+  const [openLogs, setOpenLogs] = useState(false);
 
   const connectM = useMutation({
     mutationFn: (values: {
