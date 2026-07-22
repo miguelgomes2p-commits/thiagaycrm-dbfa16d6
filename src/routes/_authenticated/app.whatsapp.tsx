@@ -803,30 +803,31 @@ function QrSyncContent({
     return () => clearInterval(iv);
   }, []);
 
-  // Regras de fase:
-  // - "connected": instância aberta E (vimos QR antes OU usuário confirmou OU já passou >=6s sincronizando)
-  // - "syncing": estado connecting, OU acabou de ficar open e ainda estamos aguardando os primeiros webhooks
-  // - "qr": QR disponível esperando leitura
-  // - "checking": ainda não sabemos (primeira consulta)
+  // Regras de fase (prioridade: QR sempre vem antes de sincronizar):
+  // - "qr":         há QR disponível e o usuário ainda não confirmou leitura e a instância não está open
+  // - "checking":   QR ainda não chegou (buscando na Evolution)
+  // - "syncing":    usuário confirmou leitura OU vimos a transição para open — janela de espera
+  // - "connected":  open + confirmação/leitura anterior + janela mínima de sincronização decorrida
   const syncingWindowMs = 6000;
+  const hasQr = !!qrModal?.qr;
+  const userAckScanned = manualConfirm || (state === "connected" && everSawNonOpen);
   const stableConnected =
     state === "connected" &&
     connectedAt !== null &&
-    (everSawNonOpen || manualConfirm) &&
+    userAckScanned &&
     now - connectedAt >= syncingWindowMs;
 
-  const phase: "qr" | "checking" | "syncing" | "connected" =
-    error && !state
-      ? "checking"
-      : stableConnected
-      ? "connected"
-      : state === "connected"
-      ? "syncing" // ficou open — mostrar sincronizando por alguns segundos
-      : state === "connecting"
-      ? "syncing"
-      : qrModal?.qr
-      ? "qr"
-      : "checking";
+  let phase: "qr" | "checking" | "syncing" | "connected";
+  if (stableConnected) {
+    phase = "connected";
+  } else if (!userAckScanned) {
+    // Enquanto o usuário não confirmou o scan e não tivemos transição open,
+    // NUNCA pulamos para "syncing" — mantemos o QR visível.
+    phase = hasQr ? "qr" : "checking";
+  } else {
+    phase = "syncing";
+  }
+
 
   const elapsed = connectedAt !== null ? Math.max(0, Math.floor((now - connectedAt) / 1000)) : 0;
 
