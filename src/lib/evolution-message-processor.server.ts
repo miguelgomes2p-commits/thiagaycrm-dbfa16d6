@@ -196,6 +196,13 @@ function messageTimestampSeconds(m: Json): number | null {
   return toUnixSeconds(m.messageTimestamp ?? m.timestamp ?? m.message_timestamp ?? m.dateTime ?? m.createdAt ?? m.created_at);
 }
 
+function isProcessableWaId(waId: string) {
+  const digits = waId.replace(/\D/g, "");
+  if (digits !== waId) return false;
+  if (waId === "0") return false;
+  return digits.length >= 8;
+}
+
 function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; type: string | null; mime: string | null; caption: string | null; filename: string | null; inner: Json | undefined } {
   const inner = unwrapMessage(m.message);
   for (const k of MEDIA_KEYS) {
@@ -316,6 +323,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     const fromMe = asBoolean(key.fromMe);
     const isGroup = remoteJid.endsWith("@g.us");
     const waId = remoteJid.split("@")[0];
+    if (!isProcessableWaId(waId)) continue;
     const participantJid: string | undefined = key.participant;
     const participantId = participantJid ? participantJid.split("@")[0] : undefined;
     const pushName: string | undefined = m.pushName ?? m.pushname ?? m.push_name ?? m.name;
