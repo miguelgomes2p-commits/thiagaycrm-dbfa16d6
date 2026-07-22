@@ -12,6 +12,8 @@ export type EvolutionProcessStats = {
   skippedDuplicates: number;
   createdConversations: number;
   errors: number;
+  durationMs: number;
+  source: string;
 };
 
 async function logProcessorIssue(params: {
