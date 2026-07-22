@@ -128,7 +128,7 @@ function PipelinePage() {
           <p className="text-sm text-muted-foreground">Arraste os cartões entre etapas.</p>
         </div>
         <div className="flex items-center gap-2">
-          {pipelineQ.data?.pipe && ws && (
+          {isAdmin && pipelineQ.data?.pipe && ws && (
             <PipelineStagesManager pipelineId={pipelineQ.data.pipe.id} workspaceId={ws.id} />
           )}
           <Dialog open={open} onOpenChange={setOpen}>
