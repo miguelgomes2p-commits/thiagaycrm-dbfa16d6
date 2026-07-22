@@ -44,6 +44,10 @@ async function logEvolutionError(params: {
   }
 }
 
+function evolutionWebhookUrl(origin: string, whatsappNumberId: string) {
+  return `${origin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${whatsappNumberId}`;
+}
+
 /**
  * Cria e conecta uma instância na Evolution API, salvando o número aqui e
  * retornando o QR Code para escaneamento com o app oficial do WhatsApp.
@@ -204,7 +208,7 @@ export const refreshEvolutionQr = createServerFn({ method: "POST" })
  */
 export const checkEvolutionStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), webhookOrigin: z.string().url().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
       .from("whatsapp_numbers")
@@ -216,13 +220,29 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
       throw new Error("Este número não é uma instância Evolution");
     }
     try {
-      const { evolutionConnectionState } = await import("@/lib/evolution.server");
+      const { evolutionConnectionState, evolutionSetWebhook } = await import("@/lib/evolution.server");
+      let webhookUpdated = false;
+      if (data.webhookOrigin) {
+        try {
+          await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, evolutionWebhookUrl(data.webhookOrigin, data.id));
+          webhookUpdated = true;
+        } catch (webhookError) {
+          await logEvolutionError({
+            workspaceId: num.workspace_id,
+            whatsappNumberId: data.id,
+            operation: "checkStatus.setWebhook",
+            baseUrl: num.provider_base_url,
+            instanceName: num.instance_name,
+            error: webhookError,
+          });
+        }
+      }
       const s = await evolutionConnectionState(num.provider_base_url, num.provider_api_key, num.instance_name);
       const state = s.instance?.state ?? "close";
       const mapped =
         state === "open" ? "connected" : state === "connecting" ? "connecting" : state === "close" ? "disconnected" : "error";
       await context.supabase.from("whatsapp_numbers").update({ connection_status: mapped }).eq("id", data.id);
-      return { state, mapped };
+      return { state, mapped, webhookUpdated };
     } catch (e) {
       await logEvolutionError({
         workspaceId: num.workspace_id,
@@ -233,6 +253,41 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
         error: e,
       });
       throw new Error((e as Error)?.message ?? String(e));
+    }
+  });
+
+/**
+ * Reaponta o webhook da Evolution para a URL pública desta versão do app.
+ * Útil quando a instância foi criada em preview/publicação diferente.
+ */
+export const syncEvolutionWebhook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), webhookOrigin: z.string().url() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: num, error } = await context.supabase
+      .from("whatsapp_numbers")
+      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name")
+      .eq("id", data.id)
+      .single();
+    if (error || !num) throw new Error("Número não encontrado");
+    if (num.provider !== "evolution" || !num.provider_base_url || !num.provider_api_key || !num.instance_name) {
+      throw new Error("Este número não é uma instância Evolution");
+    }
+    const webhookUrl = evolutionWebhookUrl(data.webhookOrigin, data.id);
+    try {
+      const { evolutionSetWebhook } = await import("@/lib/evolution.server");
+      await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl);
+      return { ok: true, webhookUrl };
+    } catch (e) {
+      await logEvolutionError({
+        workspaceId: num.workspace_id,
+        whatsappNumberId: data.id,
+        operation: "syncWebhook",
+        baseUrl: num.provider_base_url,
+        instanceName: num.instance_name,
+        error: e,
+      });
+      throw new Error((e as { friendlyMessage?: string; message?: string })?.friendlyMessage ?? (e as Error)?.message ?? String(e));
     }
   });
 
