@@ -20,6 +20,7 @@ import {
   logoutEvolutionInstance,
   listEvolutionErrorLogs,
   syncEvolutionWebhook,
+  syncEvolutionMessages,
 } from "@/lib/evolution.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ function WhatsappPage() {
   const checkStatus = useServerFn(checkEvolutionStatus);
   const logoutEvo = useServerFn(logoutEvolutionInstance);
   const syncEvoWebhook = useServerFn(syncEvolutionWebhook);
+  const syncEvoMessages = useServerFn(syncEvolutionMessages);
 
   const numbersQ = useQuery({
     enabled: !!ws?.id,
@@ -199,6 +201,17 @@ function WhatsappPage() {
     onSuccess: () => {
       toast.success("Webhook sincronizado. Envie uma mensagem de teste agora.");
       qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const syncEvoMessagesM = useMutation({
+    mutationFn: (id: string) => syncEvoMessages({ data: { id, webhookOrigin: origin, limit: 200 } }),
+    onSuccess: () => {
+      toast.success("Mensagens sincronizadas. Confira a tela Conversas.");
+      qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["messages"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -379,6 +392,14 @@ function WhatsappPage() {
                           disabled={syncEvoWebhookM.isPending}
                         >
                           <BellRing className="h-4 w-4 mr-1" /> Webhook
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => syncEvoMessagesM.mutate(n.id)}
+                          disabled={syncEvoMessagesM.isPending}
+                        >
+                          <RefreshCw className={cn("h-4 w-4 mr-1", syncEvoMessagesM.isPending && "animate-spin")} /> Mensagens
                         </Button>
                         <Button
                           size="sm"
