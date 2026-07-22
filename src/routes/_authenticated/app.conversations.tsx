@@ -1413,6 +1413,29 @@ function ConversationsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={renameOpen} onOpenChange={(o) => !renameSaving && setRenameOpen(o)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Renomear contato</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Label>Nome do contato</Label>
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder="Nome"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") submitRename(); }}
+            />
+            <p className="text-xs text-muted-foreground">O novo nome será atualizado no Inbox, Contatos e Pipeline.</p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setRenameOpen(false)} disabled={renameSaving}>Cancelar</Button>
+              <Button onClick={submitRename} disabled={renameSaving} className="gradient-brand text-primary-foreground border-0">
+                {renameSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
