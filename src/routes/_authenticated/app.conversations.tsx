@@ -189,8 +189,8 @@ function ConversationsPage() {
     // - Só 1 aba do navegador por workspace roda o polling (via localStorage lease).
     // - Só dispara quando o webhook estiver "frio" (>2 min sem eventos).
     // Isso evita N vendedores × N abas hitting Evolution a cada 60s.
-    const WEBHOOK_FRESH_MS = 120_000;
-    const POLL_INTERVAL_MS = 120_000; // 2 min (era 60s)
+    const WEBHOOK_FRESH_MS = 60_000;
+    const POLL_INTERVAL_MS = 60_000;
     const LEASE_KEY = `lupus.inbox.poll.leader.${ws.id}`;
     const LEASE_TTL_MS = POLL_INTERVAL_MS + 30_000;
     const tabId = crypto.randomUUID();
