@@ -235,6 +235,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     const state: string = payload.data?.state ?? payload.data?.instance?.state ?? payload.instance?.state ?? "";
     const mapped = state === "open" ? "connected" : state === "connecting" ? "connecting" : state === "close" ? "disconnected" : null;
     if (mapped) await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: mapped }).eq("id", num.id);
+    stats.durationMs = Date.now() - startedAt;
     return stats;
   }
 
@@ -243,6 +244,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     if (qr) {
       await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: "qr", last_qr: qr, last_qr_at: new Date().toISOString() }).eq("id", num.id);
     }
+    stats.durationMs = Date.now() - startedAt;
     return stats;
   }
 
