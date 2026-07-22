@@ -294,9 +294,16 @@ function ConversationsPage() {
       });
     }
     const sorted = [...list];
+    const ts = (v: string | null | undefined) => (v ? new Date(v).getTime() : 0);
     switch (view.sortBy) {
       case "oldest":
-        sorted.sort((a, b) => (a.last_message_at ?? "").localeCompare(b.last_message_at ?? ""));
+        sorted.sort((a, b) => {
+          const ta = ts(a.last_message_at); const tb = ts(b.last_message_at);
+          if (ta === 0 && tb === 0) return 0;
+          if (ta === 0) return 1;
+          if (tb === 0) return -1;
+          return ta - tb;
+        });
         break;
       case "unread":
         sorted.sort((a, b) => (b.unread_count ?? 0) - (a.unread_count ?? 0));
@@ -309,7 +316,13 @@ function ConversationsPage() {
         });
         break;
       default:
-        sorted.sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
+        sorted.sort((a, b) => {
+          const ta = ts(a.last_message_at); const tb = ts(b.last_message_at);
+          if (ta === 0 && tb === 0) return 0;
+          if (ta === 0) return 1;
+          if (tb === 0) return -1;
+          return tb - ta;
+        });
     }
     return sorted;
   }, [convsQ.data, view, convLabelMap]);
