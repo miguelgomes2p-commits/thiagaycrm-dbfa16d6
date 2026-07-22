@@ -18,6 +18,7 @@ import {
   refreshEvolutionQr,
   checkEvolutionStatus,
   logoutEvolutionInstance,
+  listEvolutionErrorLogs,
 } from "@/lib/evolution.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import {
   Loader2,
   LogOut,
   Smartphone,
+  ScrollText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -90,6 +92,7 @@ function WhatsappPage() {
   const [openWizard, setOpenWizard] = useState(false);
   const [openSend, setOpenSend] = useState(false);
   const [qrModal, setQrModal] = useState<{ id: string; qr: string | null } | null>(null);
+  const [openLogs, setOpenLogs] = useState(false);
 
   const connectM = useMutation({
     mutationFn: (values: {
@@ -203,36 +206,46 @@ function WhatsappPage() {
   });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">WhatsApp Business</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5 md:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">WhatsApp Business</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">
             Conecte múltiplos números: oficial via Cloud API ou espelhado por QR Code (Evolution/Z-API).
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => setOpenWizard(true)}>
-            <Rocket className="h-4 w-4 mr-1" /> Guia Meta Cloud
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <Button variant="outline" size="sm" onClick={() => setOpenWizard(true)}>
+            <Rocket className="h-4 w-4 mr-1" /> <span className="truncate">Guia Meta</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setOpenLogs(true)}>
+            <ScrollText className="h-4 w-4 mr-1" /> <span className="truncate">Logs</span>
           </Button>
           <Dialog open={openEvo} onOpenChange={setOpenEvo}>
             <DialogTrigger asChild>
-              <Button variant="outline">
-                <QrCode className="h-4 w-4 mr-1" /> Conectar por QR Code
+              <Button variant="outline" size="sm">
+                <QrCode className="h-4 w-4 mr-1" /> <span className="truncate">QR Code</span>
               </Button>
             </DialogTrigger>
             <EvolutionConnectDialog onSubmit={(v) => createEvoM.mutate(v)} loading={createEvoM.isPending} />
           </Dialog>
           <Dialog open={openConnect} onOpenChange={setOpenConnect}>
             <DialogTrigger asChild>
-              <Button className="gradient-brand text-primary-foreground border-0">
-                <Plus className="h-4 w-4 mr-1" /> Cloud API oficial
+              <Button size="sm" className="gradient-brand text-primary-foreground border-0">
+                <Plus className="h-4 w-4 mr-1" /> <span className="truncate">Cloud API</span>
               </Button>
             </DialogTrigger>
             <ConnectDialog onSubmit={(v) => connectM.mutate(v)} loading={connectM.isPending} />
           </Dialog>
         </div>
       </div>
+
+      <EvolutionLogsDialog
+        open={openLogs}
+        onOpenChange={setOpenLogs}
+        workspaceId={ws?.id}
+      />
+
 
       <WhatsappSetupWizard
         open={openWizard}
@@ -931,4 +944,110 @@ function QrSyncContent({
     </>
   );
 }
+
+function EvolutionLogsDialog({
+  open,
+  onOpenChange,
+  workspaceId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  workspaceId?: string;
+}) {
+  const listLogs = useServerFn(listEvolutionErrorLogs);
+  const logsQ = useQuery({
+    enabled: open && !!workspaceId,
+    queryKey: ["evo-logs", workspaceId],
+    queryFn: () => listLogs({ data: { workspaceId: workspaceId!, limit: 100 } }),
+    refetchInterval: open ? 5000 : false,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Logs de erros — Evolution API</DialogTitle>
+          <DialogDescription>
+            Últimas 100 falhas ao chamar o servidor Evolution. Use para diagnosticar 400/403/timeouts.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex-1 overflow-auto -mx-6 px-6 space-y-2">
+          {logsQ.isLoading && (
+            <div className="text-sm text-muted-foreground py-6 text-center">Carregando…</div>
+          )}
+          {logsQ.data?.length === 0 && (
+            <div className="text-sm text-muted-foreground py-8 text-center">
+              Nenhum erro registrado. 🎉
+            </div>
+          )}
+          {logsQ.data?.map((log) => (
+            <details key={log.id} className="rounded-lg border border-border bg-surface/40 open:bg-surface">
+              <summary className="cursor-pointer p-3 flex flex-wrap items-center gap-2 text-sm">
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold shrink-0",
+                    log.status && log.status >= 500
+                      ? "bg-destructive/20 text-destructive"
+                      : log.status === 403 || log.status === 401
+                        ? "bg-warning/20 text-warning"
+                        : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {log.status ?? "ERR"}
+                </span>
+                <span className="font-medium truncate">{log.operation}</span>
+                {log.instance_name && (
+                  <span className="text-xs text-muted-foreground font-mono truncate">
+                    {log.instance_name}
+                  </span>
+                )}
+                <span className="text-[11px] text-muted-foreground ml-auto shrink-0">
+                  {new Date(log.created_at).toLocaleString("pt-BR")}
+                </span>
+              </summary>
+              <div className="px-3 pb-3 space-y-2 text-xs">
+                <div>
+                  <div className="text-muted-foreground uppercase text-[10px] tracking-wide mb-0.5">
+                    Mensagem
+                  </div>
+                  <div className="p-2 rounded bg-background/60 font-mono whitespace-pre-wrap break-words">
+                    {log.error_message}
+                  </div>
+                </div>
+                {log.url && (
+                  <div>
+                    <div className="text-muted-foreground uppercase text-[10px] tracking-wide mb-0.5">
+                      {log.method} {log.url}
+                    </div>
+                  </div>
+                )}
+                {log.request_body != null && (
+                  <div>
+                    <div className="text-muted-foreground uppercase text-[10px] tracking-wide mb-0.5">
+                      Request body
+                    </div>
+                    <pre className="p-2 rounded bg-background/60 font-mono overflow-auto max-h-40">
+                      {JSON.stringify(log.request_body, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {log.response_body && (
+                  <div>
+                    <div className="text-muted-foreground uppercase text-[10px] tracking-wide mb-0.5">
+                      Response
+                    </div>
+                    <pre className="p-2 rounded bg-background/60 font-mono overflow-auto max-h-40 whitespace-pre-wrap break-words">
+                      {log.response_body}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </details>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 

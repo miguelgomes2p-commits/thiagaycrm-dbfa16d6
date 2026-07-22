@@ -6,8 +6,39 @@
 
 type Json = Record<string, unknown>;
 
+export class EvolutionError extends Error {
+  status: number;
+  bodyText: string;
+  url: string;
+  method: string;
+  requestBody?: unknown;
+  friendlyMessage: string;
+  constructor(opts: {
+    status: number;
+    bodyText: string;
+    url: string;
+    method: string;
+    requestBody?: unknown;
+    friendlyMessage: string;
+  }) {
+    super(`Evolution ${opts.status}: ${opts.friendlyMessage}`);
+    this.name = "EvolutionError";
+    this.status = opts.status;
+    this.bodyText = opts.bodyText;
+    this.url = opts.url;
+    this.method = opts.method;
+    this.requestBody = opts.requestBody;
+    this.friendlyMessage = opts.friendlyMessage;
+  }
+}
+
 async function req<T>(baseUrl: string, apiKey: string, path: string, init?: RequestInit): Promise<T> {
   const url = baseUrl.replace(/\/+$/, "") + path;
+  const method = (init?.method ?? "GET").toUpperCase();
+  let requestBody: unknown;
+  if (init?.body && typeof init.body === "string") {
+    try { requestBody = JSON.parse(init.body); } catch { requestBody = init.body; }
+  }
   const maxAttempts = 3;
   let lastErr: Error | null = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -34,16 +65,14 @@ async function req<T>(baseUrl: string, apiKey: string, path: string, init?: Requ
     const text = await res.text();
     if (res.ok) return text ? (JSON.parse(text) as T) : ({} as T);
 
-    // Servidor acordando (Render/Railway cold start) — tenta de novo.
     if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < maxAttempts) {
       await new Promise((r) => setTimeout(r, 1200 * attempt));
       continue;
     }
 
-    let msg = text;
-    // Se veio HTML (página de erro de proxy), não jogue o HTML todo para o usuário.
+    let friendly = text;
     if (text.trim().startsWith("<")) {
-      msg =
+      friendly =
         res.status === 502 || res.status === 503 || res.status === 504
           ? "servidor Evolution indisponível no momento (provavelmente iniciando). Aguarde alguns segundos e tente novamente."
           : `resposta inesperada do servidor (HTTP ${res.status}).`;
@@ -51,10 +80,31 @@ async function req<T>(baseUrl: string, apiKey: string, path: string, init?: Requ
       try {
         const j = JSON.parse(text) as { message?: string | string[]; error?: string };
         const raw = Array.isArray(j.message) ? j.message.join("; ") : j.message ?? j.error;
-        if (raw) msg = raw;
+        if (raw) friendly = raw;
       } catch { /* keep raw */ }
     }
-    throw new Error(`Evolution ${res.status}: ${msg}`);
+
+    if (res.status === 401 || res.status === 403) {
+      const low = friendly.toLowerCase();
+      if (low.includes("already") || low.includes("in use") || low.includes("exist")) {
+        friendly = `Instância já existe no servidor Evolution. ${friendly}`;
+      } else {
+        friendly = `Acesso negado (${res.status}). Verifique a AUTHENTICATION_API_KEY e a URL do servidor. Detalhe: ${friendly}`;
+      }
+    } else if (res.status === 400) {
+      friendly = `Requisição inválida: ${friendly}`;
+    } else if (res.status === 404) {
+      friendly = `Endpoint/instância não encontrada: ${friendly}`;
+    }
+
+    throw new EvolutionError({
+      status: res.status,
+      bodyText: text.slice(0, 4000),
+      url,
+      method,
+      requestBody,
+      friendlyMessage: friendly,
+    });
   }
   throw lastErr ?? new Error("Evolution: falha desconhecida");
 }

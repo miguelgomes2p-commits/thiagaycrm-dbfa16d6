@@ -5,12 +5,12 @@ import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car, Tag, ShieldAlert
-
+  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -70,18 +70,50 @@ function AppShell() {
 
   const initials = (profile?.full_name ?? "U").split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
 
+  const allNav = [
+    ...NAV,
+    ...(isSuperAdmin ? [{ to: "/app/admin", label: "Admin Global", icon: ShieldAlert } as NavItem] : []),
+  ];
+
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const NavList = ({ dense = false, onNavigate }: { dense?: boolean; onNavigate?: () => void }) => (
+    <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+      {allNav.map((item) => {
+        const active = item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.to}
+            to={item.to as "/app"}
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+              active
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+              dense && "py-2.5"
+            )}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-background text-foreground">
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <aside className={cn(
-        "flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-200 shrink-0",
+        "hidden md:flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-200 shrink-0",
         collapsed ? "w-16" : "w-64"
       )}>
         <div className="h-14 px-3 flex items-center gap-2 border-b border-sidebar-border">
           <div className="h-9 w-9 rounded-lg bg-background/40 border border-sidebar-border grid place-items-center shrink-0 overflow-hidden">
             <img src="/lupus-logo.jpeg" alt="Lupus" className="h-full w-full object-cover" />
           </div>
-
           {!collapsed && (
             <div className="min-w-0">
               <div className="text-sm font-semibold text-sidebar-foreground truncate">Lupus CRM</div>
@@ -89,28 +121,31 @@ function AppShell() {
             </div>
           )}
         </div>
-        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {[...NAV, ...(isSuperAdmin ? [{ to: "/app/admin", label: "Admin Global", icon: ShieldAlert } as NavItem] : [])].map((item) => {
-            const active = item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to as "/app"}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                  collapsed && "justify-center px-0"
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
+        {collapsed ? (
+          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+            {allNav.map((item) => {
+              const active = item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to as "/app"}
+                  title={item.label}
+                  className={cn(
+                    "flex items-center justify-center px-0 py-2 rounded-lg text-sm transition-colors",
+                    active
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                </Link>
+              );
+            })}
+          </nav>
+        ) : (
+          <NavList />
+        )}
         <div className="p-2 border-t border-sidebar-border">
           <button
             onClick={() => setCollapsed((v) => !v)}
@@ -122,18 +157,57 @@ function AppShell() {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className="h-14 border-b border-border flex items-center gap-3 px-4 md:px-6 shrink-0">
-          <div className="flex-1 max-w-md relative">
+        <header className="h-14 border-b border-border flex items-center gap-2 md:gap-3 px-3 md:px-6 shrink-0">
+          {/* Mobile hamburger */}
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="ghost" className="md:hidden shrink-0" aria-label="Abrir menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0 bg-sidebar border-sidebar-border">
+              <div className="h-14 px-3 flex items-center gap-2 border-b border-sidebar-border">
+                <div className="h-9 w-9 rounded-lg bg-background/40 border border-sidebar-border grid place-items-center shrink-0 overflow-hidden">
+                  <img src="/lupus-logo.jpeg" alt="Lupus" className="h-full w-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-sidebar-foreground truncate">Lupus CRM</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{current?.name ?? "—"}</div>
+                </div>
+              </div>
+              <div className="flex flex-col h-[calc(100%-3.5rem)]">
+                <NavList dense onNavigate={() => setMobileOpen(false)} />
+                <button
+                  onClick={signOut}
+                  className="m-2 flex items-center gap-2 px-3 py-2.5 text-sm rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent/50"
+                >
+                  <LogOut className="h-4 w-4" /> Sair
+                </button>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Mobile brand */}
+          <div className="md:hidden flex items-center gap-2 min-w-0 flex-1">
+            <div className="h-7 w-7 rounded-md overflow-hidden shrink-0">
+              <img src="/lupus-logo.jpeg" alt="Lupus" className="h-full w-full object-cover" />
+            </div>
+            <span className="text-sm font-semibold truncate">Lupus CRM</span>
+          </div>
+
+          {/* Desktop search */}
+          <div className="hidden md:block flex-1 max-w-md relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar leads, contatos, conversas..." className="pl-9 h-9 bg-surface/50" />
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-1 md:gap-2">
             <Button size="sm" className="gradient-brand text-primary-foreground border-0 hidden md:inline-flex">
               <Plus className="h-4 w-4 mr-1" /> Novo lead
             </Button>
-            <Button size="icon" variant="ghost"><Bell className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" className="h-9 w-9"><Bell className="h-4 w-4" /></Button>
             <div className="relative group">
               <Avatar className="h-8 w-8 cursor-pointer">
                 <AvatarFallback className="bg-primary/20 text-primary text-xs">{initials}</AvatarFallback>
