@@ -182,13 +182,37 @@ function ConversationsPage() {
     if (!ws?.id || typeof window === "undefined") return;
     let cancelled = false;
     let running = false;
-    // Polling adaptativo: só dispara quando o webhook estiver "frio" (>2 min sem eventos).
-    // Se o webhook estiver saudável, o Realtime do Supabase já cuida das atualizações.
+    // Polling adaptativo com LEADER LOCK cross-tab:
+    // - Só 1 aba do navegador por workspace roda o polling (via localStorage lease).
+    // - Só dispara quando o webhook estiver "frio" (>2 min sem eventos).
+    // Isso evita N vendedores × N abas hitting Evolution a cada 60s.
     const WEBHOOK_FRESH_MS = 120_000;
-    const POLL_INTERVAL_MS = 60_000;
+    const POLL_INTERVAL_MS = 120_000; // 2 min (era 60s)
+    const LEASE_KEY = `lupus.inbox.poll.leader.${ws.id}`;
+    const LEASE_TTL_MS = POLL_INTERVAL_MS + 30_000;
+    const tabId = crypto.randomUUID();
+
+    const isLeader = (): boolean => {
+      try {
+        const raw = localStorage.getItem(LEASE_KEY);
+        if (!raw) {
+          localStorage.setItem(LEASE_KEY, JSON.stringify({ tabId, expiresAt: Date.now() + LEASE_TTL_MS }));
+          return true;
+        }
+        const parsed = JSON.parse(raw) as { tabId: string; expiresAt: number };
+        if (parsed.tabId === tabId || parsed.expiresAt < Date.now()) {
+          localStorage.setItem(LEASE_KEY, JSON.stringify({ tabId, expiresAt: Date.now() + LEASE_TTL_MS }));
+          return true;
+        }
+        return false;
+      } catch {
+        return true; // se localStorage falhar, degrada pra comportamento antigo
+      }
+    };
+
     const runSync = async () => {
       if (running || cancelled) return;
-      // Verifica saúde do webhook antes de gastar chamada
+      if (!isLeader()) return;
       const { data: nums } = await supabase
         .from("whatsapp_numbers")
         .select("last_webhook_at, connection_status")
@@ -202,11 +226,11 @@ function ConversationsPage() {
         return t > max ? t : max;
       }, 0);
       const webhookFresh = mostRecent > 0 && Date.now() - mostRecent < WEBHOOK_FRESH_MS;
-      if (webhookFresh) return; // webhook saudável → não polling
+      if (webhookFresh) return;
       running = true;
       const startedAt = Date.now();
       try {
-        const r = await syncEvolutionWorkspace({ data: { workspaceId: ws.id, webhookOrigin: window.location.origin, limit: 50 } });
+        const r = await syncEvolutionWorkspace({ data: { workspaceId: ws.id, webhookOrigin: window.location.origin, limit: 30 } });
         const inserted = r.results.reduce((sum, item) => sum + (item.insertedMessages ?? 0), 0);
         const elapsed = Date.now() - startedAt;
         if (elapsed > 4000 || inserted > 0) {
@@ -217,20 +241,27 @@ function ConversationsPage() {
           if (activeId) qc.invalidateQueries({ queryKey: ["messages", activeId] });
         }
       } catch {
-        // Diagnóstico fica salvo em Logs Evolution; não interrompe o inbox.
+        // Diagnóstico fica salvo em Logs Evolution.
       } finally {
         running = false;
       }
     };
-    // Primeira execução: pequeno delay para não competir com o carregamento inicial
-    const kickoff = window.setTimeout(runSync, 5_000);
+    const kickoff = window.setTimeout(runSync, 10_000);
     const interval = window.setInterval(runSync, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(kickoff);
       window.clearInterval(interval);
+      try {
+        const raw = localStorage.getItem(LEASE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as { tabId: string };
+          if (parsed.tabId === tabId) localStorage.removeItem(LEASE_KEY);
+        }
+      } catch { /* noop */ }
     };
   }, [activeId, qc, syncEvolutionWorkspace, ws?.id]);
+
 
 
   const labelById = useMemo(() => {

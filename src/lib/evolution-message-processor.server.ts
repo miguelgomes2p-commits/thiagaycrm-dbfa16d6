@@ -265,6 +265,18 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     return stats;
   }
 
+  // Batch dedup: 1 SELECT em vez de N (crítico para MESSAGES_SET com histórico grande).
+  const incomingIds = msgs.map((m) => keyOf(m).id).filter((v): v is string => typeof v === "string" && v.length > 0);
+  const existingIds = new Set<string>();
+  if (incomingIds.length > 0) {
+    const { data: existingRows } = await supabaseAdmin
+      .from("messages")
+      .select("wa_message_id")
+      .eq("workspace_id", num.workspace_id)
+      .in("wa_message_id", incomingIds);
+    for (const r of existingRows ?? []) if (r.wa_message_id) existingIds.add(r.wa_message_id);
+  }
+
   for (const m of msgs) {
     const key = keyOf(m);
     const remoteJid = String(key?.remoteJid ?? "");
@@ -276,18 +288,11 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     const participantId = participantJid ? participantJid.split("@")[0] : undefined;
     const pushName: string | undefined = m.pushName ?? m.pushname ?? m.push_name ?? m.name;
 
-    if (key.id) {
-      const { data: existingMessage } = await supabaseAdmin
-        .from("messages")
-        .select("id")
-        .eq("workspace_id", num.workspace_id)
-        .eq("wa_message_id", key.id)
-        .maybeSingle();
-      if (existingMessage) {
-        stats.skippedDuplicates++;
-        continue;
-      }
+    if (key.id && existingIds.has(key.id)) {
+      stats.skippedDuplicates++;
+      continue;
     }
+
 
     try {
       const media = detectMediaKind(m);
