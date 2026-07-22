@@ -160,12 +160,8 @@ function WhatsappPage() {
   const origin = (() => {
     if (typeof window === "undefined") return "https://thiagaycrm.lovable.app";
     const host = window.location.host;
-    const isPreview =
-      host.includes("id-preview--") ||
-      host.includes("lovableproject.com") ||
-      host.includes("localhost") ||
-      host.includes("127.0.0.1");
-    return isPreview ? "https://thiagaycrm.lovable.app" : window.location.origin;
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1") || host.includes("lovableproject.com");
+    return isLocal ? "https://thiagaycrm.lovable.app" : window.location.origin;
   })();
 
   const createEvoM = useMutation({
