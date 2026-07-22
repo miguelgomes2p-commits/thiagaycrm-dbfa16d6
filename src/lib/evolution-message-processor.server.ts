@@ -421,5 +421,20 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     }
   }
 
+  stats.durationMs = Date.now() - startedAt;
+  // Métrica: registra processamentos lentos (>3s) ou com muitos rows para diagnóstico
+  if (stats.durationMs > 3000 || stats.rowsSeen > 20 || stats.errors > 0) {
+    console.log("[evolution processor]", JSON.stringify({ numberId, ...stats }));
+  }
+  if (stats.durationMs > 5000) {
+    await logProcessorIssue({
+      workspaceId: num.workspace_id,
+      whatsappNumberId: num.id,
+      operation: `${source}.slow`,
+      instanceName: num.instance_name,
+      message: `Processamento levou ${stats.durationMs}ms para ${stats.rowsSeen} rows (${stats.insertedMessages} novas, ${stats.skippedDuplicates} dups)`,
+      payload: { event, source, stats },
+    });
+  }
   return stats;
 }
