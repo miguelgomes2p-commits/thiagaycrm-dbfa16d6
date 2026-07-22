@@ -167,6 +167,35 @@ function asBoolean(value: unknown) {
   return value === true || value === "true" || value === 1 || value === "1";
 }
 
+function toUnixSeconds(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return value > 1e12 ? Math.floor(value / 1000) : Math.floor(value);
+  }
+  if (typeof value === "string") {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return toUnixSeconds(numeric);
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
+  }
+  if (typeof value === "object") {
+    const v = value as { low?: unknown; high?: unknown; seconds?: unknown; _seconds?: unknown };
+    if (v.seconds !== undefined) return toUnixSeconds(v.seconds);
+    if (v._seconds !== undefined) return toUnixSeconds(v._seconds);
+    if (typeof v.low === "number") {
+      const high = typeof v.high === "number" ? v.high : 0;
+      const combined = high * 4294967296 + (v.low >>> 0);
+      return toUnixSeconds(combined);
+    }
+  }
+  return null;
+}
+
+function messageTimestampSeconds(m: Json): number | null {
+  return toUnixSeconds(m.messageTimestamp ?? m.timestamp ?? m.message_timestamp ?? m.dateTime ?? m.createdAt ?? m.created_at);
+}
+
 function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; type: string | null; mime: string | null; caption: string | null; filename: string | null; inner: Json | undefined } {
   const inner = unwrapMessage(m.message);
   for (const k of MEDIA_KEYS) {
@@ -279,6 +308,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
 
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
   const cutoffSec = Math.floor((Date.now() - SEVEN_DAYS_MS) / 1000);
+  const isHistorySync = event === "messages.set" || source === "manualSync" || source === "workspaceAutoSync";
 
   for (const m of msgs) {
     const key = keyOf(m);
@@ -292,12 +322,12 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     const pushName: string | undefined = m.pushName ?? m.pushname ?? m.push_name ?? m.name;
 
     // Ignora mensagens com mais de 7 dias (sincronização de histórico antigo).
-    const rawTs = Number(m.messageTimestamp ?? m.timestamp ?? m.message_timestamp ?? 0);
-    const tsSec = rawTs > 1e12 ? Math.floor(rawTs / 1000) : rawTs;
-    if (tsSec && tsSec < cutoffSec) {
+    const tsSec = messageTimestampSeconds(m);
+    if ((isHistorySync && !tsSec) || (tsSec && tsSec < cutoffSec)) {
       stats.skippedDuplicates++;
       continue;
     }
+    const messageCreatedAt = tsSec ? new Date(tsSec * 1000).toISOString() : new Date().toISOString();
 
     if (key.id && existingIds.has(key.id)) {
       stats.skippedDuplicates++;
@@ -324,7 +354,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         contactId = exContact.id;
         const patch: { name?: string; avatar_url?: string } = {};
         if (!isGroup && !fromMe && pushName && exContact.name === waId) patch.name = pushName;
-        if (shouldFetchAvatar && !exContact.avatar_url) {
+        if (source === "webhook" && shouldFetchAvatar && !exContact.avatar_url) {
           try {
             const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
             const pic = await evolutionFetchProfilePic(num.provider_base_url!, num.provider_api_key!, num.instance_name!, remoteJid);
@@ -365,13 +395,14 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
 
       const { data: exConv } = await supabaseAdmin
         .from("conversations")
-        .select("id")
+        .select("id, last_message_at")
         .eq("workspace_id", num.workspace_id)
         .eq("whatsapp_number_id", num.id)
         .eq("wa_contact_wa_id", waId)
         .maybeSingle();
       const isNew = !exConv;
       let convId: string;
+      let conversationLastAt = exConv?.last_message_at ?? null;
       if (exConv) {
         convId = exConv.id;
       } else {
@@ -391,7 +422,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
 
       let mediaUrl: string | null = null;
       let mediaMime: string | null = media.mime;
-      if (media.type && num.provider_base_url && num.provider_api_key && num.instance_name) {
+      if (media.type && source !== "workspaceAutoSync" && num.provider_base_url && num.provider_api_key && num.instance_name) {
         try {
           const inlineBase64 = findDeep(m, (value, key) => (key === "base64" || key === "mediaBase64") && typeof value === "string");
           let base64: string | undefined = stripDataUrl(typeof inlineBase64 === "string" ? inlineBase64 : undefined);
@@ -422,6 +453,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         direction: fromMe ? "outbound" : "inbound",
         sender_type: fromMe ? "user" : "contact",
         content: text || null,
+          created_at: messageCreatedAt,
         wa_message_id: key.id ?? null,
         delivery_status: "delivered",
         media_url: mediaUrl,
@@ -441,11 +473,15 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         : media.type === "sticker" ? "🌟 Sticker"
         : media.type === "document" ? `📎 ${media.filename ?? "Documento"}`
         : text;
-      await supabaseAdmin.from("conversations").update({
-        last_message_preview: (previewText ?? "").slice(0, 200),
-        last_message_at: new Date().toISOString(),
-        ...(fromMe ? { unread_count: 0 } : {}),
-      }).eq("id", convId);
+      const shouldUpdatePreview = !conversationLastAt || new Date(conversationLastAt).getTime() <= new Date(messageCreatedAt).getTime();
+      if (shouldUpdatePreview) {
+        await supabaseAdmin.from("conversations").update({
+          last_message_preview: (previewText ?? "").slice(0, 200),
+          last_message_at: messageCreatedAt,
+          ...(fromMe ? { unread_count: 0 } : {}),
+        }).eq("id", convId);
+        conversationLastAt = messageCreatedAt;
+      }
 
       if (isNew && !fromMe) {
         // Atribuição já foi feita pelo trigger tg_conversation_autoassign (usa o dono do número).
