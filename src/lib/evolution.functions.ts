@@ -32,7 +32,7 @@ async function logEvolutionError(params: {
       url: isEvoErr ? e.url ?? null : null,
       status: isEvoErr ? e.status ?? null : null,
       request_body: isEvoErr && e.requestBody !== undefined
-        ? (e.requestBody as object)
+        ? (e.requestBody as never)
         : null,
       response_body: isEvoErr ? e.bodyText ?? null : null,
       error_message: e?.friendlyMessage ?? e?.message ?? String(params.error),
