@@ -83,6 +83,9 @@ function ConversationsPage() {
   const [leadFields, setLeadFields] = useState<Record<string, string>>({});
   const [leadPaneOpen, setLeadPaneOpen] = useState(false);
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
   const [linkSearch, setLinkSearch] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
