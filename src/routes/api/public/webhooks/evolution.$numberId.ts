@@ -5,6 +5,30 @@ type Json = any;
 
 const MEDIA_KEYS = ["imageMessage", "audioMessage", "videoMessage", "documentMessage", "stickerMessage"] as const;
 
+async function logWebhookIssue(params: {
+  workspaceId: string;
+  whatsappNumberId: string;
+  operation: string;
+  instanceName?: string | null;
+  message: string;
+  payload?: unknown;
+}) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("evolution_error_logs").insert({
+      workspace_id: params.workspaceId,
+      whatsapp_number_id: params.whatsappNumberId,
+      operation: params.operation,
+      status: null,
+      error_message: params.message,
+      response_body: params.payload ? JSON.stringify(params.payload).slice(0, 4000) : null,
+      instance_name: params.instanceName ?? null,
+    });
+  } catch (e) {
+    console.error("[evolution webhook] failed to log issue", e);
+  }
+}
+
 function extOf(mime?: string | null, fallback = "bin"): string {
   if (!mime) return fallback;
   const map: Record<string, string> = {
@@ -50,6 +74,46 @@ function findDeep(obj: Json, predicate: (value: Json, key: string) => boolean, d
 function stripDataUrl(value?: string | null) {
   if (!value) return undefined;
   return value.includes(",") ? value.split(",").pop() : value;
+}
+
+function normalizeEvent(payload: Json): string {
+  const raw = payload.event ?? payload.type ?? payload.eventType ?? payload.data?.event ?? payload.data?.type ?? "";
+  return String(raw).toLowerCase().replace(/_/g, ".");
+}
+
+function extractMessageRows(payload: Json): Json[] {
+  const candidates = [
+    payload.data,
+    payload.messages,
+    payload.message,
+    payload.data?.messages,
+    payload.data?.message,
+    payload.data?.data,
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const rows = Array.isArray(candidate) ? candidate : [candidate];
+    const normalized = rows
+      .map((row) => {
+        if (row?.key) return row;
+        if (row?.message?.key) return row.message;
+        if (row?.data?.key) return row.data;
+        if (row?.messages?.key) return row.messages;
+        return row;
+      })
+      .filter((row) => row?.key || row?.remoteJid || row?.id);
+    if (normalized.length > 0) return normalized;
+  }
+  return [];
+}
+
+function keyOf(m: Json): Json {
+  return m.key ?? {
+    id: m.id ?? m.messageId ?? m.message_id,
+    remoteJid: m.remoteJid ?? m.remote_jid ?? m.chatId ?? m.chat_id ?? m.from ?? m.to,
+    fromMe: m.fromMe ?? m.from_me,
+    participant: m.participant,
+  };
 }
 
 function detectMediaKind(m: Json): { key: (typeof MEDIA_KEYS)[number] | null; type: string | null; mime: string | null; caption: string | null; filename: string | null; inner: Json | undefined } {
@@ -114,8 +178,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
           .update({ last_webhook_at: new Date().toISOString() })
           .eq("id", num.id);
 
-        const eventRaw: string = payload.event ?? "";
-        const event = eventRaw.toString().toLowerCase().replace(/_/g, ".");
+        const event = normalizeEvent(payload);
 
         // ── Connection state updates ─────────────────────────────
         if (event === "connection.update") {
@@ -142,22 +205,44 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
         }
 
         // ── Inbound (or outbound-from-phone) messages ────────────
-        if (event === "messages.upsert") {
-          const msgs: Json[] = Array.isArray(payload.data) ? payload.data : [payload.data];
+        if (event === "messages.upsert" || event === "send.message" || event === "messages.update" || extractMessageRows(payload).length > 0) {
+          const msgs: Json[] = extractMessageRows(payload);
+          if (msgs.length === 0) {
+            await logWebhookIssue({
+              workspaceId: num.workspace_id,
+              whatsappNumberId: num.id,
+              operation: "webhook.noMessages",
+              instanceName: num.instance_name,
+              message: `Evento ${event || "sem tipo"} recebido sem mensagens processáveis`,
+              payload,
+            });
+            return new Response("ok");
+          }
           for (const m of msgs) {
-            if (!m?.key) continue;
-            const remoteJid: string = m.key.remoteJid ?? "";
-            const fromMe: boolean = !!m.key.fromMe;
+            const key = keyOf(m);
+            if (!key?.remoteJid) {
+              await logWebhookIssue({
+                workspaceId: num.workspace_id,
+                whatsappNumberId: num.id,
+                operation: "webhook.missingRemoteJid",
+                instanceName: num.instance_name,
+                message: "Mensagem recebida sem remoteJid/chatId",
+                payload: m,
+              });
+              continue;
+            }
+            const remoteJid: string = key.remoteJid ?? "";
+            const fromMe: boolean = !!key.fromMe;
             if (!remoteJid || remoteJid.includes("status@")) continue;
             const isGroup = remoteJid.endsWith("@g.us");
             const waId: string = remoteJid.split("@")[0];
-            const participantJid: string | undefined = m.key.participant;
+            const participantJid: string | undefined = key.participant;
             const participantId = participantJid ? participantJid.split("@")[0] : undefined;
             const pushName: string | undefined = m.pushName;
 
             const media = detectMediaKind(m);
             console.log("[evolution webhook] msg", {
-              id: m.key?.id,
+              id: key?.id,
               messageType: m.messageType,
               messageKeys: m.message ? Object.keys(m.message) : [],
               detectedMediaType: media.type,
@@ -285,15 +370,15 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                 let base64: string | undefined = stripDataUrl(typeof inlineBase64 === "string" ? inlineBase64 : undefined);
                 if (!base64) {
                   const { evolutionGetBase64FromMedia } = await import("@/lib/evolution.server");
-                  const resp = await evolutionGetBase64FromMedia(num.provider_base_url, num.provider_api_key, num.instance_name, m);
+                  const resp = await evolutionGetBase64FromMedia(num.provider_base_url, num.provider_api_key, num.instance_name, { ...m, key });
                   base64 = stripDataUrl(resp.base64 ?? resp.buffer);
                   if (resp.mimetype) mediaMime = resp.mimetype;
-                  console.log("[evolution webhook] getBase64", { id: m.key?.id, gotBase64: !!base64, mimetype: resp.mimetype });
+                  console.log("[evolution webhook] getBase64", { id: key?.id, gotBase64: !!base64, mimetype: resp.mimetype });
                 }
                 if (base64) {
                   const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
                   const ext = extOf(mediaMime, media.filename?.split(".").pop() ?? "bin");
-                  const path = `${num.workspace_id}/${convId}/${m.key.id ?? crypto.randomUUID()}.${ext}`;
+                  const path = `${num.workspace_id}/${convId}/${key.id ?? crypto.randomUUID()}.${ext}`;
                   const { error: upErr } = await supabaseAdmin.storage
                     .from("wa-media")
                     .upload(path, bin, { contentType: mediaMime ?? "application/octet-stream", upsert: true });
@@ -304,10 +389,10 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
                       .from("wa-media")
                       .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
                     mediaUrl = signed?.signedUrl ?? null;
-                    console.log("[evolution webhook] uploaded", { id: m.key?.id, path, gotSigned: !!mediaUrl });
+                    console.log("[evolution webhook] uploaded", { id: key?.id, path, gotSigned: !!mediaUrl });
                   }
                 } else {
-                  console.log("[evolution webhook] no base64 for", m.key?.id);
+                  console.log("[evolution webhook] no base64 for", key?.id);
                 }
               } catch (e) {
                 console.log("[evolution webhook] media error", (e as Error).message);
@@ -321,7 +406,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
               direction: fromMe ? "outbound" : "inbound",
               sender_type: fromMe ? "user" : "contact",
               content: text || null,
-              wa_message_id: m.key.id ?? null,
+              wa_message_id: key.id ?? null,
               delivery_status: "delivered",
               media_url: mediaUrl,
               media_type: media.type,
@@ -366,6 +451,14 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
           return new Response("ok");
         }
 
+        await logWebhookIssue({
+          workspaceId: num.workspace_id,
+          whatsappNumberId: num.id,
+          operation: "webhook.ignored",
+          instanceName: num.instance_name,
+          message: `Evento ignorado: ${event || "sem tipo"}`,
+          payload,
+        });
         return new Response("ignored");
       },
     },
