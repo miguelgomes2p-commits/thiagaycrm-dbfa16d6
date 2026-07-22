@@ -157,7 +157,8 @@ function ConversationsPage() {
     enabled: !!activeId,
     queryKey: ["messages", activeId],
     queryFn: async () => {
-      const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).order("created_at");
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).gte("created_at", sevenDaysAgo).order("created_at");
       return data ?? [];
     },
   });
