@@ -167,8 +167,11 @@ function WhatsappPage() {
   })();
 
   const createEvoM = useMutation({
-    mutationFn: (v: { label: string; displayNumber: string; baseUrl: string; apiKey: string; instanceName: string }) =>
-      createEvo({ data: { workspaceId: ws!.id, webhookOrigin: origin, ...v } }),
+    mutationFn: async (v: { label: string; displayNumber: string; baseUrl: string; apiKey: string; instanceName: string }) => {
+      const { assertQrAllowed } = await import("@/lib/qr-guard");
+      assertQrAllowed(`ws:${ws!.id}:new`);
+      return createEvo({ data: { workspaceId: ws!.id, webhookOrigin: origin, ...v } });
+    },
     onSuccess: (r) => {
       toast.success("Instância criada — escaneie o QR Code");
       qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
@@ -179,7 +182,11 @@ function WhatsappPage() {
   });
 
   const refreshQrM = useMutation({
-    mutationFn: (id: string) => refreshQr({ data: { id } }),
+    mutationFn: async (id: string) => {
+      const { assertQrAllowed } = await import("@/lib/qr-guard");
+      assertQrAllowed(`ws:${ws!.id}:num:${id}`);
+      return refreshQr({ data: { id } });
+    },
     onSuccess: (r, id) => {
       setQrModal({ id, qr: r.qr });
       qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
