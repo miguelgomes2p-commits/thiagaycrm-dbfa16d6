@@ -12,6 +12,8 @@ export type EvolutionProcessStats = {
   skippedDuplicates: number;
   createdConversations: number;
   errors: number;
+  durationMs: number;
+  source: string;
 };
 
 async function logProcessorIssue(params: {
@@ -213,6 +215,8 @@ function messageText(m: Json, media: ReturnType<typeof detectMediaKind>) {
 }
 
 export async function processEvolutionPayload(numberId: string, payload: Json, opts: { touchWebhook?: boolean; source?: string } = {}): Promise<EvolutionProcessStats> {
+  const startedAt = Date.now();
+  const source = opts.source ?? "webhook";
   const { data: num } = await supabaseAdmin
     .from("whatsapp_numbers")
     .select("id, workspace_id, provider, instance_name, provider_base_url, provider_api_key")
@@ -225,12 +229,13 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
   }
 
   const event = normalizeEvent(payload);
-  const stats: EvolutionProcessStats = { event, rowsSeen: 0, insertedMessages: 0, skippedDuplicates: 0, createdConversations: 0, errors: 0 };
+  const stats: EvolutionProcessStats = { event, rowsSeen: 0, insertedMessages: 0, skippedDuplicates: 0, createdConversations: 0, errors: 0, durationMs: 0, source };
 
   if (event === "connection.update") {
     const state: string = payload.data?.state ?? payload.data?.instance?.state ?? payload.instance?.state ?? "";
     const mapped = state === "open" ? "connected" : state === "connecting" ? "connecting" : state === "close" ? "disconnected" : null;
     if (mapped) await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: mapped }).eq("id", num.id);
+    stats.durationMs = Date.now() - startedAt;
     return stats;
   }
 
@@ -239,6 +244,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     if (qr) {
       await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: "qr", last_qr: qr, last_qr_at: new Date().toISOString() }).eq("id", num.id);
     }
+    stats.durationMs = Date.now() - startedAt;
     return stats;
   }
 
@@ -255,6 +261,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         payload,
       });
     }
+    stats.durationMs = Date.now() - startedAt;
     return stats;
   }
 
@@ -414,5 +421,20 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     }
   }
 
+  stats.durationMs = Date.now() - startedAt;
+  // Métrica: registra processamentos lentos (>3s) ou com muitos rows para diagnóstico
+  if (stats.durationMs > 3000 || stats.rowsSeen > 20 || stats.errors > 0) {
+    console.log("[evolution processor]", JSON.stringify({ numberId, ...stats }));
+  }
+  if (stats.durationMs > 5000) {
+    await logProcessorIssue({
+      workspaceId: num.workspace_id,
+      whatsappNumberId: num.id,
+      operation: `${source}.slow`,
+      instanceName: num.instance_name,
+      message: `Processamento levou ${stats.durationMs}ms para ${stats.rowsSeen} rows (${stats.insertedMessages} novas, ${stats.skippedDuplicates} dups)`,
+      payload: { event, source, stats },
+    });
+  }
   return stats;
 }
