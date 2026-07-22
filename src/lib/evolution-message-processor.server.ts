@@ -261,6 +261,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         payload,
       });
     }
+    stats.durationMs = Date.now() - startedAt;
     return stats;
   }
 
