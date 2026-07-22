@@ -277,6 +277,9 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     for (const r of existingRows ?? []) if (r.wa_message_id) existingIds.add(r.wa_message_id);
   }
 
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const cutoffSec = Math.floor((Date.now() - SEVEN_DAYS_MS) / 1000);
+
   for (const m of msgs) {
     const key = keyOf(m);
     const remoteJid = String(key?.remoteJid ?? "");
@@ -287,6 +290,14 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     const participantJid: string | undefined = key.participant;
     const participantId = participantJid ? participantJid.split("@")[0] : undefined;
     const pushName: string | undefined = m.pushName ?? m.pushname ?? m.push_name ?? m.name;
+
+    // Ignora mensagens com mais de 7 dias (sincronização de histórico antigo).
+    const rawTs = Number(m.messageTimestamp ?? m.timestamp ?? m.message_timestamp ?? 0);
+    const tsSec = rawTs > 1e12 ? Math.floor(rawTs / 1000) : rawTs;
+    if (tsSec && tsSec < cutoffSec) {
+      stats.skippedDuplicates++;
+      continue;
+    }
 
     if (key.id && existingIds.has(key.id)) {
       stats.skippedDuplicates++;
@@ -307,19 +318,39 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         .eq("workspace_id", num.workspace_id)
         .eq("phone", waId)
         .maybeSingle();
+      const shouldFetchAvatar =
+        !isGroup && num.provider_base_url && num.provider_api_key && num.instance_name;
       if (exContact) {
         contactId = exContact.id;
-        if (!isGroup && !fromMe && pushName && exContact.name === waId) {
-          await supabaseAdmin.from("contacts").update({ name: pushName }).eq("id", contactId);
+        const patch: { name?: string; avatar_url?: string } = {};
+        if (!isGroup && !fromMe && pushName && exContact.name === waId) patch.name = pushName;
+        if (shouldFetchAvatar && !exContact.avatar_url) {
+          try {
+            const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
+            const pic = await evolutionFetchProfilePic(num.provider_base_url!, num.provider_api_key!, num.instance_name!, remoteJid);
+            if (pic?.profilePictureUrl) patch.avatar_url = pic.profilePictureUrl;
+          } catch { /* best-effort */ }
+        }
+        if (Object.keys(patch).length > 0) {
+          await supabaseAdmin.from("contacts").update(patch).eq("id", contactId);
         }
       } else {
+        let avatarUrl: string | null = null;
+        if (shouldFetchAvatar) {
+          try {
+            const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
+            const pic = await evolutionFetchProfilePic(num.provider_base_url!, num.provider_api_key!, num.instance_name!, remoteJid);
+            avatarUrl = pic?.profilePictureUrl ?? null;
+          } catch { /* best-effort */ }
+        }
         const { data: created, error: cErr } = await supabaseAdmin
           .from("contacts")
           .insert({
             workspace_id: num.workspace_id,
             type: isGroup ? "group" : "person",
-            name: isGroup ? `Grupo ${waId.slice(-6)}` : (!fromMe && pushName ? pushName : waId),
+            name: isGroup ? `Grupo ${waId.slice(-6)}` : (pushName ?? waId),
             phone: waId,
+            avatar_url: avatarUrl,
           })
           .select("id")
           .single();
@@ -330,6 +361,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         }
         contactId = created.id;
       }
+
 
       const { data: exConv } = await supabaseAdmin
         .from("conversations")
