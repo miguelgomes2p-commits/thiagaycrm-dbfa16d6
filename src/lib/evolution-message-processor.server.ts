@@ -229,8 +229,8 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
 
   if (event === "connection.update") {
     const state: string = payload.data?.state ?? payload.data?.instance?.state ?? payload.instance?.state ?? "";
-    const mapped = state === "open" ? "connected" : state === "connecting" ? "connecting" : state === "close" ? "disconnected" : "error";
-    await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: mapped }).eq("id", num.id);
+    const mapped = state === "open" ? "connected" : state === "connecting" ? "connecting" : state === "close" ? "disconnected" : null;
+    if (mapped) await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: mapped }).eq("id", num.id);
     return stats;
   }
 
@@ -268,6 +268,19 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     const participantJid: string | undefined = key.participant;
     const participantId = participantJid ? participantJid.split("@")[0] : undefined;
     const pushName: string | undefined = m.pushName ?? m.pushname ?? m.push_name ?? m.name;
+
+    if (key.id) {
+      const { data: existingMessage } = await supabaseAdmin
+        .from("messages")
+        .select("id")
+        .eq("workspace_id", num.workspace_id)
+        .eq("wa_message_id", key.id)
+        .maybeSingle();
+      if (existingMessage) {
+        stats.skippedDuplicates++;
+        continue;
+      }
+    }
 
     try {
       const media = detectMediaKind(m);
@@ -356,19 +369,6 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
           }
         } catch (e) {
           await logProcessorIssue({ workspaceId: num.workspace_id, whatsappNumberId: num.id, operation: `${opts.source ?? "webhook"}.media`, instanceName: num.instance_name, message: e instanceof Error ? e.message : String(e), payload: { key, messageType: m.messageType } });
-        }
-      }
-
-      if (key.id) {
-        const { data: existingMessage } = await supabaseAdmin
-          .from("messages")
-          .select("id")
-          .eq("workspace_id", num.workspace_id)
-          .eq("wa_message_id", key.id)
-          .maybeSingle();
-        if (existingMessage) {
-          stats.skippedDuplicates++;
-          continue;
         }
       }
 
