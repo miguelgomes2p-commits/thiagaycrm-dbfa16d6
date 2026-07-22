@@ -331,13 +331,9 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
         }),
       );
       const payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, data.limit ?? 100);
-      const res = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event: "MESSAGES_SET", data: payload }),
-      });
-      if (!res.ok) throw new Error(`Processador de webhook respondeu ${res.status}: ${(await res.text()).slice(0, 500)}`);
-      return { ok: true };
+      const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
+      const stats = await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { source: "manualSync" });
+      return { ok: true, stats };
     } catch (e) {
       await logEvolutionError({
         workspaceId: num.workspace_id,
@@ -349,6 +345,58 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
       });
       throw new Error((e as { friendlyMessage?: string; message?: string })?.friendlyMessage ?? (e as Error)?.message ?? String(e));
     }
+  });
+
+export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ workspaceId: z.string().uuid(), webhookOrigin: z.string().url(), limit: z.number().int().positive().max(100).optional() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: numbers, error } = await context.supabase
+      .from("whatsapp_numbers")
+      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status")
+      .eq("workspace_id", data.workspaceId)
+      .eq("provider", "evolution")
+      .eq("is_active", true)
+      .not("provider_base_url", "is", null)
+      .not("provider_api_key", "is", null)
+      .not("instance_name", "is", null);
+    if (error) throw new Error(error.message);
+
+    const { evolutionFindMessages, evolutionSetWebhook } = await import("@/lib/evolution.server");
+    const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
+
+    const results: Array<{ id: string; ok: boolean; insertedMessages?: number; rowsSeen?: number; error?: string }> = [];
+    for (const num of numbers ?? []) {
+      try {
+        const webhookUrl = evolutionWebhookUrl(data.webhookOrigin, num.id);
+        await evolutionSetWebhook(num.provider_base_url!, num.provider_api_key!, num.instance_name!, webhookUrl).catch((webhookError) =>
+          logEvolutionError({
+            workspaceId: data.workspaceId,
+            whatsappNumberId: num.id,
+            operation: "workspaceSync.setWebhook",
+            baseUrl: num.provider_base_url,
+            instanceName: num.instance_name,
+            error: webhookError,
+          }),
+        );
+        const payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 50);
+        const stats = await processEvolutionPayload(num.id, { event: "MESSAGES_SET", data: payload }, { source: "workspaceAutoSync" });
+        results.push({ id: num.id, ok: true, insertedMessages: stats.insertedMessages, rowsSeen: stats.rowsSeen });
+      } catch (e) {
+        await logEvolutionError({
+          workspaceId: data.workspaceId,
+          whatsappNumberId: num.id,
+          operation: "workspaceSync",
+          baseUrl: num.provider_base_url,
+          instanceName: num.instance_name,
+          error: e,
+        });
+        results.push({ id: num.id, ok: false, error: (e as { friendlyMessage?: string; message?: string })?.friendlyMessage ?? (e as Error)?.message ?? String(e) });
+      }
+    }
+    return { ok: true, results };
   });
 
 /**
