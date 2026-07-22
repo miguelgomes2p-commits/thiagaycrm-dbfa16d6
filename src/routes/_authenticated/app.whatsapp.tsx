@@ -945,3 +945,109 @@ function QrSyncContent({
   );
 }
 
+function EvolutionLogsDialog({
+  open,
+  onOpenChange,
+  workspaceId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  workspaceId?: string;
+}) {
+  const listLogs = useServerFn(listEvolutionErrorLogs);
+  const logsQ = useQuery({
+    enabled: open && !!workspaceId,
+    queryKey: ["evo-logs", workspaceId],
+    queryFn: () => listLogs({ data: { workspaceId: workspaceId!, limit: 100 } }),
+    refetchInterval: open ? 5000 : false,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Logs de erros — Evolution API</DialogTitle>
+          <DialogDescription>
+            Últimas 100 falhas ao chamar o servidor Evolution. Use para diagnosticar 400/403/timeouts.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex-1 overflow-auto -mx-6 px-6 space-y-2">
+          {logsQ.isLoading && (
+            <div className="text-sm text-muted-foreground py-6 text-center">Carregando…</div>
+          )}
+          {logsQ.data?.length === 0 && (
+            <div className="text-sm text-muted-foreground py-8 text-center">
+              Nenhum erro registrado. 🎉
+            </div>
+          )}
+          {logsQ.data?.map((log) => (
+            <details key={log.id} className="rounded-lg border border-border bg-surface/40 open:bg-surface">
+              <summary className="cursor-pointer p-3 flex flex-wrap items-center gap-2 text-sm">
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold shrink-0",
+                    log.status && log.status >= 500
+                      ? "bg-destructive/20 text-destructive"
+                      : log.status === 403 || log.status === 401
+                        ? "bg-warning/20 text-warning"
+                        : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {log.status ?? "ERR"}
+                </span>
+                <span className="font-medium truncate">{log.operation}</span>
+                {log.instance_name && (
+                  <span className="text-xs text-muted-foreground font-mono truncate">
+                    {log.instance_name}
+                  </span>
+                )}
+                <span className="text-[11px] text-muted-foreground ml-auto shrink-0">
+                  {new Date(log.created_at).toLocaleString("pt-BR")}
+                </span>
+              </summary>
+              <div className="px-3 pb-3 space-y-2 text-xs">
+                <div>
+                  <div className="text-muted-foreground uppercase text-[10px] tracking-wide mb-0.5">
+                    Mensagem
+                  </div>
+                  <div className="p-2 rounded bg-background/60 font-mono whitespace-pre-wrap break-words">
+                    {log.error_message}
+                  </div>
+                </div>
+                {log.url && (
+                  <div>
+                    <div className="text-muted-foreground uppercase text-[10px] tracking-wide mb-0.5">
+                      {log.method} {log.url}
+                    </div>
+                  </div>
+                )}
+                {log.request_body != null && (
+                  <div>
+                    <div className="text-muted-foreground uppercase text-[10px] tracking-wide mb-0.5">
+                      Request body
+                    </div>
+                    <pre className="p-2 rounded bg-background/60 font-mono overflow-auto max-h-40">
+                      {JSON.stringify(log.request_body, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {log.response_body && (
+                  <div>
+                    <div className="text-muted-foreground uppercase text-[10px] tracking-wide mb-0.5">
+                      Response
+                    </div>
+                    <pre className="p-2 rounded bg-background/60 font-mono overflow-auto max-h-40 whitespace-pre-wrap break-words">
+                      {log.response_body}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </details>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
