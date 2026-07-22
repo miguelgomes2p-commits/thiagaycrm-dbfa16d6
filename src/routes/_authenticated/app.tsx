@@ -5,12 +5,12 @@ import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car, Tag, ShieldAlert
-
+  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 
