@@ -253,10 +253,6 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     .maybeSingle();
   if (!num || num.provider !== "evolution") throw new Error("Número Evolution não encontrado");
 
-  if (opts.touchWebhook) {
-    await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
-  }
-
   const event = normalizeEvent(payload);
   const stats: EvolutionProcessStats = { event, rowsSeen: 0, insertedMessages: 0, skippedDuplicates: 0, createdConversations: 0, errors: 0, durationMs: 0, source };
 
@@ -279,6 +275,9 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
 
   const msgs = extractMessageRows(payload);
   stats.rowsSeen = msgs.length;
+  if (opts.touchWebhook && msgs.length > 0) {
+    await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+  }
   if (msgs.length === 0) {
     if (event.includes("message")) {
       await logProcessorIssue({
