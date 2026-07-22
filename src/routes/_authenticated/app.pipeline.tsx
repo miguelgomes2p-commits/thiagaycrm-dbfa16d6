@@ -23,7 +23,7 @@ type Stage = { id: string; name: string; color: string; type: string; position: 
 type Lead = {
   id: string; title: string; value: number | null; stage_id: string; priority: string;
   source: string | null; tags: string[] | null; created_at: string; last_interaction_at: string | null;
-  notes: string | null; custom_fields: Record<string, string> | null;
+  notes: string | null; custom_fields: Record<string, string> | null; owner_id: string | null;
   contacts?: { name: string; company_name: string | null; phone?: string | null } | null;
 };
 
@@ -37,6 +37,7 @@ const priorityColor: Record<string, string> = {
 function PipelinePage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
+  const isAdmin = ws?.role === "owner" || ws?.role === "admin";
   const qc = useQueryClient();
   const [dragging, setDragging] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -48,14 +49,21 @@ function PipelinePage() {
     queryFn: async () => {
       const { data: pipes } = await supabase.from("pipelines").select("id, name").eq("workspace_id", ws!.id).order("position").limit(1);
       const pipe = pipes?.[0];
-      if (!pipe) return { pipe: null, stages: [] as Stage[], leads: [] as Lead[] };
+      if (!pipe) return { pipe: null, stages: [] as Stage[], leads: [] as Lead[], owners: new Map<string, string>() };
       const [{ data: stages, error: stagesError }, { data: leads, error: leadsError }] = await Promise.all([
         supabase.from("pipeline_stages").select("id, name, color, type, position").eq("pipeline_id", pipe.id).order("position"),
-        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, contacts:contact_id(name, company_name, phone)").eq("pipeline_id", pipe.id).order("position"),
+        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, owner_id, contacts:contact_id(name, company_name, phone)").eq("pipeline_id", pipe.id).order("position"),
       ]);
       if (stagesError) throw stagesError;
       if (leadsError) throw leadsError;
-      return { pipe, stages: (stages ?? []) as Stage[], leads: (leads ?? []) as unknown as Lead[] };
+      const leadList = (leads ?? []) as unknown as Lead[];
+      const ownerIds = Array.from(new Set(leadList.map((l) => l.owner_id).filter((x): x is string => !!x)));
+      const owners = new Map<string, string>();
+      if (ownerIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ownerIds);
+        (profs ?? []).forEach((p) => owners.set(p.id, p.full_name ?? "Membro"));
+      }
+      return { pipe, stages: (stages ?? []) as Stage[], leads: leadList, owners };
     },
   });
 
@@ -120,7 +128,7 @@ function PipelinePage() {
           <p className="text-sm text-muted-foreground">Arraste os cartões entre etapas.</p>
         </div>
         <div className="flex items-center gap-2">
-          {pipelineQ.data?.pipe && ws && (
+          {isAdmin && pipelineQ.data?.pipe && ws && (
             <PipelineStagesManager pipelineId={pipelineQ.data.pipe.id} workspaceId={ws.id} />
           )}
           <Dialog open={open} onOpenChange={setOpen}>
@@ -222,6 +230,11 @@ function PipelinePage() {
                           <UserIcon className="h-3 w-3" /> {l.contacts.name}
                         </div>
                       )}
+                      {l.owner_id && pipelineQ.data?.owners.get(l.owner_id) && (
+                        <div className="mt-1 text-[10px] text-primary/80 flex items-center gap-1">
+                          <UserIcon className="h-2.5 w-2.5" /> Agente: <span className="font-medium text-foreground/90">{pipelineQ.data.owners.get(l.owner_id)}</span>
+                        </div>
+                      )}
                       <div className="mt-2 flex items-center justify-between text-xs">
                         <span className="inline-flex items-center gap-1 text-success font-medium">
                           <DollarSign className="h-3 w-3" />
@@ -254,6 +267,7 @@ function PipelinePage() {
                 <InfoRow label="Prioridade" value={infoLead.priority} />
                 <InfoRow label="Origem" value={infoLead.source ?? "—"} />
                 <InfoRow label="Contato" value={infoLead.contacts?.name ?? "—"} />
+                <InfoRow label="Agente" value={(infoLead.owner_id && pipelineQ.data?.owners.get(infoLead.owner_id)) || "—"} />
                 {infoLead.contacts?.phone && <InfoRow label="Telefone" value={infoLead.contacts.phone} />}
                 {infoLead.contacts?.company_name && <InfoRow label="Empresa" value={infoLead.contacts.company_name} />}
               </div>

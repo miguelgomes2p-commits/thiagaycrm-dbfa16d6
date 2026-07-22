@@ -28,7 +28,7 @@ import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
   Tag, Filter, ChevronRight, Paperclip, BriefcaseBusiness, Save, Loader2,
-  Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban,
+  Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -83,6 +83,9 @@ function ConversationsPage() {
   const [leadFields, setLeadFields] = useState<Record<string, string>>({});
   const [leadPaneOpen, setLeadPaneOpen] = useState(false);
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
   const [linkSearch, setLinkSearch] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -294,9 +297,16 @@ function ConversationsPage() {
       });
     }
     const sorted = [...list];
+    const ts = (v: string | null | undefined) => (v ? new Date(v).getTime() : 0);
     switch (view.sortBy) {
       case "oldest":
-        sorted.sort((a, b) => (a.last_message_at ?? "").localeCompare(b.last_message_at ?? ""));
+        sorted.sort((a, b) => {
+          const ta = ts(a.last_message_at); const tb = ts(b.last_message_at);
+          if (ta === 0 && tb === 0) return 0;
+          if (ta === 0) return 1;
+          if (tb === 0) return -1;
+          return ta - tb;
+        });
         break;
       case "unread":
         sorted.sort((a, b) => (b.unread_count ?? 0) - (a.unread_count ?? 0));
@@ -309,7 +319,13 @@ function ConversationsPage() {
         });
         break;
       default:
-        sorted.sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
+        sorted.sort((a, b) => {
+          const ta = ts(a.last_message_at); const tb = ts(b.last_message_at);
+          if (ta === 0 && tb === 0) return 0;
+          if (ta === 0) return 1;
+          if (tb === 0) return -1;
+          return tb - ta;
+        });
     }
     return sorted;
   }, [convsQ.data, view, convLabelMap]);
@@ -730,6 +746,38 @@ function ConversationsPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
 
+  function openRename() {
+    if (!active) return;
+    const current = (active.contacts as { name?: string } | null)?.name ?? "";
+    setRenameValue(current);
+    setRenameOpen(true);
+  }
+
+  async function submitRename() {
+    if (!active) return;
+    const contactId = (active as { contact_id?: string | null }).contact_id ?? null;
+    if (!contactId) { toast.error("Conversa sem contato vinculado"); return; }
+    const newName = renameValue.trim();
+    if (!newName) { toast.error("Informe um nome"); return; }
+    setRenameSaving(true);
+    try {
+      const { error } = await supabase.from("contacts").update({ name: newName }).eq("id", contactId);
+      if (error) throw error;
+      toast.success("Contato renomeado");
+      setRenameOpen(false);
+      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
+      qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
+      qc.invalidateQueries({ queryKey: ["pipeline", ws?.id] });
+      qc.invalidateQueries({ queryKey: ["contacts-lite", ws?.id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao renomear");
+    } finally {
+      setRenameSaving(false);
+    }
+  }
+
+
+
 
 
   function toggleLabelFilter(id: string) {
@@ -1010,7 +1058,19 @@ function ConversationsPage() {
               </Avatar>
 
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</div>
+                <div className="text-sm font-medium truncate flex items-center gap-1.5">
+                  <span className="truncate">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</span>
+                  {(active as { contact_id?: string | null }).contact_id && (
+                    <button
+                      type="button"
+                      onClick={openRename}
+                      className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                      title="Renomear contato"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <span>{active.channel} · {active.status}</span>
                   {(() => {
@@ -1350,6 +1410,29 @@ function ConversationsPage() {
                 </button>
               ));
             })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={renameOpen} onOpenChange={(o) => !renameSaving && setRenameOpen(o)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Renomear contato</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Label>Nome do contato</Label>
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder="Nome"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") submitRename(); }}
+            />
+            <p className="text-xs text-muted-foreground">O novo nome será atualizado no Inbox, Contatos e Pipeline.</p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setRenameOpen(false)} disabled={renameSaving}>Cancelar</Button>
+              <Button onClick={submitRename} disabled={renameSaving} className="gradient-brand text-primary-foreground border-0">
+                {renameSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
