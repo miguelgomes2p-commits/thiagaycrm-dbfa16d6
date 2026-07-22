@@ -1,10 +1,10 @@
 // Client-side QR generation guard to protect against WhatsApp/Meta anti-abuse blocks.
 // Non-invasive: only throws BEFORE the request is sent — never changes server behavior.
 
-const COOLDOWN_MS = 2 * 60 * 1000; // 2 min between QR generations for the same key
-const WINDOW_MS = 10 * 60 * 1000; // 10 min rolling window
-const MAX_ATTEMPTS = 3; // max attempts inside the window before lockout
-const LOCKOUT_MS = 10 * 60 * 1000; // lockout duration after exceeding MAX_ATTEMPTS
+const COOLDOWN_MS = 15 * 1000; // 15s entre gerações de QR para a mesma chave
+const WINDOW_MS = 10 * 60 * 1000; // janela de 10 min
+const MAX_ATTEMPTS = 8; // até 8 tentativas na janela antes do lockout
+const LOCKOUT_MS = 3 * 60 * 1000; // lockout de 3 min ao exceder
 
 type GuardState = { attempts: number[]; lockedUntil?: number };
 
@@ -84,4 +84,14 @@ export function qrGuardStatus(key: string): { blocked: boolean; waitMs: number; 
     return { blocked: true, waitMs: COOLDOWN_MS - (now - last), reason: "cooldown" };
   }
   return { blocked: false, waitMs: 0 };
+}
+
+/** Limpa o estado do guard para a chave (usar quando o usuário confirma que quer forçar). */
+export function resetQrGuard(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(storageKey(key));
+  } catch {
+    // ignore
+  }
 }

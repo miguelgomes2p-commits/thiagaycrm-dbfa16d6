@@ -168,8 +168,18 @@ function WhatsappPage() {
 
   const createEvoM = useMutation({
     mutationFn: async (v: { label: string; displayNumber: string; baseUrl: string; apiKey: string; instanceName: string }) => {
-      const { assertQrAllowed } = await import("@/lib/qr-guard");
-      assertQrAllowed(`ws:${ws!.id}:new`);
+      const { assertQrAllowed, resetQrGuard } = await import("@/lib/qr-guard");
+      const key = `ws:${ws!.id}:new`;
+      try {
+        assertQrAllowed(key);
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (typeof window !== "undefined" && window.confirm(`${msg}\n\nDeseja ignorar o aviso e tentar gerar mesmo assim?`)) {
+          resetQrGuard(key);
+        } else {
+          throw e;
+        }
+      }
       return createEvo({ data: { workspaceId: ws!.id, webhookOrigin: origin, ...v } });
     },
     onSuccess: (r) => {
@@ -183,8 +193,18 @@ function WhatsappPage() {
 
   const refreshQrM = useMutation({
     mutationFn: async (id: string) => {
-      const { assertQrAllowed } = await import("@/lib/qr-guard");
-      assertQrAllowed(`ws:${ws!.id}:num:${id}`);
+      const { assertQrAllowed, resetQrGuard } = await import("@/lib/qr-guard");
+      const key = `ws:${ws!.id}:num:${id}`;
+      try {
+        assertQrAllowed(key);
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (typeof window !== "undefined" && window.confirm(`${msg}\n\nDeseja ignorar o aviso e gerar um novo QR mesmo assim?`)) {
+          resetQrGuard(key);
+        } else {
+          throw e;
+        }
+      }
       return refreshQr({ data: { id } });
     },
     onSuccess: (r, id) => {
