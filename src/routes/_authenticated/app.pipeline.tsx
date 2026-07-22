@@ -267,6 +267,7 @@ function PipelinePage() {
                 <InfoRow label="Prioridade" value={infoLead.priority} />
                 <InfoRow label="Origem" value={infoLead.source ?? "—"} />
                 <InfoRow label="Contato" value={infoLead.contacts?.name ?? "—"} />
+                <InfoRow label="Agente" value={(infoLead.owner_id && pipelineQ.data?.owners.get(infoLead.owner_id)) || "—"} />
                 {infoLead.contacts?.phone && <InfoRow label="Telefone" value={infoLead.contacts.phone} />}
                 {infoLead.contacts?.company_name && <InfoRow label="Empresa" value={infoLead.contacts.company_name} />}
               </div>
