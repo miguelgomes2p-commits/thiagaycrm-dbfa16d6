@@ -330,7 +330,14 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
           error: webhookError,
         }),
       );
-      const payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, data.limit ?? 100);
+      const sevenDaysAgoSec = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+      let payload: unknown;
+      try {
+        payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, data.limit ?? 100, sevenDaysAgoSec);
+      } catch (syncError) {
+        if ((syncError as { status?: number }).status !== 400) throw syncError;
+        payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, data.limit ?? 100);
+      }
       const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
       const stats = await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { source: "manualSync" });
       return { ok: true, stats };
@@ -373,7 +380,14 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
         // NOTE: setWebhook removido daqui — era chamado a cada 60s por cliente conectado,
         // recarregando listeners internos da Evolution e causando pressão de memória.
         // Webhook é configurado apenas: (1) ao criar instância, (2) no botão "Sincronizar" manual.
-        const payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 50);
+        const sevenDaysAgoSec = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+        let payload: unknown;
+        try {
+          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 50, sevenDaysAgoSec);
+        } catch (syncError) {
+          if ((syncError as { status?: number }).status !== 400) throw syncError;
+          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 50);
+        }
         const stats = await processEvolutionPayload(num.id, { event: "MESSAGES_SET", data: payload }, { source: "workspaceAutoSync" });
         results.push({ id: num.id, ok: true, insertedMessages: stats.insertedMessages, rowsSeen: stats.rowsSeen });
 
