@@ -468,6 +468,10 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         media_mime_type: mediaMime,
       });
       if (msgErr) {
+        if (msgErr.code === "23505") {
+          stats.skippedDuplicates++;
+          continue;
+        }
         stats.errors++;
         await logProcessorIssue({ workspaceId: num.workspace_id, whatsappNumberId: num.id, operation: `${opts.source ?? "webhook"}.messageInsert`, instanceName: num.instance_name, message: msgErr.message, payload: m });
         continue;
