@@ -1549,6 +1549,10 @@ export type Database = {
     }
     Functions: {
       assign_next_agent: { Args: { _workspace_id: string }; Returns: string }
+      can_access_conversation: {
+        Args: { _conversation_id: string; _user_id: string }
+        Returns: boolean
+      }
       create_workspace_with_defaults: {
         Args: { _name: string; _slug: string; _user_id: string }
         Returns: string
@@ -1563,6 +1567,10 @@ export type Database = {
           _user_id: string
           _workspace_id: string
         }
+        Returns: boolean
+      }
+      is_workspace_admin: {
+        Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
       is_workspace_member: {
