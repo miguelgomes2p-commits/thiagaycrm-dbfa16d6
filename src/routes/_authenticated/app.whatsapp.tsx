@@ -19,6 +19,8 @@ import {
   checkEvolutionStatus,
   logoutEvolutionInstance,
   listEvolutionErrorLogs,
+  syncEvolutionWebhook,
+  syncEvolutionMessages,
 } from "@/lib/evolution.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +75,8 @@ function WhatsappPage() {
   const refreshQr = useServerFn(refreshEvolutionQr);
   const checkStatus = useServerFn(checkEvolutionStatus);
   const logoutEvo = useServerFn(logoutEvolutionInstance);
+  const syncEvoWebhook = useServerFn(syncEvolutionWebhook);
+  const syncEvoMessages = useServerFn(syncEvolutionMessages);
 
   const numbersQ = useQuery({
     enabled: !!ws?.id,
@@ -158,12 +162,8 @@ function WhatsappPage() {
   const origin = (() => {
     if (typeof window === "undefined") return "https://thiagaycrm.lovable.app";
     const host = window.location.host;
-    const isPreview =
-      host.includes("id-preview--") ||
-      host.includes("lovableproject.com") ||
-      host.includes("localhost") ||
-      host.includes("127.0.0.1");
-    return isPreview ? "https://thiagaycrm.lovable.app" : window.location.origin;
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1") || host.includes("lovableproject.com");
+    return isLocal ? "https://thiagaycrm.lovable.app" : window.location.origin;
   })();
 
   const createEvoM = useMutation({
@@ -188,10 +188,30 @@ function WhatsappPage() {
   });
 
   const checkStatusM = useMutation({
-    mutationFn: (id: string) => checkStatus({ data: { id } }),
+    mutationFn: (id: string) => checkStatus({ data: { id, webhookOrigin: origin } }),
     onSuccess: (r) => {
-      toast.info(`Estado: ${r.mapped}`);
+      toast.info(r.webhookUpdated ? `Estado: ${r.mapped} · webhook sincronizado` : `Estado: ${r.mapped}`);
       qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const syncEvoWebhookM = useMutation({
+    mutationFn: (id: string) => syncEvoWebhook({ data: { id, webhookOrigin: origin } }),
+    onSuccess: () => {
+      toast.success("Webhook sincronizado. Envie uma mensagem de teste agora.");
+      qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const syncEvoMessagesM = useMutation({
+    mutationFn: (id: string) => syncEvoMessages({ data: { id, webhookOrigin: origin, limit: 200 } }),
+    onSuccess: () => {
+      toast.success("Mensagens sincronizadas. Confira a tela Conversas.");
+      qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["messages"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -364,6 +384,22 @@ function WhatsappPage() {
                           disabled={checkStatusM.isPending}
                         >
                           <RefreshCw className="h-4 w-4 mr-1" /> Status
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => syncEvoWebhookM.mutate(n.id)}
+                          disabled={syncEvoWebhookM.isPending}
+                        >
+                          <BellRing className="h-4 w-4 mr-1" /> Webhook
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => syncEvoMessagesM.mutate(n.id)}
+                          disabled={syncEvoMessagesM.isPending}
+                        >
+                          <RefreshCw className={cn("h-4 w-4 mr-1", syncEvoMessagesM.isPending && "animate-spin")} /> Mensagens
                         </Button>
                         <Button
                           size="sm"
