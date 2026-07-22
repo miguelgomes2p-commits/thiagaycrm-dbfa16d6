@@ -305,3 +305,15 @@ export function evolutionFetchProfilePic(
   );
 }
 
+export function evolutionFindMessages(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string,
+  limit = 100,
+) {
+  return req<unknown>(baseUrl, apiKey, `/chat/findMessages/${encodeURIComponent(instanceName)}`, {
+    method: "POST",
+    body: JSON.stringify({ where: {}, page: 1, offset: limit }),
+  });
+}
+
