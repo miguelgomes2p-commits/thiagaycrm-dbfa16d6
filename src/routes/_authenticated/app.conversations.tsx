@@ -117,9 +117,11 @@ function ConversationsPage() {
     enabled: !!ws?.id,
     queryKey: ["conversations", ws?.id],
     queryFn: async () => {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase.from("conversations")
         .select("*, contacts:contact_id(name, type, avatar_url)")
         .eq("workspace_id", ws!.id)
+        .gte("last_message_at", sevenDaysAgo)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(200);
 
