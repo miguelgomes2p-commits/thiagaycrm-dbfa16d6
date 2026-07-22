@@ -12,6 +12,7 @@ import {
   releaseConversation,
   resolveConversation,
 } from "@/lib/whatsapp.functions";
+import { syncWorkspaceEvolutionMessages } from "@/lib/evolution.functions";
 import { useLabels, useConversationLabels, useAssignLabel, useRemoveLabel } from "@/hooks/useLabels";
 import { LabelBadge } from "@/components/labels/LabelBadge";
 import { LabelPicker } from "@/components/labels/LabelPicker";
@@ -98,6 +99,7 @@ function ConversationsPage() {
   const takeFn = useServerFn(takeConversation);
   const releaseFn = useServerFn(releaseConversation);
   const resolveFn = useServerFn(resolveConversation);
+  const syncEvolutionWorkspace = useServerFn(syncWorkspaceEvolutionMessages);
 
   const { data: labels } = useLabels(ws?.id);
   const { data: convLabelMap } = useConversationLabels(ws?.id);
@@ -175,6 +177,34 @@ function ConversationsPage() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ws?.id, qc]);
+
+  useEffect(() => {
+    if (!ws?.id || typeof window === "undefined") return;
+    let cancelled = false;
+    let running = false;
+    const runSync = async () => {
+      if (running || cancelled) return;
+      running = true;
+      try {
+        const r = await syncEvolutionWorkspace({ data: { workspaceId: ws.id, webhookOrigin: window.location.origin, limit: 50 } });
+        const inserted = r.results.reduce((sum, item) => sum + (item.insertedMessages ?? 0), 0);
+        if (inserted > 0) {
+          qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+          if (activeId) qc.invalidateQueries({ queryKey: ["messages", activeId] });
+        }
+      } catch {
+        // Diagnóstico fica salvo em Logs Evolution; não interrompe o inbox.
+      } finally {
+        running = false;
+      }
+    };
+    runSync();
+    const interval = window.setInterval(runSync, 45_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [activeId, qc, syncEvolutionWorkspace, ws?.id]);
 
   const labelById = useMemo(() => {
     const m = new Map<string, typeof labels extends (infer T)[] | undefined ? T : never>();
