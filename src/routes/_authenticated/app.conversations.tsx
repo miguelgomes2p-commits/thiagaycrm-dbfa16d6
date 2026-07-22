@@ -746,6 +746,38 @@ function ConversationsPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
 
+  function openRename() {
+    if (!active) return;
+    const current = (active.contacts as { name?: string } | null)?.name ?? "";
+    setRenameValue(current);
+    setRenameOpen(true);
+  }
+
+  async function submitRename() {
+    if (!active) return;
+    const contactId = (active as { contact_id?: string | null }).contact_id ?? null;
+    if (!contactId) { toast.error("Conversa sem contato vinculado"); return; }
+    const newName = renameValue.trim();
+    if (!newName) { toast.error("Informe um nome"); return; }
+    setRenameSaving(true);
+    try {
+      const { error } = await supabase.from("contacts").update({ name: newName }).eq("id", contactId);
+      if (error) throw error;
+      toast.success("Contato renomeado");
+      setRenameOpen(false);
+      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
+      qc.invalidateQueries({ queryKey: ["conversation-lead-context"] });
+      qc.invalidateQueries({ queryKey: ["pipeline", ws?.id] });
+      qc.invalidateQueries({ queryKey: ["contacts-lite", ws?.id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao renomear");
+    } finally {
+      setRenameSaving(false);
+    }
+  }
+
+
+
 
 
   function toggleLabelFilter(id: string) {
