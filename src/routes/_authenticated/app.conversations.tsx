@@ -182,12 +182,36 @@ function ConversationsPage() {
     if (!ws?.id || typeof window === "undefined") return;
     let cancelled = false;
     let running = false;
+    // Polling adaptativo: só dispara quando o webhook estiver "frio" (>2 min sem eventos).
+    // Se o webhook estiver saudável, o Realtime do Supabase já cuida das atualizações.
+    const WEBHOOK_FRESH_MS = 120_000;
+    const POLL_INTERVAL_MS = 60_000;
     const runSync = async () => {
       if (running || cancelled) return;
+      // Verifica saúde do webhook antes de gastar chamada
+      const { data: nums } = await supabase
+        .from("whatsapp_numbers")
+        .select("last_webhook_at, connection_status")
+        .eq("workspace_id", ws.id)
+        .eq("provider", "evolution")
+        .eq("is_active", true);
+      const connected = (nums ?? []).filter((n) => n.connection_status === "connected");
+      if (connected.length === 0) return;
+      const mostRecent = connected.reduce((max, n) => {
+        const t = n.last_webhook_at ? new Date(n.last_webhook_at).getTime() : 0;
+        return t > max ? t : max;
+      }, 0);
+      const webhookFresh = mostRecent > 0 && Date.now() - mostRecent < WEBHOOK_FRESH_MS;
+      if (webhookFresh) return; // webhook saudável → não polling
       running = true;
+      const startedAt = Date.now();
       try {
         const r = await syncEvolutionWorkspace({ data: { workspaceId: ws.id, webhookOrigin: window.location.origin, limit: 50 } });
         const inserted = r.results.reduce((sum, item) => sum + (item.insertedMessages ?? 0), 0);
+        const elapsed = Date.now() - startedAt;
+        if (elapsed > 4000 || inserted > 0) {
+          console.log("[inbox fallback sync]", { elapsedMs: elapsed, inserted, results: r.results.length });
+        }
         if (inserted > 0) {
           qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
           if (activeId) qc.invalidateQueries({ queryKey: ["messages", activeId] });
@@ -198,13 +222,16 @@ function ConversationsPage() {
         running = false;
       }
     };
-    runSync();
-    const interval = window.setInterval(runSync, 45_000);
+    // Primeira execução: pequeno delay para não competir com o carregamento inicial
+    const kickoff = window.setTimeout(runSync, 5_000);
+    const interval = window.setInterval(runSync, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
+      window.clearTimeout(kickoff);
       window.clearInterval(interval);
     };
   }, [activeId, qc, syncEvolutionWorkspace, ws?.id]);
+
 
   const labelById = useMemo(() => {
     const m = new Map<string, typeof labels extends (infer T)[] | undefined ? T : never>();
