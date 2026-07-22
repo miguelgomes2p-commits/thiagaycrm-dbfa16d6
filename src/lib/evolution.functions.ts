@@ -364,26 +364,19 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
       .not("instance_name", "is", null);
     if (error) throw new Error(error.message);
 
-    const { evolutionFindMessages, evolutionSetWebhook } = await import("@/lib/evolution.server");
+    const { evolutionFindMessages } = await import("@/lib/evolution.server");
     const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
 
     const results: Array<{ id: string; ok: boolean; insertedMessages?: number; rowsSeen?: number; error?: string }> = [];
     for (const num of numbers ?? []) {
       try {
-        const webhookUrl = evolutionWebhookUrl(data.webhookOrigin, num.id);
-        await evolutionSetWebhook(num.provider_base_url!, num.provider_api_key!, num.instance_name!, webhookUrl).catch((webhookError) =>
-          logEvolutionError({
-            workspaceId: data.workspaceId,
-            whatsappNumberId: num.id,
-            operation: "workspaceSync.setWebhook",
-            baseUrl: num.provider_base_url,
-            instanceName: num.instance_name,
-            error: webhookError,
-          }),
-        );
+        // NOTE: setWebhook removido daqui — era chamado a cada 60s por cliente conectado,
+        // recarregando listeners internos da Evolution e causando pressão de memória.
+        // Webhook é configurado apenas: (1) ao criar instância, (2) no botão "Sincronizar" manual.
         const payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 50);
         const stats = await processEvolutionPayload(num.id, { event: "MESSAGES_SET", data: payload }, { source: "workspaceAutoSync" });
         results.push({ id: num.id, ok: true, insertedMessages: stats.insertedMessages, rowsSeen: stats.rowsSeen });
+
       } catch (e) {
         await logEvolutionError({
           workspaceId: data.workspaceId,
