@@ -85,3 +85,13 @@ export function qrGuardStatus(key: string): { blocked: boolean; waitMs: number; 
   }
   return { blocked: false, waitMs: 0 };
 }
+
+/** Limpa o estado do guard para a chave (usar quando o usuário confirma que quer forçar). */
+export function resetQrGuard(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(storageKey(key));
+  } catch {
+    // ignore
+  }
+}
