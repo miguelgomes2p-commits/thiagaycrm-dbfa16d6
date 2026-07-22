@@ -310,10 +310,15 @@ export function evolutionFindMessages(
   apiKey: string,
   instanceName: string,
   limit = 100,
+  sinceUnixSeconds?: number,
 ) {
   return req<unknown>(baseUrl, apiKey, `/chat/findMessages/${encodeURIComponent(instanceName)}`, {
     method: "POST",
-    body: JSON.stringify({ where: {}, page: 1, offset: limit }),
+    body: JSON.stringify({
+      where: sinceUnixSeconds ? { messageTimestamp: { gte: sinceUnixSeconds } } : {},
+      page: 1,
+      offset: limit,
+    }),
   });
 }
 
