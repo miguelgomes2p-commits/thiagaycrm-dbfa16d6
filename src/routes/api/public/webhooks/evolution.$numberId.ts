@@ -71,6 +71,32 @@ function findDeep(obj: Json, predicate: (value: Json, key: string) => boolean, d
   return undefined;
 }
 
+function findDeepMessageRows(obj: Json, depth = 0): Json[] {
+  if (!obj || typeof obj !== "object" || depth > 8) return [];
+  if (Array.isArray(obj)) {
+    const rows = obj
+      .map((row) => {
+        if (row?.key) return row;
+        if (row?.message?.key) return row.message;
+        if (row?.data?.key) return row.data;
+        if (row?.messages?.key) return row.messages;
+        return row;
+      })
+      .filter((row) => row?.key || row?.remoteJid || row?.id);
+    if (rows.length > 0) return rows;
+    for (const item of obj) {
+      const nested = findDeepMessageRows(item, depth + 1);
+      if (nested.length > 0) return nested;
+    }
+    return [];
+  }
+  for (const value of Object.values(obj)) {
+    const nested = findDeepMessageRows(value, depth + 1);
+    if (nested.length > 0) return nested;
+  }
+  return [];
+}
+
 function stripDataUrl(value?: string | null) {
   if (!value) return undefined;
   return value.includes(",") ? value.split(",").pop() : value;
@@ -104,7 +130,7 @@ function extractMessageRows(payload: Json): Json[] {
       .filter((row) => row?.key || row?.remoteJid || row?.id);
     if (normalized.length > 0) return normalized;
   }
-  return [];
+  return findDeepMessageRows(payload);
 }
 
 function keyOf(m: Json): Json {
