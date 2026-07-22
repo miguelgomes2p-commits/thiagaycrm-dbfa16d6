@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.create_workspace_with_defaults(text, text, uuid) TO authenticated;
