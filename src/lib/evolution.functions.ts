@@ -100,6 +100,16 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
     //    conectando na instância existente e ajustando o webhook.
     try {
       const created = await evolutionCreateInstance(baseUrl, data.apiKey, data.instanceName, webhookUrl);
+      await evolutionSetWebhook(baseUrl, data.apiKey, data.instanceName, webhookUrl).catch((webhookError) =>
+        logEvolutionError({
+          workspaceId: data.workspaceId,
+          whatsappNumberId: inserted.id,
+          operation: "createInstance.setWebhook",
+          baseUrl,
+          instanceName: data.instanceName,
+          error: webhookError,
+        }),
+      );
       const qr = created.qrcode?.base64 ?? null;
       await context.supabase
         .from("whatsapp_numbers")

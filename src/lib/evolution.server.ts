@@ -6,6 +6,15 @@
 
 type Json = Record<string, unknown>;
 
+const WEBHOOK_EVENTS = [
+  "CONNECTION_UPDATE",
+  "QRCODE_UPDATED",
+  "MESSAGES_SET",
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "SEND_MESSAGE",
+];
+
 export class EvolutionError extends Error {
   status: number;
   bodyText: string;
@@ -129,10 +138,13 @@ export function evolutionCreateInstance(
       qrcode: true,
       integration: "WHATSAPP-BAILEYS",
       webhook: {
+        enabled: true,
         url: webhookUrl,
         byEvents: false,
+        webhook_by_events: false,
         base64: true,
-        events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
+        webhook_base64: true,
+        events: WEBHOOK_EVENTS,
       },
     }),
   });
@@ -246,8 +258,10 @@ export function evolutionSetWebhook(
         enabled: true,
         url: webhookUrl,
         byEvents: false,
+        webhook_by_events: false,
         base64: true,
-        events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
+        webhook_base64: true,
+        events: WEBHOOK_EVENTS,
       },
     }),
   });
