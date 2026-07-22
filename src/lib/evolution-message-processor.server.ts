@@ -448,10 +448,17 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
       }).eq("id", convId);
 
       if (isNew && !fromMe) {
-        const { data: agent } = await supabaseAdmin.rpc("assign_next_agent", { _workspace_id: num.workspace_id });
-        await supabaseAdmin.from("queue_entries").insert({ workspace_id: num.workspace_id, conversation_id: convId, assigned_to: agent ?? null, assigned_at: agent ? new Date().toISOString() : null });
-        if (agent) await supabaseAdmin.from("conversations").update({ assigned_to: agent }).eq("id", convId);
+        // Atribuição já foi feita pelo trigger tg_conversation_autoassign (usa o dono do número).
+        // Aqui apenas registramos o item na fila para histórico/dashboard.
+        const { data: convRow } = await supabaseAdmin
+          .from("conversations")
+          .select("assigned_to")
+          .eq("id", convId)
+          .maybeSingle();
+        const agent = convRow?.assigned_to ?? null;
+        await supabaseAdmin.from("queue_entries").insert({ workspace_id: num.workspace_id, conversation_id: convId, assigned_to: agent, assigned_at: agent ? new Date().toISOString() : null });
       }
+
     } catch (e) {
       stats.errors++;
       await logProcessorIssue({ workspaceId: num.workspace_id, whatsappNumberId: num.id, operation: `${opts.source ?? "webhook"}.unexpected`, instanceName: num.instance_name, message: e instanceof Error ? e.message : String(e), payload: m });
