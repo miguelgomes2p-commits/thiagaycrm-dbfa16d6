@@ -155,8 +155,29 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
     conv.wa_contact_wa_id = waContactId;
 
-    let waId: string | null = null;
+    const nowIso = new Date().toISOString();
+    const { data: pendingMsg, error: pendingErr } = await context.supabase
+      .from("messages")
+      .insert({
+        workspace_id: conv.workspace_id,
+        conversation_id: conv.id,
+        direction: "outbound",
+        sender_type: "user",
+        sender_user_id: context.userId,
+        content: data.body,
+        delivery_status: "pending",
+        created_at: nowIso,
+      })
+      .select()
+      .single();
+    if (pendingErr || !pendingMsg) throw new Error(pendingErr?.message ?? "Falha ao registrar mensagem");
+    await context.supabase
+      .from("conversations")
+      .update({ last_message_preview: data.body.slice(0, 200), last_message_at: nowIso })
+      .eq("id", conv.id);
+
     try {
+      let waId: string | null = null;
       if (num.provider === "cloud_api") {
         if (!num.phone_number_id || !num.access_token) {
           throw new Error("Credenciais Cloud API ausentes neste número.");
@@ -182,36 +203,21 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
       }
       const { data: msg, error: merr } = await context.supabase
         .from("messages")
-        .insert({
-          workspace_id: conv.workspace_id,
-          conversation_id: conv.id,
-          direction: "outbound",
-          sender_type: "user",
-          sender_user_id: context.userId,
-          content: data.body,
+        .update({
           wa_message_id: waId,
           delivery_status: "sent",
         })
+        .eq("id", pendingMsg.id)
         .select()
         .single();
       if (merr) throw new Error(merr.message);
-      await context.supabase
-        .from("conversations")
-        .update({ last_message_preview: data.body.slice(0, 200), last_message_at: new Date().toISOString() })
-        .eq("id", conv.id);
       return msg;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
-      await context.supabase.from("messages").insert({
-        workspace_id: conv.workspace_id,
-        conversation_id: conv.id,
-        direction: "outbound",
-        sender_type: "user",
-        sender_user_id: context.userId,
-        content: data.body,
+      await context.supabase.from("messages").update({
         delivery_status: "failed",
         error_message: errorMessage,
-      });
+      }).eq("id", pendingMsg.id);
       throw new Error(errorMessage);
     }
   });
@@ -285,8 +291,32 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
       : mediaType === "video" ? "🎬 Vídeo"
       : `📎 ${safeName}`;
 
-    let waId: string | null = null;
+    const nowIso = new Date().toISOString();
+    const { data: pendingMsg, error: pendingErr } = await context.supabase
+      .from("messages")
+      .insert({
+        workspace_id: conv.workspace_id,
+        conversation_id: conv.id,
+        direction: "outbound",
+        sender_type: "user",
+        sender_user_id: context.userId,
+        content: data.caption || (mediaType === "document" ? `📎 ${safeName}` : preview),
+        delivery_status: "pending",
+        media_url: mediaUrl,
+        media_type: mediaType,
+        media_mime_type: data.mimeType,
+        created_at: nowIso,
+      })
+      .select()
+      .single();
+    if (pendingErr || !pendingMsg) throw new Error(pendingErr?.message ?? "Falha ao registrar anexo");
+    await context.supabase
+      .from("conversations")
+      .update({ last_message_preview: preview.slice(0, 200), last_message_at: nowIso })
+      .eq("id", conv.id);
+
     try {
+      let waId: string | null = null;
       if (num.provider === "cloud_api") {
         if (!num.phone_number_id || !num.access_token) throw new Error("Credenciais Cloud API ausentes neste número.");
         const { sendWaMedia } = await import("@/lib/whatsapp.server");
@@ -321,42 +351,21 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
 
       const { data: msg, error: merr } = await context.supabase
         .from("messages")
-        .insert({
-          workspace_id: conv.workspace_id,
-          conversation_id: conv.id,
-          direction: "outbound",
-          sender_type: "user",
-          sender_user_id: context.userId,
-          content: data.caption || (mediaType === "document" ? `📎 ${safeName}` : preview),
+        .update({
           wa_message_id: waId,
           delivery_status: "sent",
-          media_url: mediaUrl,
-          media_type: mediaType,
-          media_mime_type: data.mimeType,
         })
+        .eq("id", pendingMsg.id)
         .select()
         .single();
       if (merr) throw new Error(merr.message);
-      await context.supabase
-        .from("conversations")
-        .update({ last_message_preview: preview.slice(0, 200), last_message_at: new Date().toISOString() })
-        .eq("id", conv.id);
       return msg;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
-      await context.supabase.from("messages").insert({
-        workspace_id: conv.workspace_id,
-        conversation_id: conv.id,
-        direction: "outbound",
-        sender_type: "user",
-        sender_user_id: context.userId,
-        content: data.caption || (mediaType === "document" ? `📎 ${safeName}` : preview),
+      await context.supabase.from("messages").update({
         delivery_status: "failed",
         error_message: errorMessage,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        media_mime_type: data.mimeType,
-      });
+      }).eq("id", pendingMsg.id);
       throw new Error(errorMessage);
     }
   });
