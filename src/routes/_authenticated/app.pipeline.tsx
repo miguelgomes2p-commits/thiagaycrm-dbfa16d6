@@ -230,6 +230,11 @@ function PipelinePage() {
                           <UserIcon className="h-3 w-3" /> {l.contacts.name}
                         </div>
                       )}
+                      {l.owner_id && pipelineQ.data?.owners.get(l.owner_id) && (
+                        <div className="mt-1 text-[10px] text-primary/80 flex items-center gap-1">
+                          <UserIcon className="h-2.5 w-2.5" /> Agente: <span className="font-medium text-foreground/90">{pipelineQ.data.owners.get(l.owner_id)}</span>
+                        </div>
+                      )}
                       <div className="mt-2 flex items-center justify-between text-xs">
                         <span className="inline-flex items-center gap-1 text-success font-medium">
                           <DollarSign className="h-3 w-3" />
