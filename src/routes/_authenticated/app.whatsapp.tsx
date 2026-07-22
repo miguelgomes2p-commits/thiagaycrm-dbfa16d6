@@ -206,36 +206,46 @@ function WhatsappPage() {
   });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">WhatsApp Business</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5 md:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">WhatsApp Business</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">
             Conecte múltiplos números: oficial via Cloud API ou espelhado por QR Code (Evolution/Z-API).
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => setOpenWizard(true)}>
-            <Rocket className="h-4 w-4 mr-1" /> Guia Meta Cloud
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <Button variant="outline" size="sm" onClick={() => setOpenWizard(true)}>
+            <Rocket className="h-4 w-4 mr-1" /> <span className="truncate">Guia Meta</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setOpenLogs(true)}>
+            <ScrollText className="h-4 w-4 mr-1" /> <span className="truncate">Logs</span>
           </Button>
           <Dialog open={openEvo} onOpenChange={setOpenEvo}>
             <DialogTrigger asChild>
-              <Button variant="outline">
-                <QrCode className="h-4 w-4 mr-1" /> Conectar por QR Code
+              <Button variant="outline" size="sm">
+                <QrCode className="h-4 w-4 mr-1" /> <span className="truncate">QR Code</span>
               </Button>
             </DialogTrigger>
             <EvolutionConnectDialog onSubmit={(v) => createEvoM.mutate(v)} loading={createEvoM.isPending} />
           </Dialog>
           <Dialog open={openConnect} onOpenChange={setOpenConnect}>
             <DialogTrigger asChild>
-              <Button className="gradient-brand text-primary-foreground border-0">
-                <Plus className="h-4 w-4 mr-1" /> Cloud API oficial
+              <Button size="sm" className="gradient-brand text-primary-foreground border-0">
+                <Plus className="h-4 w-4 mr-1" /> <span className="truncate">Cloud API</span>
               </Button>
             </DialogTrigger>
             <ConnectDialog onSubmit={(v) => connectM.mutate(v)} loading={connectM.isPending} />
           </Dialog>
         </div>
       </div>
+
+      <EvolutionLogsDialog
+        open={openLogs}
+        onOpenChange={setOpenLogs}
+        workspaceId={ws?.id}
+      />
+
 
       <WhatsappSetupWizard
         open={openWizard}
