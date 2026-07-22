@@ -210,7 +210,21 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
         .eq("id", pendingMsg.id)
         .select()
         .single();
-      if (merr) throw new Error(merr.message);
+      if (merr) {
+        if (waId && merr.code === "23505") {
+          const { data: existing } = await context.supabase
+            .from("messages")
+            .select("*")
+            .eq("workspace_id", conv.workspace_id)
+            .eq("wa_message_id", waId)
+            .maybeSingle();
+          if (existing) {
+            await supabaseAdmin.from("messages").delete().eq("id", pendingMsg.id);
+            return existing;
+          }
+        }
+        throw new Error(merr.message);
+      }
       return msg;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
@@ -358,7 +372,21 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
         .eq("id", pendingMsg.id)
         .select()
         .single();
-      if (merr) throw new Error(merr.message);
+      if (merr) {
+        if (waId && merr.code === "23505") {
+          const { data: existing } = await context.supabase
+            .from("messages")
+            .select("*")
+            .eq("workspace_id", conv.workspace_id)
+            .eq("wa_message_id", waId)
+            .maybeSingle();
+          if (existing) {
+            await supabaseAdmin.from("messages").delete().eq("id", pendingMsg.id);
+            return existing;
+          }
+        }
+        throw new Error(merr.message);
+      }
       return msg;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
