@@ -18,6 +18,7 @@ import {
   refreshEvolutionQr,
   checkEvolutionStatus,
   logoutEvolutionInstance,
+  listEvolutionErrorLogs,
 } from "@/lib/evolution.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
