@@ -215,6 +215,8 @@ function messageText(m: Json, media: ReturnType<typeof detectMediaKind>) {
 }
 
 export async function processEvolutionPayload(numberId: string, payload: Json, opts: { touchWebhook?: boolean; source?: string } = {}): Promise<EvolutionProcessStats> {
+  const startedAt = Date.now();
+  const source = opts.source ?? "webhook";
   const { data: num } = await supabaseAdmin
     .from("whatsapp_numbers")
     .select("id, workspace_id, provider, instance_name, provider_base_url, provider_api_key")
@@ -227,7 +229,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
   }
 
   const event = normalizeEvent(payload);
-  const stats: EvolutionProcessStats = { event, rowsSeen: 0, insertedMessages: 0, skippedDuplicates: 0, createdConversations: 0, errors: 0 };
+  const stats: EvolutionProcessStats = { event, rowsSeen: 0, insertedMessages: 0, skippedDuplicates: 0, createdConversations: 0, errors: 0, durationMs: 0, source };
 
   if (event === "connection.update") {
     const state: string = payload.data?.state ?? payload.data?.instance?.state ?? payload.instance?.state ?? "";
