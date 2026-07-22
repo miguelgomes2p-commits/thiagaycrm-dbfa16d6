@@ -23,7 +23,7 @@ type Stage = { id: string; name: string; color: string; type: string; position: 
 type Lead = {
   id: string; title: string; value: number | null; stage_id: string; priority: string;
   source: string | null; tags: string[] | null; created_at: string; last_interaction_at: string | null;
-  notes: string | null; custom_fields: Record<string, string> | null;
+  notes: string | null; custom_fields: Record<string, string> | null; owner_id: string | null;
   contacts?: { name: string; company_name: string | null; phone?: string | null } | null;
 };
 
