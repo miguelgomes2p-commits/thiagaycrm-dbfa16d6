@@ -353,7 +353,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         contactId = exContact.id;
         const patch: { name?: string; avatar_url?: string } = {};
         if (!isGroup && !fromMe && pushName && exContact.name === waId) patch.name = pushName;
-        if (source === "webhook" && shouldFetchAvatar && !exContact.avatar_url) {
+        if (source === "webhook" && !isHistorySync && shouldFetchAvatar && !exContact.avatar_url) {
           try {
             const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
             const pic = await evolutionFetchProfilePic(num.provider_base_url!, num.provider_api_key!, num.instance_name!, remoteJid);
@@ -421,7 +421,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
 
       let mediaUrl: string | null = null;
       let mediaMime: string | null = media.mime;
-      if (media.type && source !== "workspaceAutoSync" && num.provider_base_url && num.provider_api_key && num.instance_name) {
+      if (media.type && !isHistorySync && num.provider_base_url && num.provider_api_key && num.instance_name) {
         try {
           const inlineBase64 = findDeep(m, (value, key) => (key === "base64" || key === "mediaBase64") && typeof value === "string");
           let base64: string | undefined = stripDataUrl(typeof inlineBase64 === "string" ? inlineBase64 : undefined);
