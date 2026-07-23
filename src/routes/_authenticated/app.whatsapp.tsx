@@ -273,21 +273,6 @@ function WhatsappPage() {
         </div>
       </div>
 
-      <EvolutionLogsDialog
-        open={openLogs}
-        onOpenChange={setOpenLogs}
-        workspaceId={ws?.id}
-      />
-
-
-      <WhatsappSetupWizard
-        open={openWizard}
-        onOpenChange={setOpenWizard}
-        webhookUrl={numbersQ.data?.[0] ? `${origin}/api/public/webhooks/whatsapp/${numbersQ.data[0].id}` : undefined}
-        verifyToken={numbersQ.data?.[0]?.webhook_verify_token ?? undefined}
-        onConnect={(v) => connectM.mutate(v)}
-        connecting={connectM.isPending}
-      />
 
       {/* QR Code modal */}
       <Dialog open={!!qrModal} onOpenChange={(o) => !o && setQrModal(null)}>
