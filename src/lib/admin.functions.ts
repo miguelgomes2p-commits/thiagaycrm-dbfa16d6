@@ -47,7 +47,7 @@ export const listAllWorkspaces = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: workspaces, error } = await supabaseAdmin
       .from("workspaces")
-      .select("id, name, slug, created_at")
+      .select("id, name, slug, created_at, feature_renave, feature_ai")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const { data: members } = await supabaseAdmin
@@ -64,6 +64,21 @@ export const listAllWorkspaces = createServerFn({ method: "GET" })
       member_count: byWs.get(w.id)?.count ?? 0,
       roles: byWs.get(w.id)?.roles ?? {},
     }));
+  });
+
+export const updateWorkspaceFeatures = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { workspaceId: string; feature_renave?: boolean; feature_ai?: boolean }) => data)
+  .handler(async ({ data, context }) => {
+    assertSuperAdmin(context.claims as Record<string, unknown>);
+    const patch: { feature_renave?: boolean; feature_ai?: boolean } = {};
+    if (typeof data.feature_renave === "boolean") patch.feature_renave = data.feature_renave;
+    if (typeof data.feature_ai === "boolean") patch.feature_ai = data.feature_ai;
+    if (Object.keys(patch).length === 0) return { ok: true as const };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("workspaces").update(patch).eq("id", data.workspaceId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
   });
 
 export const deleteWorkspaceById = createServerFn({ method: "POST" })

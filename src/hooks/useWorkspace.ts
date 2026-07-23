@@ -7,6 +7,8 @@ export type WorkspaceWithRole = {
   slug: string;
   logo_url: string | null;
   role: string;
+  feature_renave: boolean;
+  feature_ai: boolean;
 };
 
 export function useMyWorkspaces() {
@@ -15,7 +17,7 @@ export function useMyWorkspaces() {
     queryFn: async (): Promise<WorkspaceWithRole[]> => {
       const { data, error } = await supabase
         .from("workspace_members")
-        .select("role, workspaces:workspace_id(id, name, slug, logo_url)")
+        .select("role, workspaces:workspace_id(id, name, slug, logo_url, feature_renave, feature_ai)")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? [])

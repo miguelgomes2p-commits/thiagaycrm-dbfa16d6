@@ -5,7 +5,7 @@ import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
+  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/app")({
   component: AppShell,
 });
 
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean };
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; feature?: "renave" | "ai" };
 const NAV: NavItem[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/app/pipeline", label: "Pipeline", icon: KanbanSquare },
@@ -36,10 +36,8 @@ const NAV: NavItem[] = [
   { to: "/app/whatsapp", label: "WhatsApp", icon: Phone },
   { to: "/app/labels", label: "Etiquetas", icon: Tag },
   { to: "/app/tasks", label: "Tarefas", icon: CheckSquare },
-  { to: "/app/renave", label: "RENAVE", icon: Car },
-
-
-  { to: "/app/ai", label: "Assistente IA", icon: Bot },
+  { to: "/app/renave", label: "RENAVE", icon: Car, feature: "renave" },
+  { to: "/app/ai", label: "Assistente IA", icon: Bot, feature: "ai" },
   { to: "/app/settings", label: "Configurações", icon: Settings },
 ];
 
@@ -70,8 +68,13 @@ function AppShell() {
 
   const initials = (profile?.full_name ?? "U").split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
 
+  const filteredNav = NAV.filter((item) => {
+    if (item.feature === "renave") return !!current?.feature_renave;
+    if (item.feature === "ai") return !!current?.feature_ai;
+    return true;
+  });
   const allNav = [
-    ...NAV,
+    ...filteredNav,
     ...(isSuperAdmin ? [{ to: "/app/admin", label: "Admin Global", icon: ShieldAlert } as NavItem] : []),
   ];
 
@@ -204,9 +207,6 @@ function AppShell() {
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">
-            <Button size="sm" className="gradient-brand text-primary-foreground border-0 hidden md:inline-flex">
-              <Plus className="h-4 w-4 mr-1" /> Novo lead
-            </Button>
             <Button size="icon" variant="ghost" className="h-9 w-9"><Bell className="h-4 w-4" /></Button>
             <div className="relative group">
               <Avatar className="h-8 w-8 cursor-pointer">

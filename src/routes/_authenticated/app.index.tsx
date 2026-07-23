@@ -112,14 +112,9 @@ function Dashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Visão geral do seu funil e atividades.</p>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/50 px-3 py-1 text-xs text-muted-foreground">
-          <Sparkles className="h-3 w-3 text-primary" /> Atualizado em tempo real
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">Visão geral do seu funil e atividades.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

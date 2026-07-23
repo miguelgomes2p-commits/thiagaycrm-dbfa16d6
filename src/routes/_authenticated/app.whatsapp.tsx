@@ -258,50 +258,21 @@ function WhatsappPage() {
         <div className="min-w-0">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">WhatsApp Business</h1>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Conecte múltiplos números: oficial via Cloud API ou espelhado por QR Code (Evolution/Z-API).
+            Conecte múltiplos números por QR Code.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <Button variant="outline" size="sm" onClick={() => setOpenWizard(true)}>
-            <Rocket className="h-4 w-4 mr-1" /> <span className="truncate">Guia Meta</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setOpenLogs(true)}>
-            <ScrollText className="h-4 w-4 mr-1" /> <span className="truncate">Logs</span>
-          </Button>
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <Dialog open={openEvo} onOpenChange={setOpenEvo}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button size="sm" className="gradient-brand text-primary-foreground border-0">
                 <QrCode className="h-4 w-4 mr-1" /> <span className="truncate">QR Code</span>
               </Button>
             </DialogTrigger>
             <EvolutionConnectDialog onSubmit={(v) => createEvoM.mutate(v)} loading={createEvoM.isPending} />
           </Dialog>
-          <Dialog open={openConnect} onOpenChange={setOpenConnect}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gradient-brand text-primary-foreground border-0">
-                <Plus className="h-4 w-4 mr-1" /> <span className="truncate">Cloud API</span>
-              </Button>
-            </DialogTrigger>
-            <ConnectDialog onSubmit={(v) => connectM.mutate(v)} loading={connectM.isPending} />
-          </Dialog>
         </div>
       </div>
 
-      <EvolutionLogsDialog
-        open={openLogs}
-        onOpenChange={setOpenLogs}
-        workspaceId={ws?.id}
-      />
-
-
-      <WhatsappSetupWizard
-        open={openWizard}
-        onOpenChange={setOpenWizard}
-        webhookUrl={numbersQ.data?.[0] ? `${origin}/api/public/webhooks/whatsapp/${numbersQ.data[0].id}` : undefined}
-        verifyToken={numbersQ.data?.[0]?.webhook_verify_token ?? undefined}
-        onConnect={(v) => connectM.mutate(v)}
-        connecting={connectM.isPending}
-      />
 
       {/* QR Code modal */}
       <Dialog open={!!qrModal} onOpenChange={(o) => !o && setQrModal(null)}>
@@ -353,20 +324,6 @@ function WhatsappPage() {
                       <span className={cn("h-2 w-2 rounded-full", statusColor)} />
                       <span className="font-semibold">{n.label}</span>
                       <span className="text-sm text-muted-foreground">· {n.display_number}</span>
-                      <span
-                        className={cn(
-                          "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                          isEvo ? "bg-primary/15 text-primary" : "bg-success/15 text-success",
-                        )}
-                      >
-                        {isEvo ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Smartphone className="h-3 w-3" /> QR Code (espelhado)
-                          </span>
-                        ) : (
-                          "Cloud API oficial"
-                        )}
-                      </span>
                       {isEvo && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           {n.connection_status}
@@ -489,73 +446,6 @@ function WhatsappPage() {
         </div>
       </section>
 
-      {/* Templates (Cloud API only) */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Templates aprovados ({templatesQ.data?.length ?? 0})
-          </h2>
-          <Dialog open={openSend} onOpenChange={setOpenSend}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" disabled={!templatesQ.data?.length}>
-                <Send className="h-4 w-4 mr-1" /> Enviar template
-              </Button>
-            </DialogTrigger>
-            <SendTemplateDialog
-              numbers={(numbersQ.data ?? []).filter((n) => n.provider !== "evolution")}
-              templates={templatesQ.data ?? []}
-              onSubmit={(v) => sendM.mutate(v)}
-              loading={sendM.isPending}
-            />
-          </Dialog>
-        </div>
-        {templatesQ.data?.length === 0 && (
-          <div className="card-elevated p-6 text-sm text-muted-foreground">
-            Templates existem apenas em números Cloud API oficial (Meta).
-          </div>
-        )}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {templatesQ.data?.map((t) => (
-            <div key={t.id} className="card-elevated p-3">
-              <div className="flex items-center justify-between">
-                <div className="font-medium text-sm truncate">{t.name}</div>
-                <span
-                  className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded",
-                    t.status === "approved"
-                      ? "bg-success/20 text-success"
-                      : t.status === "rejected"
-                        ? "bg-destructive/20 text-destructive"
-                        : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {t.status}
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {t.language} · {t.category ?? "—"}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Setup help */}
-      <section className="card-elevated p-5 text-sm">
-        <div className="flex items-center gap-2 font-semibold mb-2">
-          <ExternalLink className="h-4 w-4 text-primary" /> Sobre os dois modos
-        </div>
-        <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-          <li>
-            <strong>Cloud API oficial:</strong> aprovado pela Meta, sem risco de banimento, mas o número não pode ficar
-            no app do celular. Suporta templates e auto-resposta com IA.
-          </li>
-          <li>
-            <strong>QR Code (Evolution/Z-API):</strong> espelha o número via WhatsApp Web, celular continua ligado. Use
-            Evolution API (self-hosted grátis) ou Z-API (SaaS). Cole a URL e a API key do servidor no botão acima.
-          </li>
-        </ul>
-      </section>
     </div>
   );
 }

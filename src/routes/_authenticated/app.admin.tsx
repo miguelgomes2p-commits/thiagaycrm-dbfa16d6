@@ -4,7 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById } from "@/lib/admin.functions";
+import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById, updateWorkspaceFeatures } from "@/lib/admin.functions";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +33,7 @@ function AdminPage() {
   const delUserFn = useServerFn(deleteUserById);
   const listWsFn = useServerFn(listAllWorkspaces);
   const delWsFn = useServerFn(deleteWorkspaceById);
+  const updateFeaturesFn = useServerFn(updateWorkspaceFeatures);
 
   const [q, setQ] = useState("");
   const [confirmUser, setConfirmUser] = useState<{ id: string; email: string } | null>(null);
@@ -99,8 +101,8 @@ function AdminPage() {
             {wsQ.isLoading && <div className="text-sm text-muted-foreground">Carregando...</div>}
             <div className="divide-y divide-border">
               {filteredWs.map((w) => (
-                <div key={w.id} className="py-3 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
+                <div key={w.id} className="py-3 flex flex-wrap items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
                     <div className="font-medium text-sm truncate">{w.name}</div>
                     <div className="text-xs text-muted-foreground font-mono truncate">{w.slug}</div>
                     <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-3">
@@ -111,14 +113,42 @@ function AdminPage() {
                       <span>criado {new Date(w.created_at).toLocaleDateString("pt-BR")}</span>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost" size="sm"
-                    onClick={() => setConfirmWs({ id: w.id, name: w.name })}
-                    disabled={delWsM.isPending}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" /> Excluir
-                  </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 text-xs">
+                        RENAVE
+                        <Switch
+                          checked={!!w.feature_renave}
+                          onCheckedChange={async (v) => {
+                            await updateFeaturesFn({ data: { workspaceId: w.id, feature_renave: v } });
+                            qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
+                            qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+                            toast.success("Atualizado");
+                          }}
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-xs">
+                        Assistente IA
+                        <Switch
+                          checked={!!w.feature_ai}
+                          onCheckedChange={async (v) => {
+                            await updateFeaturesFn({ data: { workspaceId: w.id, feature_ai: v } });
+                            qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
+                            qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+                            toast.success("Atualizado");
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <Button
+                      variant="ghost" size="sm"
+                      onClick={() => setConfirmWs({ id: w.id, name: w.name })}
+                      disabled={delWsM.isPending}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                    </Button>
+                  </div>
                 </div>
               ))}
               {!wsQ.isLoading && filteredWs.length === 0 && (

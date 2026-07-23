@@ -349,37 +349,6 @@ export function PipelineStagesManager({
                 </div>
               </div>
 
-              <div className="pl-6">
-                <Label className="text-xs text-muted-foreground">Cargos que podem mover leads para esta etapa</Label>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {ALL_ROLES.map((r) => {
-                    const active = (stage.allowed_roles ?? []).includes(r);
-                    const locked = r === "owner" || r === "admin";
-                    return (
-                      <button
-                        key={r}
-                        type="button"
-                        disabled={locked}
-                        onClick={() => {
-                          const cur = new Set(stage.allowed_roles ?? []);
-                          if (cur.has(r)) cur.delete(r); else cur.add(r);
-                          updateStage(stage.id, { allowed_roles: ALL_ROLES.filter((x) => cur.has(x)) });
-                        }}
-                        className={cn(
-                          "px-2 py-0.5 text-[11px] rounded-full border transition",
-                          active
-                            ? "bg-primary/15 border-primary/40 text-primary"
-                            : "bg-transparent border-border text-muted-foreground hover:border-primary/40",
-                          locked && "opacity-60 cursor-not-allowed",
-                        )}
-                        title={locked ? "Owner/Admin sempre têm acesso" : ""}
-                      >
-                        {r}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           ))}
 

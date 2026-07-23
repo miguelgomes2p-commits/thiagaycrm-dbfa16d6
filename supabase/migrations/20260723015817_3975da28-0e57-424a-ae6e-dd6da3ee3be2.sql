@@ -1,0 +1,4 @@
+
+ALTER TABLE public.workspaces
+  ADD COLUMN IF NOT EXISTS feature_renave BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS feature_ai BOOLEAN NOT NULL DEFAULT false;
