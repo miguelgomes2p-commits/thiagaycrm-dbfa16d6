@@ -722,24 +722,6 @@ function ConversationsPage() {
     }
   }
 
-  async function take() {
-    if (!active) return;
-    try { await takeFn({ data: { conversationId: active.id } }); toast.success("Conversa atribuída a você");
-      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
-  }
-  async function release() {
-    if (!active) return;
-    try { await releaseFn({ data: { conversationId: active.id } }); toast.success("Devolvido para a fila");
-      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
-  }
-  async function resolve() {
-    if (!active) return;
-    try { await resolveFn({ data: { conversationId: active.id } }); toast.success("Conversa resolvida");
-      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
-  }
 
   function openRename() {
     if (!active) return;
