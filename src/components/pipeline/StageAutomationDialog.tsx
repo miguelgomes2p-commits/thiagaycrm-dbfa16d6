@@ -25,10 +25,10 @@ type Automation = {
 };
 
 const VARIABLES = [
-  { key: "{{contact.name}}", desc: "Nome do contato" },
-  { key: "{{contact.phone}}", desc: "Telefone" },
-  { key: "{{lead.title}}", desc: "Título do lead" },
-  { key: "{{lead.value}}", desc: "Valor (R$)" },
+  { key: "{{contact.name}}", desc: "Nome do contato salvo no CRM", example: "João Silva" },
+  { key: "{{contact.phone}}", desc: "Telefone no formato internacional", example: "5511987654321" },
+  { key: "{{lead.title}}", desc: "Título do card no pipeline", example: "Honda Civic 2020 — João" },
+  { key: "{{lead.value}}", desc: "Valor do lead formatado em BRL", example: "R$ 85.000,00" },
 ];
 
 export function StageAutomationDialog({
