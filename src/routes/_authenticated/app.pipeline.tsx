@@ -45,6 +45,8 @@ function PipelinePage() {
   const [dragging, setDragging] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [infoLead, setInfoLead] = useState<Lead | null>(null);
+  const [automationStage, setAutomationStage] = useState<Stage | null>(null);
+  const runAutomationsFn = useServerFn(runStageAutomations);
 
   const pipelineQ = useQuery({
     enabled: !!ws?.id,
