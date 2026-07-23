@@ -260,6 +260,22 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     .maybeSingle();
   if (!num || num.provider !== "evolution") throw new Error("Número Evolution não encontrado");
 
+  const { data: wsRow } = await supabaseAdmin
+    .from("workspaces")
+    .select("name")
+    .eq("id", num.workspace_id)
+    .maybeSingle();
+  const workspaceName = (wsRow?.name ?? "").trim().toLowerCase();
+  const isPlaceholderName = (current: string | null | undefined, waId: string) => {
+    const n = (current ?? "").trim();
+    if (!n) return true;
+    if (n === waId) return true;
+    if (/^\+?\d[\d\s\-()]*$/.test(n)) return true;
+    if (workspaceName && n.toLowerCase() === workspaceName) return true;
+    if (n.toLowerCase().startsWith("grupo ")) return false;
+    return false;
+  };
+
   const event = normalizeEvent(payload);
   const stats: EvolutionProcessStats = { event, rowsSeen: 0, insertedMessages: 0, skippedDuplicates: 0, createdConversations: 0, errors: 0, durationMs: 0, source };
 
@@ -377,8 +393,9 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
       if (exContact) {
         contactId = exContact.id;
         const patch: { name?: string; avatar_url?: string } = {};
-        if (!isGroup && !fromMe && pushName && exContact.name === waId) patch.name = pushName;
-        if (isGroup && groupSubject && (exContact.name ?? "").startsWith("Grupo ")) patch.name = groupSubject;
+        if (!isGroup && !fromMe && pushName && pushName !== exContact.name && isPlaceholderName(exContact.name, waId)) patch.name = pushName;
+        if (isGroup && groupSubject && ((exContact.name ?? "").startsWith("Grupo ") || isPlaceholderName(exContact.name, waId))) patch.name = groupSubject;
+        if (isGroup && groupPicture && !exContact.avatar_url) patch.avatar_url = groupPicture;
         if (isGroup && groupPicture && !exContact.avatar_url) patch.avatar_url = groupPicture;
         if (source === "webhook" && !isHistorySync && shouldFetchAvatar && !exContact.avatar_url) {
           try {
@@ -404,7 +421,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
           .insert({
             workspace_id: num.workspace_id,
             type: isGroup ? "group" : "person",
-            name: isGroup ? (groupSubject ?? `Grupo ${waId.slice(-6)}`) : (pushName ?? waId),
+            name: isGroup ? (groupSubject ?? `Grupo ${waId.slice(-6)}`) : (!fromMe && pushName ? pushName : waId),
             phone: waId,
             avatar_url: avatarUrl,
           })
