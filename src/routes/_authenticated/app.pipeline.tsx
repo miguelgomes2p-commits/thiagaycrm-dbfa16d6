@@ -8,12 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, DollarSign, User as UserIcon, Flame, Clock, Info } from "lucide-react";
+import { Plus, DollarSign, User as UserIcon, Flame, Clock, Info, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PipelineStagesManager } from "@/components/pipeline/PipelineStagesManager";
+import { StageAutomationDialog } from "@/components/pipeline/StageAutomationDialog";
+import { useServerFn } from "@tanstack/react-start";
+import { runStageAutomations } from "@/lib/automations.functions";
 
 export const Route = createFileRoute("/_authenticated/app/pipeline")({
   component: PipelinePage,
@@ -42,6 +45,8 @@ function PipelinePage() {
   const [dragging, setDragging] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [infoLead, setInfoLead] = useState<Lead | null>(null);
+  const [automationStage, setAutomationStage] = useState<Stage | null>(null);
+  const runAutomationsFn = useServerFn(runStageAutomations);
 
   const pipelineQ = useQuery({
     enabled: !!ws?.id,
@@ -94,6 +99,12 @@ function PipelinePage() {
     qc.invalidateQueries({ queryKey: ["pipeline", ws?.id] });
     qc.invalidateQueries({ queryKey: ["dashboard", ws?.id] });
     toast.success(`Movido para ${stage?.name}`);
+    // Fire stage automations (WhatsApp messages, etc.) — non-blocking
+    runAutomationsFn({ data: { leadId, stageId: newStageId } })
+      .then((r) => {
+        if (r?.ran > 0) toast.success(`⚡ ${r.ran} automação(ões) executada(s)`);
+      })
+      .catch((e) => console.error("[automations]", (e as Error).message));
   }
 
   async function createLead(e: React.FormEvent<HTMLFormElement>) {
@@ -183,14 +194,26 @@ function PipelinePage() {
                 onDrop={() => { if (dragging) { moveLead(dragging, stage.id); setDragging(null); } }}
               >
                 <div className="p-3 border-b border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ background: stage.color }} />
-                    <span className="text-sm font-semibold">{stage.name}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="h-2 w-2 rounded-full shrink-0" style={{ background: stage.color }} />
+                    <span className="text-sm font-semibold truncate">{stage.name}</span>
                     <span className="text-xs text-muted-foreground">{leads.length}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                    </span>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setAutomationStage(stage)}
+                        className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                        title="Configurar gatilhos"
+                      >
+                        <Zap className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {leads.length === 0 && (
@@ -291,6 +314,16 @@ function PipelinePage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {automationStage && ws && (
+        <StageAutomationDialog
+          open={!!automationStage}
+          onOpenChange={(v) => !v && setAutomationStage(null)}
+          stageId={automationStage.id}
+          stageName={automationStage.name}
+          workspaceId={ws.id}
+        />
+      )}
     </div>
   );
 }

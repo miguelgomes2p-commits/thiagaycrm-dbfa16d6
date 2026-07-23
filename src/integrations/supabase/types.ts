@@ -1212,6 +1212,63 @@ export type Database = {
           },
         ]
       }
+      stage_automations: {
+        Row: {
+          action_type: string
+          active: boolean
+          created_at: string
+          created_by: string | null
+          delay_seconds: number
+          id: string
+          message: string | null
+          name: string
+          stage_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          action_type?: string
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          delay_seconds?: number
+          id?: string
+          message?: string | null
+          name?: string
+          stage_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          action_type?: string
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          delay_seconds?: number
+          id?: string
+          message?: string | null
+          name?: string
+          stage_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_automations_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_automations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
