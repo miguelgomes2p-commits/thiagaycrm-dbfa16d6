@@ -355,12 +355,28 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         .eq("workspace_id", num.workspace_id)
         .eq("phone", waId)
         .maybeSingle();
-      const shouldFetchAvatar =
-        !isGroup && num.provider_base_url && num.provider_api_key && num.instance_name;
+      const canCallProvider = !!(num.provider_base_url && num.provider_api_key && num.instance_name);
+      const shouldFetchAvatar = !isGroup && canCallProvider;
+      const shouldFetchGroupMeta = isGroup && canCallProvider;
+
+      // Busca metadados do grupo (nome/foto) para eliminar "Grupo XXXXXX".
+      let groupSubject: string | null = null;
+      let groupPicture: string | null = null;
+      if (shouldFetchGroupMeta && (!exContact || !exContact.avatar_url || (exContact.name ?? "").startsWith("Grupo "))) {
+        try {
+          const { evolutionFetchGroupInfo } = await import("@/lib/evolution.server");
+          const info = await evolutionFetchGroupInfo(num.provider_base_url!, num.provider_api_key!, num.instance_name!, remoteJid);
+          if (info?.subject) groupSubject = info.subject;
+          if (info?.pictureUrl) groupPicture = info.pictureUrl;
+        } catch { /* best-effort */ }
+      }
+
       if (exContact) {
         contactId = exContact.id;
         const patch: { name?: string; avatar_url?: string } = {};
         if (!isGroup && !fromMe && pushName && exContact.name === waId) patch.name = pushName;
+        if (isGroup && groupSubject && (exContact.name ?? "").startsWith("Grupo ")) patch.name = groupSubject;
+        if (isGroup && groupPicture && !exContact.avatar_url) patch.avatar_url = groupPicture;
         if (source === "webhook" && !isHistorySync && shouldFetchAvatar && !exContact.avatar_url) {
           try {
             const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
@@ -372,7 +388,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
           await supabaseAdmin.from("contacts").update(patch).eq("id", contactId);
         }
       } else {
-        let avatarUrl: string | null = null;
+        let avatarUrl: string | null = groupPicture;
         if (shouldFetchAvatar) {
           try {
             const { evolutionFetchProfilePic } = await import("@/lib/evolution.server");
@@ -385,7 +401,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
           .insert({
             workspace_id: num.workspace_id,
             type: isGroup ? "group" : "person",
-            name: isGroup ? `Grupo ${waId.slice(-6)}` : (pushName ?? waId),
+            name: isGroup ? (groupSubject ?? `Grupo ${waId.slice(-6)}`) : (pushName ?? waId),
             phone: waId,
             avatar_url: avatarUrl,
           })
