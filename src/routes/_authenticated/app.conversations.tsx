@@ -790,9 +790,9 @@ function ConversationsPage() {
 
   return (
     <div className="h-full flex">
-      {/* Labels pane */}
+      {/* Labels pane — desktop only */}
       <div className={cn(
-        "border-r border-border flex flex-col shrink-0 bg-surface/30 transition-all",
+        "hidden md:flex border-r border-border flex-col shrink-0 bg-surface/30 transition-all",
         labelPaneOpen ? "w-56" : "w-10",
       )}>
         <div className="h-14 px-2 flex items-center border-b border-border">
