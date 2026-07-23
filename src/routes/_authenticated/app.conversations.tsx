@@ -1139,7 +1139,7 @@ function ConversationsPage() {
                         <AudioPlayer
                           src={mediaUrl}
                           mime={mediaMime}
-                          variant={m.direction === "outbound" ? "dark" : "light"}
+                          variant="light"
                         />
                       )}
                       {mediaUrl && mediaType === "video" && (
