@@ -194,14 +194,26 @@ function PipelinePage() {
                 onDrop={() => { if (dragging) { moveLead(dragging, stage.id); setDragging(null); } }}
               >
                 <div className="p-3 border-b border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ background: stage.color }} />
-                    <span className="text-sm font-semibold">{stage.name}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="h-2 w-2 rounded-full shrink-0" style={{ background: stage.color }} />
+                    <span className="text-sm font-semibold truncate">{stage.name}</span>
                     <span className="text-xs text-muted-foreground">{leads.length}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                    </span>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setAutomationStage(stage)}
+                        className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                        title="Configurar gatilhos"
+                      >
+                        <Zap className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {leads.length === 0 && (
