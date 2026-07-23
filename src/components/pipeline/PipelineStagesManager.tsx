@@ -64,7 +64,7 @@ export function PipelineStagesManager({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pipeline_stages")
-        .select("id, name, color, type, position")
+        .select("id, name, color, type, position, allowed_roles")
         .eq("pipeline_id", pipelineId)
         .order("position");
       if (error) throw error;
