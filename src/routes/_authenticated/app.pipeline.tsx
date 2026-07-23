@@ -99,6 +99,12 @@ function PipelinePage() {
     qc.invalidateQueries({ queryKey: ["pipeline", ws?.id] });
     qc.invalidateQueries({ queryKey: ["dashboard", ws?.id] });
     toast.success(`Movido para ${stage?.name}`);
+    // Fire stage automations (WhatsApp messages, etc.) — non-blocking
+    runAutomationsFn({ data: { leadId, stageId: newStageId } })
+      .then((r) => {
+        if (r?.ran > 0) toast.success(`⚡ ${r.ran} automação(ões) executada(s)`);
+      })
+      .catch((e) => console.error("[automations]", (e as Error).message));
   }
 
   async function createLead(e: React.FormEvent<HTMLFormElement>) {
