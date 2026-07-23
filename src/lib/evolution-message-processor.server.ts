@@ -393,8 +393,9 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
       if (exContact) {
         contactId = exContact.id;
         const patch: { name?: string; avatar_url?: string } = {};
-        if (!isGroup && !fromMe && pushName && exContact.name === waId) patch.name = pushName;
-        if (isGroup && groupSubject && (exContact.name ?? "").startsWith("Grupo ")) patch.name = groupSubject;
+        if (!isGroup && !fromMe && pushName && pushName !== exContact.name && isPlaceholderName(exContact.name, waId)) patch.name = pushName;
+        if (isGroup && groupSubject && ((exContact.name ?? "").startsWith("Grupo ") || isPlaceholderName(exContact.name, waId))) patch.name = groupSubject;
+        if (isGroup && groupPicture && !exContact.avatar_url) patch.avatar_url = groupPicture;
         if (isGroup && groupPicture && !exContact.avatar_url) patch.avatar_url = groupPicture;
         if (source === "webhook" && !isHistorySync && shouldFetchAvatar && !exContact.avatar_url) {
           try {
