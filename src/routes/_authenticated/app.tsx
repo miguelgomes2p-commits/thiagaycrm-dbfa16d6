@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, Link, useLocation, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
@@ -15,15 +15,6 @@ import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/app")({
-  beforeLoad: async () => {
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return;
-    const { data: memberships } = await supabase
-      .from("workspace_members").select("workspace_id").limit(1);
-    if (!memberships || memberships.length === 0) {
-      throw redirect({ to: "/onboarding" });
-    }
-  },
   component: AppShell,
 });
 
@@ -55,9 +46,12 @@ function AppShell() {
   const qc = useQueryClient();
   const current = workspaces?.[0];
 
+  // Onboarding check runs once when workspaces load, not on every navigation.
   useEffect(() => {
-    // Global CMD+K placeholder
-  }, []);
+    if (workspaces && workspaces.length === 0) {
+      navigate({ to: "/onboarding", replace: true });
+    }
+  }, [workspaces, navigate]);
 
   async function signOut() {
     await qc.cancelQueries();
