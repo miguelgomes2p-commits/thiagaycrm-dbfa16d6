@@ -1575,6 +1575,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           deleted_at: string | null
+          feature_ai: boolean
+          feature_renave: boolean
           id: string
           logo_url: string | null
           name: string
@@ -1585,6 +1587,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          feature_ai?: boolean
+          feature_renave?: boolean
           id?: string
           logo_url?: string | null
           name: string
@@ -1595,6 +1599,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          feature_ai?: boolean
+          feature_renave?: boolean
           id?: string
           logo_url?: string | null
           name?: string
