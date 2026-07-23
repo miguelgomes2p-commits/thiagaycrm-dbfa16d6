@@ -12,12 +12,15 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type StageType = "open" | "won" | "lost";
+type Role = "owner" | "admin" | "manager" | "agent";
+const ALL_ROLES: Role[] = ["owner", "admin", "manager", "agent"];
 type Stage = {
   id: string;
   name: string;
   color: string;
   type: StageType;
   position: number;
+  allowed_roles: Role[];
 };
 
 const TYPE_LABEL: Record<StageType, string> = {
@@ -33,13 +36,13 @@ const PRESET_COLORS = [
 ];
 
 const DEFAULT_STAGES: Omit<Stage, "id" | "position">[] = [
-  { name: "Novo Lead", color: "#6366f1", type: "open" },
-  { name: "Contato", color: "#0ea5e9", type: "open" },
-  { name: "Qualificado", color: "#8b5cf6", type: "open" },
-  { name: "Proposta", color: "#f59e0b", type: "open" },
-  { name: "Negociação", color: "#f97316", type: "open" },
-  { name: "Fechado Ganho", color: "#22c55e", type: "won" },
-  { name: "Fechado Perdido", color: "#ef4444", type: "lost" },
+  { name: "Novo Lead", color: "#6366f1", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Contato", color: "#0ea5e9", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Qualificado", color: "#8b5cf6", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Proposta", color: "#f59e0b", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Negociação", color: "#f97316", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Fechado Ganho", color: "#22c55e", type: "won", allowed_roles: [...ALL_ROLES] },
+  { name: "Fechado Perdido", color: "#ef4444", type: "lost", allowed_roles: [...ALL_ROLES] },
 ];
 
 export function PipelineStagesManager({
@@ -61,7 +64,7 @@ export function PipelineStagesManager({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pipeline_stages")
-        .select("id, name, color, type, position")
+        .select("id, name, color, type, position, allowed_roles")
         .eq("pipeline_id", pipelineId)
         .order("position");
       if (error) throw error;
@@ -87,6 +90,7 @@ export function PipelineStagesManager({
         color: PRESET_COLORS[prev.length % PRESET_COLORS.length],
         type: "open",
         position: prev.length,
+        allowed_roles: [...ALL_ROLES],
       },
     ]);
   }
@@ -164,9 +168,11 @@ export function PipelineStagesManager({
           color: s.color,
           type: s.type,
           position: s.position,
+          allowed_roles: s.allowed_roles,
         }));
       if (toInsert.length) {
-        const { error } = await supabase.from("pipeline_stages").insert(toInsert);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await supabase.from("pipeline_stages").insert(toInsert as any);
         if (error) throw error;
       }
 
@@ -174,15 +180,20 @@ export function PipelineStagesManager({
       for (const s of toUpdate) {
         const orig = original.find((o) => o.id === s.id);
         if (!orig) continue;
+        const rolesChanged =
+          (orig.allowed_roles ?? []).slice().sort().join(",") !==
+          (s.allowed_roles ?? []).slice().sort().join(",");
         if (
           orig.name !== s.name ||
           orig.color !== s.color ||
           orig.type !== s.type ||
-          orig.position !== s.position
+          orig.position !== s.position ||
+          rolesChanged
         ) {
           const { error } = await supabase
             .from("pipeline_stages")
-            .update({ name: s.name.trim(), color: s.color, type: s.type, position: s.position })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .update({ name: s.name.trim(), color: s.color, type: s.type, position: s.position, allowed_roles: s.allowed_roles } as any)
             .eq("id", s.id);
           if (error) throw error;
         }
@@ -221,7 +232,9 @@ export function PipelineStagesManager({
           color: s.color,
           type: s.type,
           position: i,
-        })),
+          allowed_roles: s.allowed_roles,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        })) as any,
       );
       if (insErr) throw insErr;
       toast.success("Etapas restauradas");
@@ -333,6 +346,38 @@ export function PipelineStagesManager({
                       ))}
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div className="pl-6">
+                <Label className="text-xs text-muted-foreground">Cargos que podem mover leads para esta etapa</Label>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {ALL_ROLES.map((r) => {
+                    const active = (stage.allowed_roles ?? []).includes(r);
+                    const locked = r === "owner" || r === "admin";
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        disabled={locked}
+                        onClick={() => {
+                          const cur = new Set(stage.allowed_roles ?? []);
+                          if (cur.has(r)) cur.delete(r); else cur.add(r);
+                          updateStage(stage.id, { allowed_roles: ALL_ROLES.filter((x) => cur.has(x)) });
+                        }}
+                        className={cn(
+                          "px-2 py-0.5 text-[11px] rounded-full border transition",
+                          active
+                            ? "bg-primary/15 border-primary/40 text-primary"
+                            : "bg-transparent border-border text-muted-foreground hover:border-primary/40",
+                          locked && "opacity-60 cursor-not-allowed",
+                        )}
+                        title={locked ? "Owner/Admin sempre têm acesso" : ""}
+                      >
+                        {r}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

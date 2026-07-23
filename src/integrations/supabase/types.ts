@@ -599,6 +599,7 @@ export type Database = {
       }
       pipeline_stages: {
         Row: {
+          allowed_roles: Database["public"]["Enums"]["app_role"][]
           color: string | null
           created_at: string
           id: string
@@ -610,6 +611,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          allowed_roles?: Database["public"]["Enums"]["app_role"][]
           color?: string | null
           created_at?: string
           id?: string
@@ -621,6 +623,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          allowed_roles?: Database["public"]["Enums"]["app_role"][]
           color?: string | null
           created_at?: string
           id?: string
