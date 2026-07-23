@@ -232,7 +232,9 @@ export function PipelineStagesManager({
           color: s.color,
           type: s.type,
           position: i,
-        })),
+          allowed_roles: s.allowed_roles,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        })) as any,
       );
       if (insErr) throw insErr;
       toast.success("Etapas restauradas");
