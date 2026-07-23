@@ -293,6 +293,7 @@ function AuthPage() {
                   <Label htmlFor="p2">Senha</Label>
                   <Input id="p2" name="password" type="password" required minLength={6} placeholder="Mínimo 6 caracteres" />
                 </div>
+                <CaptchaField />
                 <Button type="submit" disabled={loading} className="w-full gradient-brand text-primary-foreground border-0 h-11">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Criar conta"}
                 </Button>
