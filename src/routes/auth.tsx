@@ -273,6 +273,7 @@ function AuthPage() {
                   <Label htmlFor="p1">Senha</Label>
                   <Input id="p1" name="password" type="password" required placeholder="••••••••" />
                 </div>
+                {requiresCaptcha && <CaptchaField />}
                 <Button type="submit" disabled={loading} className="w-full gradient-brand text-primary-foreground border-0 h-11">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Mail className="h-4 w-4 mr-2" /> Entrar</>}
                 </Button>
