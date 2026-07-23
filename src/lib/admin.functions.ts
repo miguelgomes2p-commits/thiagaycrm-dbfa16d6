@@ -71,7 +71,7 @@ export const updateWorkspaceFeatures = createServerFn({ method: "POST" })
   .inputValidator((data: { workspaceId: string; feature_renave?: boolean; feature_ai?: boolean }) => data)
   .handler(async ({ data, context }) => {
     assertSuperAdmin(context.claims as Record<string, unknown>);
-    const patch: Record<string, boolean> = {};
+    const patch: { feature_renave?: boolean; feature_ai?: boolean } = {};
     if (typeof data.feature_renave === "boolean") patch.feature_renave = data.feature_renave;
     if (typeof data.feature_ai === "boolean") patch.feature_ai = data.feature_ai;
     if (Object.keys(patch).length === 0) return { ok: true as const };
