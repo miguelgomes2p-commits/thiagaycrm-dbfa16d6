@@ -5,7 +5,7 @@ import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, Plus, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
+  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/app")({
   component: AppShell,
 });
 
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean };
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; feature?: "renave" | "ai" };
 const NAV: NavItem[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/app/pipeline", label: "Pipeline", icon: KanbanSquare },
@@ -36,10 +36,8 @@ const NAV: NavItem[] = [
   { to: "/app/whatsapp", label: "WhatsApp", icon: Phone },
   { to: "/app/labels", label: "Etiquetas", icon: Tag },
   { to: "/app/tasks", label: "Tarefas", icon: CheckSquare },
-  { to: "/app/renave", label: "RENAVE", icon: Car },
-
-
-  { to: "/app/ai", label: "Assistente IA", icon: Bot },
+  { to: "/app/renave", label: "RENAVE", icon: Car, feature: "renave" },
+  { to: "/app/ai", label: "Assistente IA", icon: Bot, feature: "ai" },
   { to: "/app/settings", label: "Configurações", icon: Settings },
 ];
 
