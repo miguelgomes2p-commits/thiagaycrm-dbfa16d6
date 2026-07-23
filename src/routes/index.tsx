@@ -40,10 +40,6 @@ function Landing() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-primary/20 blur-[120px]" />
         </div>
         <div className="mx-auto max-w-7xl px-6 py-24 md:py-32 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/50 px-3 py-1 text-xs text-muted-foreground mb-8">
-            <Sparkles className="h-3 w-3 text-primary" />
-            CRM conversacional com IA nativa
-          </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05]">
             Toda venda começa <br />
             com uma <span className="text-gradient-brand">conversa.</span>

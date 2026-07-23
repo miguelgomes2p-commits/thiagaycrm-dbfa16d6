@@ -105,17 +105,6 @@ function ContactsPage() {
           <p className="text-sm text-muted-foreground">Pessoas, empresas e grupos. Clique em um contato para editar.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline" size="sm"
-            onClick={() => {
-              if (!ws) return;
-              if (!confirm("Isso vai localizar contatos que ficaram com o nome de um membro da equipe (bug antigo do WhatsApp) e resetar para o telefone. Continuar?")) return;
-              refreshM.mutate();
-            }}
-            disabled={refreshM.isPending || !ws}
-          >
-            <Wand2 className="h-4 w-4 mr-1" /> Corrigir nomes
-          </Button>
           <Button className="gradient-brand text-primary-foreground border-0" onClick={() => openNew("person")}>
             <Plus className="h-4 w-4 mr-1" /> Novo contato
           </Button>
