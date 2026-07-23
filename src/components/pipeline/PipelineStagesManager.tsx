@@ -12,12 +12,15 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type StageType = "open" | "won" | "lost";
+type Role = "owner" | "admin" | "manager" | "agent";
+const ALL_ROLES: Role[] = ["owner", "admin", "manager", "agent"];
 type Stage = {
   id: string;
   name: string;
   color: string;
   type: StageType;
   position: number;
+  allowed_roles: Role[];
 };
 
 const TYPE_LABEL: Record<StageType, string> = {
