@@ -1106,7 +1106,7 @@ function ConversationsPage() {
               </div>
             )}
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-chat">
               {msgsQ.data?.map((m) => {
                 const status = (m as { delivery_status?: string }).delivery_status;
                 const err = (m as { error_message?: string | null }).error_message;
@@ -1116,12 +1116,12 @@ function ConversationsPage() {
                 return (
                   <div key={m.id} className={cn("flex", m.direction === "outbound" ? "justify-end" : "justify-start")}>
                     <div className={cn(
-                      "max-w-md rounded-2xl px-3 py-2 text-sm space-y-2",
+                      "max-w-md rounded-lg px-3 py-2 text-sm space-y-2 shadow-sm",
                       m.direction === "outbound"
-                        ? "gradient-brand text-primary-foreground rounded-br-sm"
+                        ? "bg-bubble-out text-bubble-out-foreground rounded-br-sm"
                         : m.sender_type === "ai"
-                          ? "bg-accent/20 text-accent-foreground border border-accent/30 rounded-bl-sm"
-                          : "bg-surface border border-border rounded-bl-sm"
+                          ? "bg-info/10 text-foreground border border-info/30 rounded-bl-sm"
+                          : "bg-bubble-in text-foreground border border-border rounded-bl-sm"
                     )}>
                       {mediaUrl && (mediaType === "image" || mediaType === "sticker") && (
                         <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
@@ -1139,7 +1139,7 @@ function ConversationsPage() {
                         <AudioPlayer
                           src={mediaUrl}
                           mime={mediaMime}
-                          variant={m.direction === "outbound" ? "dark" : "light"}
+                          variant="light"
                         />
                       )}
                       {mediaUrl && mediaType === "video" && (

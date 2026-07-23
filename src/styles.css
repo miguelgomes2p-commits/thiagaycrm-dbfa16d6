@@ -5,9 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Lupus CRM Design System
- * Dark-first, modern SaaS aesthetic inspired by Linear/Kommo/Monday.
- * All colors are semantic tokens in oklch.
+ * Lupus CRM — Light Professional Theme
+ * Inspired by Kommo / HubSpot / Intercom / Linear.
+ * No gradients, no glow, no heavy shadows. Subtle borders.
  */
 
 @theme inline {
@@ -52,94 +52,74 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-chat: var(--chat);
+  --color-bubble-in: var(--bubble-in);
+  --color-bubble-out: var(--bubble-out);
+  --color-bubble-out-foreground: var(--bubble-out-foreground);
 
-  --shadow-glow: 0 0 40px -8px oklch(0.62 0.24 25 / 0.4);
-  --shadow-card: 0 1px 0 0 oklch(1 0 0 / 0.04), 0 8px 24px -12px oklch(0 0 0 / 0.5);
+  --shadow-card: 0 1px 2px 0 rgb(17 24 39 / 0.04);
 }
 
-/* Default = dark theme (Lupus brand: charcoal + red). */
+/* Default = light professional theme (Lupus). */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  --background: oklch(0.15 0.005 260);
-  --foreground: oklch(0.98 0.003 260);
+  --background: #F0F0F2;
+  --foreground: #111827;
 
-  --surface: oklch(0.18 0.005 260);
-  --surface-2: oklch(0.22 0.006 260);
+  --surface: #F5F5F7;
+  --surface-2: #E8E8EA;
 
-  --card: oklch(0.19 0.005 260);
-  --card-foreground: oklch(0.98 0.003 260);
+  --card: #F5F5F7;
+  --card-foreground: #111827;
 
-  --popover: oklch(0.19 0.005 260);
-  --popover-foreground: oklch(0.98 0.003 260);
+  --popover: #F5F5F7;
+  --popover-foreground: #111827;
 
-  --primary: oklch(0.62 0.24 25);
-  --primary-foreground: oklch(0.99 0.005 260);
+  --primary: #DC2626;
+  --primary-foreground: #FFFFFF;
 
-  --secondary: oklch(0.25 0.006 260);
-  --secondary-foreground: oklch(0.98 0.003 260);
+  --secondary: #E8E8EA;
+  --secondary-foreground: #111827;
 
-  --muted: oklch(0.23 0.005 260);
-  --muted-foreground: oklch(0.70 0.008 260);
+  --muted: #E8E8EA;
+  --muted-foreground: #6B7280;
 
-  --accent: oklch(0.68 0.22 28);
-  --accent-foreground: oklch(0.99 0.005 260);
+  --accent: #F5F5F7;
+  --accent-foreground: #111827;
 
-  --destructive: oklch(0.60 0.24 25);
-  --destructive-foreground: oklch(0.99 0.005 260);
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
 
-  --success: oklch(0.72 0.19 155);
-  --success-foreground: oklch(0.15 0.005 260);
+  --success: #16A34A;
+  --success-foreground: #FFFFFF;
 
-  --warning: oklch(0.80 0.17 75);
-  --warning-foreground: oklch(0.15 0.005 260);
+  --warning: #D97706;
+  --warning-foreground: #FFFFFF;
 
-  --info: oklch(0.72 0.15 240);
-  --info-foreground: oklch(0.15 0.005 260);
+  --info: #2563EB;
+  --info-foreground: #FFFFFF;
 
-  --border: oklch(1 0 0 / 0.08);
-  --input: oklch(1 0 0 / 0.10);
-  --ring: oklch(0.62 0.24 25);
+  --border: #D1D5DB;
+  --input: #D1D5DB;
+  --ring: #DC2626;
 
-  --sidebar: oklch(0.12 0.004 260);
-  --sidebar-foreground: oklch(0.88 0.005 260);
-  --sidebar-border: oklch(1 0 0 / 0.06);
-  --sidebar-accent: oklch(0.22 0.006 260);
-  --sidebar-accent-foreground: oklch(0.99 0.005 260);
+  --sidebar: #F5F5F7;
+  --sidebar-foreground: #111827;
+  --sidebar-border: #D1D5DB;
+  --sidebar-accent: #E8E8EA;
+  --sidebar-accent-foreground: #111827;
 
-  --chart-1: oklch(0.62 0.24 25);
-  --chart-2: oklch(0.72 0.19 155);
-  --chart-3: oklch(0.75 0.18 200);
-  --chart-4: oklch(0.80 0.17 75);
-  --chart-5: oklch(0.70 0.20 340);
-}
+  --chat: #E8E8EA;
+  --bubble-in: #F5F5F7;
+  --bubble-out: #DCF8C6;
+  --bubble-out-foreground: #111827;
 
-
-.light {
-  --background: oklch(0.99 0.003 260);
-  --foreground: oklch(0.18 0.02 265);
-  --surface: oklch(0.97 0.005 260);
-  --surface-2: oklch(0.94 0.008 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 265);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 265);
-  --primary: oklch(0.55 0.24 285);
-  --primary-foreground: oklch(0.99 0.005 260);
-  --secondary: oklch(0.94 0.008 260);
-  --secondary-foreground: oklch(0.20 0.02 265);
-  --muted: oklch(0.95 0.005 260);
-  --muted-foreground: oklch(0.48 0.02 265);
-  --accent: oklch(0.60 0.18 200);
-  --accent-foreground: oklch(0.99 0.005 260);
-  --border: oklch(0 0 0 / 0.10);
-  --input: oklch(0 0 0 / 0.10);
-  --ring: oklch(0.55 0.24 285);
-  --sidebar: oklch(0.98 0.005 260);
-  --sidebar-foreground: oklch(0.25 0.02 265);
-  --sidebar-border: oklch(0 0 0 / 0.06);
-  --sidebar-accent: oklch(0.93 0.01 260);
-  --sidebar-accent-foreground: oklch(0.18 0.02 265);
+  --chart-1: #DC2626;
+  --chart-2: #16A34A;
+  --chart-3: #2563EB;
+  --chart-4: #D97706;
+  --chart-5: #6B7280;
 }
 
 @layer base {
@@ -155,23 +135,20 @@
   }
 }
 
-@utility glass {
-  background: linear-gradient(180deg, oklch(1 0 0 / 0.03), oklch(1 0 0 / 0.01));
-  border: 1px solid var(--color-border);
-  backdrop-filter: blur(10px);
-}
-
+/* Kept for backwards compat with existing components; now solid, no gradient. */
 @utility gradient-brand {
-  background-image: linear-gradient(135deg, oklch(0.58 0.24 25), oklch(0.68 0.22 32));
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
 }
 
 @utility text-gradient-brand {
-  background-image: linear-gradient(135deg, oklch(0.72 0.22 25), oklch(0.80 0.18 35));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--color-primary);
 }
 
+@utility glass {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+}
 
 @utility card-elevated {
   background: var(--color-card);
@@ -184,13 +161,13 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@utility animate-fade-in-up { animation: fade-in-up 240ms ease-out both; }
+@utility animate-fade-in-up { animation: fade-in-up 200ms ease-out both; }
 
 /* Scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: oklch(1 0 0 / 0.08);
+  background: #C7C9CE;
   border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 0.16); }
+::-webkit-scrollbar-thumb:hover { background: #A8ACB3; }

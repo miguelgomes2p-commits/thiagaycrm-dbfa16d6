@@ -88,14 +88,14 @@ function AppShell() {
             to={item.to as "/app"}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+              "relative flex items-center gap-3 pl-4 pr-3 py-2 rounded-md text-sm transition-colors",
               active
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-primary"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
               dense && "py-2.5"
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            <Icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
             <span className="truncate">{item.label}</span>
           </Link>
         );
@@ -132,13 +132,13 @@ function AppShell() {
                   to={item.to as "/app"}
                   title={item.label}
                   className={cn(
-                    "flex items-center justify-center px-0 py-2 rounded-lg text-sm transition-colors",
+                    "relative flex items-center justify-center px-0 py-2 rounded-md text-sm transition-colors",
                     active
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-primary"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  <Icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
                 </Link>
               );
             })}
