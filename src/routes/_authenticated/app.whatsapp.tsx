@@ -258,31 +258,17 @@ function WhatsappPage() {
         <div className="min-w-0">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">WhatsApp Business</h1>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Conecte múltiplos números: oficial via Cloud API ou espelhado por QR Code (Evolution/Z-API).
+            Conecte múltiplos números por QR Code.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <Button variant="outline" size="sm" onClick={() => setOpenWizard(true)}>
-            <Rocket className="h-4 w-4 mr-1" /> <span className="truncate">Guia Meta</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setOpenLogs(true)}>
-            <ScrollText className="h-4 w-4 mr-1" /> <span className="truncate">Logs</span>
-          </Button>
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <Dialog open={openEvo} onOpenChange={setOpenEvo}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button size="sm" className="gradient-brand text-primary-foreground border-0">
                 <QrCode className="h-4 w-4 mr-1" /> <span className="truncate">QR Code</span>
               </Button>
             </DialogTrigger>
             <EvolutionConnectDialog onSubmit={(v) => createEvoM.mutate(v)} loading={createEvoM.isPending} />
-          </Dialog>
-          <Dialog open={openConnect} onOpenChange={setOpenConnect}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gradient-brand text-primary-foreground border-0">
-                <Plus className="h-4 w-4 mr-1" /> <span className="truncate">Cloud API</span>
-              </Button>
-            </DialogTrigger>
-            <ConnectDialog onSubmit={(v) => connectM.mutate(v)} loading={connectM.isPending} />
           </Dialog>
         </div>
       </div>
