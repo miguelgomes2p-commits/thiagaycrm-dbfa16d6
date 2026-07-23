@@ -320,6 +320,9 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     const key = keyOf(m);
     const remoteJid = String(key?.remoteJid ?? "");
     if (!remoteJid || remoteJid.includes("status@")) continue;
+    // Skip @lid (opaque WhatsApp identifiers) — não são números roteáveis
+    // e causam "Bad Request" ao tentar enviar mensagens de volta.
+    if (remoteJid.endsWith("@lid")) continue;
     const fromMe = asBoolean(key.fromMe);
     const isGroup = remoteJid.endsWith("@g.us");
     const waId = remoteJid.split("@")[0];

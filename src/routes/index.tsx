@@ -102,7 +102,7 @@ function Landing() {
       <footer className="border-t border-border">
         <div className="mx-auto max-w-7xl px-6 py-8 text-sm text-muted-foreground flex justify-between">
           <span>© {new Date().getFullYear()} Lupus CRM</span>
-          <span>Feito com IA · Multi-tenant · Realtime</span>
+          <span>Multi-tenant · Realtime</span>
         </div>
       </footer>
     </div>
