@@ -274,7 +274,10 @@ function ConversationsPage() {
 
   // Filtered + sorted list
   const visible = useMemo(() => {
-    let list = convsQ.data ?? [];
+    let list = (convsQ.data ?? []).filter((c) => {
+      const t = (c.contacts as { type?: string } | null)?.type;
+      return t !== "group";
+    });
     if (view.search.trim()) {
       const q = view.search.trim().toLowerCase();
       list = list.filter((c) => {
