@@ -314,6 +314,16 @@ function PipelinePage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {automationStage && ws && (
+        <StageAutomationDialog
+          open={!!automationStage}
+          onOpenChange={(v) => !v && setAutomationStage(null)}
+          stageId={automationStage.id}
+          stageName={automationStage.name}
+          workspaceId={ws.id}
+        />
+      )}
     </div>
   );
 }
