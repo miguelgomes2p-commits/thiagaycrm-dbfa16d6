@@ -32,7 +32,7 @@ function AdminPage() {
   const listUsersFn = useServerFn(listAllUsers);
   const delUserFn = useServerFn(deleteUserById);
   const listWsFn = useServerFn(listAllWorkspaces);
-  const delWsFn = useServerFn(deleteWorkspaceById);
+  const updateFeaturesFn = useServerFn(updateWorkspaceFeatures);
 
   const [q, setQ] = useState("");
   const [confirmUser, setConfirmUser] = useState<{ id: string; email: string } | null>(null);
