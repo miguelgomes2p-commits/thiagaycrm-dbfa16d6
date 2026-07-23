@@ -416,30 +416,6 @@ function WhatsappPage() {
                     <CopyField label="Verify Token" value={n.webhook_verify_token ?? "Disponível apenas para admins"} mono />
                   </div>
                 )}
-                {isEvo && (
-                  <div>
-                    <CopyField label="Webhook Evolution (já configurado na criação)" value={webhookUrl} />
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div className="flex items-center gap-3">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <div>
-                      <div className="text-sm font-medium">Auto-resposta com IA</div>
-                      <div className="text-xs text-muted-foreground">
-                        {isEvo
-                          ? "Disponível apenas em Cloud API oficial nesta versão."
-                          : "Responde automaticamente novas mensagens até um agente assumir."}
-                      </div>
-                    </div>
-                  </div>
-                  <Switch
-                    disabled={isEvo}
-                    checked={n.auto_reply_enabled}
-                    onCheckedChange={(v) => toggleM.mutate({ id: n.id, enabled: v })}
-                  />
-                </div>
               </div>
             );
           })}
