@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
-  Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
+  Check, CheckCheck, AlertTriangle, UserPlus,
   Tag, Filter, ChevronRight, Paperclip, BriefcaseBusiness, Save, Loader2,
   Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil,
 } from "lucide-react";
