@@ -828,7 +828,7 @@ function ConversationsPage() {
               <span className="opacity-60">{convsQ.data?.length ?? 0}</span>
             </button>
 
-            {systemLabels.length > 0 && (
+            {isAdmin && systemLabels.length > 0 && (
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 mb-1">Números WhatsApp</div>
                 <div className="space-y-0.5">
