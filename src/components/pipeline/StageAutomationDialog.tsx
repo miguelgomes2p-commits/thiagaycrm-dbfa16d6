@@ -154,14 +154,30 @@ export function StageAutomationDialog({
               <Textarea rows={5} value={editing.message ?? ""}
                 onChange={(e) => setEditing((p) => ({ ...p, message: e.target.value }))}
                 placeholder="Olá {{contact.name}}, obrigado pela confiança..." />
-              <div className="mt-2 flex flex-wrap gap-1">
-                {VARIABLES.map((v) => (
-                  <button key={v.key} type="button" onClick={() => insertVar(v.key)}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary font-mono"
-                    title={v.desc}>
-                    {v.key}
-                  </button>
-                ))}
+              <div className="mt-2 rounded-lg border border-border bg-muted/30 p-2.5">
+                <div className="text-[11px] font-medium text-muted-foreground mb-1.5">
+                  Variáveis disponíveis — clique para inserir
+                </div>
+                <div className="space-y-1">
+                  {VARIABLES.map((v) => (
+                    <button
+                      key={v.key}
+                      type="button"
+                      onClick={() => insertVar(v.key)}
+                      className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded hover:bg-primary/5 transition-colors group"
+                    >
+                      <code className="text-[11px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
+                        {v.key}
+                      </code>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] text-foreground truncate">{v.desc}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">
+                          ex: <span className="font-medium">{v.example}</span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
