@@ -339,20 +339,6 @@ function WhatsappPage() {
                       <span className={cn("h-2 w-2 rounded-full", statusColor)} />
                       <span className="font-semibold">{n.label}</span>
                       <span className="text-sm text-muted-foreground">· {n.display_number}</span>
-                      <span
-                        className={cn(
-                          "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                          isEvo ? "bg-primary/15 text-primary" : "bg-success/15 text-success",
-                        )}
-                      >
-                        {isEvo ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Smartphone className="h-3 w-3" /> QR Code (espelhado)
-                          </span>
-                        ) : (
-                          "Cloud API oficial"
-                        )}
-                      </span>
                       {isEvo && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           {n.connection_status}
