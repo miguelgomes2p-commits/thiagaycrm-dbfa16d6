@@ -1084,14 +1084,6 @@ function ConversationsPage() {
                     </Button>
                   }
                 />
-                {(active as { assigned_to?: string | null }).assigned_to ? (
-                  <>
-                    <Button size="sm" variant="ghost" onClick={release}><UserMinus className="h-4 w-4 mr-1" />Devolver</Button>
-                    <Button size="sm" variant="ghost" onClick={resolve}><CheckCircle2 className="h-4 w-4 mr-1" />Resolver</Button>
-                  </>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={take}><UserPlus className="h-4 w-4 mr-1" />Pegar</Button>
-                )}
               </div>
             </div>
 
