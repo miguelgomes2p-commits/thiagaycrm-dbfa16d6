@@ -900,7 +900,10 @@ function ConversationsPage() {
       </div>
 
       {/* List */}
-      <div className="w-80 border-r border-border flex flex-col shrink-0">
+      <div className={cn(
+        "w-full md:w-80 border-r border-border flex-col shrink-0",
+        activeId ? "hidden md:flex" : "flex",
+      )}>
         <div className="p-3 border-b border-border space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h1 className="font-semibold text-sm">Conversas</h1>
