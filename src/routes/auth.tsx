@@ -45,6 +45,15 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [existingSession, setExistingSession] = useState<null | { email: string | null }>(null);
   const [inviteAccepted, setInviteAccepted] = useState(false);
+  const [failCount, setFailCount] = useState(0);
+  const [challenge, setChallenge] = useState(() => newChallenge());
+  const [captchaInput, setCaptchaInput] = useState("");
+  const requiresCaptcha = failCount >= 2;
+
+  function refreshChallenge() {
+    setChallenge(newChallenge());
+    setCaptchaInput("");
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
