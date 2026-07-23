@@ -168,9 +168,11 @@ export function PipelineStagesManager({
           color: s.color,
           type: s.type,
           position: s.position,
+          allowed_roles: s.allowed_roles,
         }));
       if (toInsert.length) {
-        const { error } = await supabase.from("pipeline_stages").insert(toInsert);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await supabase.from("pipeline_stages").insert(toInsert as any);
         if (error) throw error;
       }
 
@@ -178,15 +180,20 @@ export function PipelineStagesManager({
       for (const s of toUpdate) {
         const orig = original.find((o) => o.id === s.id);
         if (!orig) continue;
+        const rolesChanged =
+          (orig.allowed_roles ?? []).slice().sort().join(",") !==
+          (s.allowed_roles ?? []).slice().sort().join(",");
         if (
           orig.name !== s.name ||
           orig.color !== s.color ||
           orig.type !== s.type ||
-          orig.position !== s.position
+          orig.position !== s.position ||
+          rolesChanged
         ) {
           const { error } = await supabase
             .from("pipeline_stages")
-            .update({ name: s.name.trim(), color: s.color, type: s.type, position: s.position })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .update({ name: s.name.trim(), color: s.color, type: s.type, position: s.position, allowed_roles: s.allowed_roles } as any)
             .eq("id", s.id);
           if (error) throw error;
         }
