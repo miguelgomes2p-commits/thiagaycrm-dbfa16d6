@@ -8,9 +8,6 @@ import {
   sendWhatsappMessage,
   sendWhatsappAttachment,
   repairWhatsappAudioMedia,
-  takeConversation,
-  releaseConversation,
-  resolveConversation,
 } from "@/lib/whatsapp.functions";
 import { syncWorkspaceEvolutionMessages } from "@/lib/evolution.functions";
 import { useLabels, useConversationLabels, useAssignLabel, useRemoveLabel } from "@/hooks/useLabels";
