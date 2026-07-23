@@ -976,8 +976,9 @@ function ConversationsPage() {
                 const name = contact?.name ?? "Anônimo";
                 const isGroup = contact?.type === "group";
                 const ids = convLabelMap?.get(c.id) ?? [];
-                const pills = ids.map((id) => labelById.get(id)).filter(Boolean).slice(0, 3);
-                const extra = ids.length - pills.length;
+                const visibleLabels = ids.map((id) => labelById.get(id)).filter((l): l is NonNullable<typeof l> => !!l && (isAdmin || (l as { kind?: string }).kind !== "system"));
+                const pills = visibleLabels.slice(0, 3);
+                const extra = visibleLabels.length - pills.length;
                 const assignedId = (c as { assigned_to?: string | null }).assigned_to ?? null;
                 const agent = assignedId ? membersQ.data?.get(assignedId) : null;
                 return (
