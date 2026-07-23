@@ -1262,14 +1262,30 @@ function ConversationsPage() {
         )}
       </div>
       {active && leadPaneOpen && (
-        <aside className="w-80 border-l border-border bg-surface/20 p-4 overflow-y-auto shrink-0">
-          <div className="flex items-center gap-2 mb-4">
-            <BriefcaseBusiness className="h-4 w-4 text-primary" />
-            <div>
-              <h2 className="text-sm font-semibold">Lead</h2>
-              <p className="text-[11px] text-muted-foreground">Informações comerciais da conversa</p>
+        <>
+          {/* Backdrop on mobile only */}
+          <div
+            className="fixed inset-0 z-40 bg-black/40 md:hidden"
+            onClick={() => setLeadPaneOpen(false)}
+            aria-hidden
+          />
+          <aside className="fixed inset-y-0 right-0 z-50 w-[85vw] max-w-sm md:relative md:inset-auto md:z-auto md:w-80 border-l border-border bg-surface md:bg-surface/20 p-4 overflow-y-auto shrink-0 shadow-2xl md:shadow-none">
+            <div className="flex items-center gap-2 mb-4">
+              <BriefcaseBusiness className="h-4 w-4 text-primary" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-semibold">Lead</h2>
+                <p className="text-[11px] text-muted-foreground">Informações comerciais da conversa</p>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="md:hidden h-8 w-8 shrink-0"
+                onClick={() => setLeadPaneOpen(false)}
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-          </div>
           {!leadContextQ.data?.pipe || !leadContextQ.data.stages[0] ? (
             <div className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
               Crie um pipeline antes de salvar leads.
