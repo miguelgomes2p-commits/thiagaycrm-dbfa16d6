@@ -207,9 +207,6 @@ function AppShell() {
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">
-            <Button size="sm" className="gradient-brand text-primary-foreground border-0 hidden md:inline-flex">
-              <Plus className="h-4 w-4 mr-1" /> Novo lead
-            </Button>
             <Button size="icon" variant="ghost" className="h-9 w-9"><Bell className="h-4 w-4" /></Button>
             <div className="relative group">
               <Avatar className="h-8 w-8 cursor-pointer">
