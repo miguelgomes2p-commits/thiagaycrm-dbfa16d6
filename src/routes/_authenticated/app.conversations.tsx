@@ -1377,7 +1377,8 @@ function ConversationsPage() {
               </Button>
             </div>
           )}
-        </aside>
+          </aside>
+        </>
       )}
 
       <Dialog open={linkPickerOpen} onOpenChange={setLinkPickerOpen}>
