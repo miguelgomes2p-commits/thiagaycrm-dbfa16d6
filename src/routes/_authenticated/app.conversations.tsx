@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus,
-  Tag, Filter, ChevronRight, Paperclip, BriefcaseBusiness, Save, Loader2,
+  Tag, Filter, ChevronRight, ChevronLeft, Paperclip, BriefcaseBusiness, Save, Loader2,
   Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -790,9 +790,9 @@ function ConversationsPage() {
 
   return (
     <div className="h-full flex">
-      {/* Labels pane */}
+      {/* Labels pane — desktop only */}
       <div className={cn(
-        "border-r border-border flex flex-col shrink-0 bg-surface/30 transition-all",
+        "hidden md:flex border-r border-border flex-col shrink-0 bg-surface/30 transition-all",
         labelPaneOpen ? "w-56" : "w-10",
       )}>
         <div className="h-14 px-2 flex items-center border-b border-border">
@@ -900,7 +900,10 @@ function ConversationsPage() {
       </div>
 
       {/* List */}
-      <div className="w-80 border-r border-border flex flex-col shrink-0">
+      <div className={cn(
+        "w-full md:w-80 border-r border-border flex-col shrink-0",
+        activeId ? "hidden md:flex" : "flex",
+      )}>
         <div className="p-3 border-b border-border space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h1 className="font-semibold text-sm">Conversas</h1>
@@ -1025,7 +1028,10 @@ function ConversationsPage() {
       </div>
 
       {/* Thread */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={cn(
+        "flex-1 flex-col min-w-0",
+        active ? "flex" : "hidden md:flex",
+      )}>
         {!active ? (
           <div className="flex-1 grid place-items-center text-center text-muted-foreground p-8">
             <div>
@@ -1035,7 +1041,16 @@ function ConversationsPage() {
           </div>
         ) : (
           <>
-            <div className="h-14 border-b border-border px-4 flex items-center gap-3 shrink-0">
+            <div className="h-14 border-b border-border px-2 md:px-4 flex items-center gap-2 md:gap-3 shrink-0">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="md:hidden shrink-0 h-9 w-9"
+                onClick={() => setActiveId(null)}
+                aria-label="Voltar"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
               <Avatar className="h-9 w-9">
                 {(active.contacts as { avatar_url?: string | null } | null)?.avatar_url && (
                   <AvatarImage src={(active.contacts as { avatar_url?: string | null }).avatar_url!} />
@@ -1247,14 +1262,30 @@ function ConversationsPage() {
         )}
       </div>
       {active && leadPaneOpen && (
-        <aside className="w-80 border-l border-border bg-surface/20 p-4 overflow-y-auto shrink-0">
-          <div className="flex items-center gap-2 mb-4">
-            <BriefcaseBusiness className="h-4 w-4 text-primary" />
-            <div>
-              <h2 className="text-sm font-semibold">Lead</h2>
-              <p className="text-[11px] text-muted-foreground">Informações comerciais da conversa</p>
+        <>
+          {/* Backdrop on mobile only */}
+          <div
+            className="fixed inset-0 z-40 bg-black/40 md:hidden"
+            onClick={() => setLeadPaneOpen(false)}
+            aria-hidden
+          />
+          <aside className="fixed inset-y-0 right-0 z-50 w-[85vw] max-w-sm md:relative md:inset-auto md:z-auto md:w-80 border-l border-border bg-surface md:bg-surface/20 p-4 overflow-y-auto shrink-0 shadow-2xl md:shadow-none">
+            <div className="flex items-center gap-2 mb-4">
+              <BriefcaseBusiness className="h-4 w-4 text-primary" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-semibold">Lead</h2>
+                <p className="text-[11px] text-muted-foreground">Informações comerciais da conversa</p>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="md:hidden h-8 w-8 shrink-0"
+                onClick={() => setLeadPaneOpen(false)}
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-          </div>
           {!leadContextQ.data?.pipe || !leadContextQ.data.stages[0] ? (
             <div className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
               Crie um pipeline antes de salvar leads.
@@ -1346,7 +1377,8 @@ function ConversationsPage() {
               </Button>
             </div>
           )}
-        </aside>
+          </aside>
+        </>
       )}
 
       <Dialog open={linkPickerOpen} onOpenChange={setLinkPickerOpen}>
