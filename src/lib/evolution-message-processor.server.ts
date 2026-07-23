@@ -421,7 +421,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
           .insert({
             workspace_id: num.workspace_id,
             type: isGroup ? "group" : "person",
-            name: isGroup ? (groupSubject ?? `Grupo ${waId.slice(-6)}`) : (pushName ?? waId),
+            name: isGroup ? (groupSubject ?? `Grupo ${waId.slice(-6)}`) : (!fromMe && pushName ? pushName : waId),
             phone: waId,
             avatar_url: avatarUrl,
           })
