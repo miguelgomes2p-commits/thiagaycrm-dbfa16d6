@@ -46,9 +46,12 @@ function AppShell() {
   const qc = useQueryClient();
   const current = workspaces?.[0];
 
+  // Onboarding check runs once when workspaces load, not on every navigation.
   useEffect(() => {
-    // Global CMD+K placeholder
-  }, []);
+    if (workspaces && workspaces.length === 0) {
+      navigate({ to: "/onboarding", replace: true });
+    }
+  }, [workspaces, navigate]);
 
   async function signOut() {
     await qc.cancelQueries();
