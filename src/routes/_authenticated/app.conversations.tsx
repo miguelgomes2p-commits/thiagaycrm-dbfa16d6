@@ -1028,7 +1028,10 @@ function ConversationsPage() {
       </div>
 
       {/* Thread */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={cn(
+        "flex-1 flex-col min-w-0",
+        active ? "flex" : "hidden md:flex",
+      )}>
         {!active ? (
           <div className="flex-1 grid place-items-center text-center text-muted-foreground p-8">
             <div>
@@ -1038,7 +1041,16 @@ function ConversationsPage() {
           </div>
         ) : (
           <>
-            <div className="h-14 border-b border-border px-4 flex items-center gap-3 shrink-0">
+            <div className="h-14 border-b border-border px-2 md:px-4 flex items-center gap-2 md:gap-3 shrink-0">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="md:hidden shrink-0 h-9 w-9"
+                onClick={() => setActiveId(null)}
+                aria-label="Voltar"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
               <Avatar className="h-9 w-9">
                 {(active.contacts as { avatar_url?: string | null } | null)?.avatar_url && (
                   <AvatarImage src={(active.contacts as { avatar_url?: string | null }).avatar_url!} />
