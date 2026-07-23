@@ -9,7 +9,27 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { acceptWorkspaceInvitation } from "@/lib/workspace.functions";
 import { toast } from "sonner";
-import { Loader2, Mail, ArrowLeft, UserPlus } from "lucide-react";
+import { Loader2, Mail, ArrowLeft, UserPlus, ShieldCheck, RefreshCw } from "lucide-react";
+
+function translateAuthError(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("password should contain") || m.includes("weakpassword") || m.includes("password is known") || m.includes("pwned") || m.includes("compromised"))
+    return "Senha muito fraca ou vazada. Use pelo menos 8 caracteres com letras maiúsculas, minúsculas, números e símbolos.";
+  if (m.includes("password should be at least")) return "A senha deve ter pelo menos 6 caracteres.";
+  if (m.includes("invalid login credentials")) return "Email ou senha incorretos.";
+  if (m.includes("email not confirmed")) return "Confirme seu email antes de entrar.";
+  if (m.includes("user already registered") || m.includes("already been registered")) return "Este email já está cadastrado. Faça login.";
+  if (m.includes("invalid email")) return "Email inválido.";
+  if (m.includes("rate limit") || m.includes("too many")) return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+  if (m.includes("network")) return "Falha de conexão. Verifique sua internet.";
+  return msg;
+}
+
+function newChallenge() {
+  const a = Math.floor(Math.random() * 9) + 1;
+  const b = Math.floor(Math.random() * 9) + 1;
+  return { a, b, answer: a + b };
+}
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search) => ({
