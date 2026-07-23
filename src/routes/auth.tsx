@@ -119,6 +119,13 @@ function AuthPage() {
     const email = String(form.get("email") ?? "");
     const password = String(form.get("password") ?? "");
     const fullName = String(form.get("fullName") ?? "");
+    if (mode === "signup" || requiresCaptcha) {
+      if (parseInt(captchaInput, 10) !== challenge.answer) {
+        toast.error("Verificação de segurança incorreta. Resolva o desafio.");
+        refreshChallenge();
+        return;
+      }
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
@@ -135,13 +142,44 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
+      setFailCount(0);
       await acceptInviteIfNeeded();
       navigate({ to: "/app" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro na autenticação");
+      const raw = err instanceof Error ? err.message : "Erro na autenticação";
+      toast.error(translateAuthError(raw));
+      setFailCount((c) => c + 1);
+      refreshChallenge();
     } finally {
       setLoading(false);
     }
+  }
+
+  function CaptchaField() {
+    return (
+      <div className="rounded-lg border border-border bg-muted/30 p-3">
+        <Label className="flex items-center gap-1.5 text-xs font-medium">
+          <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Verificação de segurança
+        </Label>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="rounded-md border border-border bg-background px-3 py-2 text-sm font-mono tabular-nums select-none">
+            {challenge.a} + {challenge.b} = ?
+          </span>
+          <Input
+            type="number"
+            inputMode="numeric"
+            value={captchaInput}
+            onChange={(e) => setCaptchaInput(e.target.value)}
+            placeholder="Resposta"
+            className="h-9 w-24"
+            required
+          />
+          <Button type="button" variant="ghost" size="icon" onClick={refreshChallenge} className="h-9 w-9" aria-label="Novo desafio">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
