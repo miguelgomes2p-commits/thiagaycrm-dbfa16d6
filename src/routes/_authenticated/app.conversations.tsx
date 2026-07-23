@@ -69,6 +69,7 @@ function loadView() {
 function ConversationsPage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
+  const isAdmin = ws?.role === "owner" || ws?.role === "admin";
   const [activeId, setActiveId] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
