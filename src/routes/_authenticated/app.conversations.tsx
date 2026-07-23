@@ -743,6 +743,13 @@ function ConversationsPage() {
     try {
       const { error } = await supabase.from("contacts").update({ name: newName }).eq("id", contactId);
       if (error) throw error;
+      // Also sync the linked lead's title so the pipeline card reflects the new name
+      const linkedLeadId = (active as { lead_id?: string | null }).lead_id ?? null;
+      if (linkedLeadId) {
+        await supabase.from("leads").update({ title: newName }).eq("id", linkedLeadId);
+      } else {
+        await supabase.from("leads").update({ title: newName }).eq("contact_id", contactId);
+      }
       toast.success("Contato renomeado");
       setRenameOpen(false);
       qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
