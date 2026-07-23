@@ -36,13 +36,13 @@ const PRESET_COLORS = [
 ];
 
 const DEFAULT_STAGES: Omit<Stage, "id" | "position">[] = [
-  { name: "Novo Lead", color: "#6366f1", type: "open" },
-  { name: "Contato", color: "#0ea5e9", type: "open" },
-  { name: "Qualificado", color: "#8b5cf6", type: "open" },
-  { name: "Proposta", color: "#f59e0b", type: "open" },
-  { name: "Negociação", color: "#f97316", type: "open" },
-  { name: "Fechado Ganho", color: "#22c55e", type: "won" },
-  { name: "Fechado Perdido", color: "#ef4444", type: "lost" },
+  { name: "Novo Lead", color: "#6366f1", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Contato", color: "#0ea5e9", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Qualificado", color: "#8b5cf6", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Proposta", color: "#f59e0b", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Negociação", color: "#f97316", type: "open", allowed_roles: [...ALL_ROLES] },
+  { name: "Fechado Ganho", color: "#22c55e", type: "won", allowed_roles: [...ALL_ROLES] },
+  { name: "Fechado Perdido", color: "#ef4444", type: "lost", allowed_roles: [...ALL_ROLES] },
 ];
 
 export function PipelineStagesManager({
