@@ -69,6 +69,7 @@ function loadView() {
 function ConversationsPage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
+  const isAdmin = ws?.role === "owner" || ws?.role === "admin";
   const [activeId, setActiveId] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -827,7 +828,7 @@ function ConversationsPage() {
               <span className="opacity-60">{convsQ.data?.length ?? 0}</span>
             </button>
 
-            {systemLabels.length > 0 && (
+            {isAdmin && systemLabels.length > 0 && (
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 mb-1">Números WhatsApp</div>
                 <div className="space-y-0.5">
@@ -975,8 +976,9 @@ function ConversationsPage() {
                 const name = contact?.name ?? "Anônimo";
                 const isGroup = contact?.type === "group";
                 const ids = convLabelMap?.get(c.id) ?? [];
-                const pills = ids.map((id) => labelById.get(id)).filter(Boolean).slice(0, 3);
-                const extra = ids.length - pills.length;
+                const visibleLabels = ids.map((id) => labelById.get(id)).filter((l): l is NonNullable<typeof l> => !!l && (isAdmin || (l as { kind?: string }).kind !== "system"));
+                const pills = visibleLabels.slice(0, 3);
+                const extra = visibleLabels.length - pills.length;
                 const assignedId = (c as { assigned_to?: string | null }).assigned_to ?? null;
                 const agent = assignedId ? membersQ.data?.get(assignedId) : null;
                 return (
@@ -1122,6 +1124,7 @@ function ConversationsPage() {
                 {activeLabelIds.map((id) => {
                   const l = labelById.get(id);
                   if (!l) return null;
+                  if (!isAdmin && (l as { kind?: string }).kind === "system") return null;
                   return (
                     <LabelBadge
                       key={id}

@@ -305,6 +305,23 @@ export function evolutionFetchProfilePic(
   );
 }
 
+// Fetches WhatsApp group metadata (subject/pictureUrl/etc).
+// GET /group/findGroupInfos/{instance}?groupJid=xxx@g.us
+export function evolutionFetchGroupInfo(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string,
+  groupJid: string,
+) {
+  const path = `/group/findGroupInfos/${encodeURIComponent(instanceName)}?groupJid=${encodeURIComponent(groupJid)}`;
+  return req<{ id?: string; subject?: string; pictureUrl?: string | null; owner?: string; desc?: string }>(
+    baseUrl,
+    apiKey,
+    path,
+    { method: "GET" },
+  );
+}
+
 export function evolutionFindMessages(
   baseUrl: string,
   apiKey: string,
