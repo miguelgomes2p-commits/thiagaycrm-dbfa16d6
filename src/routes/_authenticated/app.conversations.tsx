@@ -1124,6 +1124,7 @@ function ConversationsPage() {
                 {activeLabelIds.map((id) => {
                   const l = labelById.get(id);
                   if (!l) return null;
+                  if (!isAdmin && (l as { kind?: string }).kind === "system") return null;
                   return (
                     <LabelBadge
                       key={id}
