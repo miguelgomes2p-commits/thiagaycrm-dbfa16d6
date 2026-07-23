@@ -15,15 +15,6 @@ import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/app")({
-  beforeLoad: async () => {
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return;
-    const { data: memberships } = await supabase
-      .from("workspace_members").select("workspace_id").limit(1);
-    if (!memberships || memberships.length === 0) {
-      throw redirect({ to: "/onboarding" });
-    }
-  },
   component: AppShell,
 });
 
