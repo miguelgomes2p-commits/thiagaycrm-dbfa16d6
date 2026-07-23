@@ -68,8 +68,13 @@ function AppShell() {
 
   const initials = (profile?.full_name ?? "U").split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
 
+  const filteredNav = NAV.filter((item) => {
+    if (item.feature === "renave") return !!current?.feature_renave;
+    if (item.feature === "ai") return !!current?.feature_ai;
+    return true;
+  });
   const allNav = [
-    ...NAV,
+    ...filteredNav,
     ...(isSuperAdmin ? [{ to: "/app/admin", label: "Admin Global", icon: ShieldAlert } as NavItem] : []),
   ];
 
