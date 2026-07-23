@@ -90,6 +90,7 @@ export function PipelineStagesManager({
         color: PRESET_COLORS[prev.length % PRESET_COLORS.length],
         type: "open",
         position: prev.length,
+        allowed_roles: [...ALL_ROLES],
       },
     ]);
   }
