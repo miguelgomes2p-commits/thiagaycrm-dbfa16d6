@@ -8,9 +8,6 @@ import {
   sendWhatsappMessage,
   sendWhatsappAttachment,
   repairWhatsappAudioMedia,
-  takeConversation,
-  releaseConversation,
-  resolveConversation,
 } from "@/lib/whatsapp.functions";
 import { syncWorkspaceEvolutionMessages } from "@/lib/evolution.functions";
 import { useLabels, useConversationLabels, useAssignLabel, useRemoveLabel } from "@/hooks/useLabels";
@@ -26,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
-  Check, CheckCheck, AlertTriangle, UserPlus, UserMinus, CheckCircle2,
+  Check, CheckCheck, AlertTriangle, UserPlus,
   Tag, Filter, ChevronRight, Paperclip, BriefcaseBusiness, Save, Loader2,
   Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil,
 } from "lucide-react";
@@ -100,9 +97,6 @@ function ConversationsPage() {
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
   const repairAudio = useServerFn(repairWhatsappAudioMedia);
-  const takeFn = useServerFn(takeConversation);
-  const releaseFn = useServerFn(releaseConversation);
-  const resolveFn = useServerFn(resolveConversation);
   const syncEvolutionWorkspace = useServerFn(syncWorkspaceEvolutionMessages);
 
   const { data: labels } = useLabels(ws?.id);
@@ -728,24 +722,6 @@ function ConversationsPage() {
     }
   }
 
-  async function take() {
-    if (!active) return;
-    try { await takeFn({ data: { conversationId: active.id } }); toast.success("Conversa atribuída a você");
-      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
-  }
-  async function release() {
-    if (!active) return;
-    try { await releaseFn({ data: { conversationId: active.id } }); toast.success("Devolvido para a fila");
-      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
-  }
-  async function resolve() {
-    if (!active) return;
-    try { await resolveFn({ data: { conversationId: active.id } }); toast.success("Conversa resolvida");
-      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
-  }
 
   function openRename() {
     if (!active) return;
@@ -1108,14 +1084,6 @@ function ConversationsPage() {
                     </Button>
                   }
                 />
-                {(active as { assigned_to?: string | null }).assigned_to ? (
-                  <>
-                    <Button size="sm" variant="ghost" onClick={release}><UserMinus className="h-4 w-4 mr-1" />Devolver</Button>
-                    <Button size="sm" variant="ghost" onClick={resolve}><CheckCircle2 className="h-4 w-4 mr-1" />Resolver</Button>
-                  </>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={take}><UserPlus className="h-4 w-4 mr-1" />Pegar</Button>
-                )}
               </div>
             </div>
 
