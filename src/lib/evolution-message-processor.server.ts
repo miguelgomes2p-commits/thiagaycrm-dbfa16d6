@@ -348,7 +348,10 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
       await supabaseAdmin.from("messages").update({ delivery_status: mapped }).eq("id", existing.id);
     }
     if (opts.touchWebhook) {
-      await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+      const lastTs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+      if (Date.now() - lastTs > 60_000) {
+        await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+      }
     }
     stats.durationMs = Date.now() - startedAt;
     return stats;
