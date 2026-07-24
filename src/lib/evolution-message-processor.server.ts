@@ -296,6 +296,29 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     return stats;
   }
 
+  if (event === "messages.update" || event === "message.update" || event === "send.message") {
+    const updates = extractStatusUpdates(payload);
+    for (const u of updates) {
+      if (!u.id || !u.status) continue;
+      const mapped = mapAckStatus(u.status);
+      if (!mapped) continue;
+      const { data: existing } = await supabaseAdmin
+        .from("messages")
+        .select("id, delivery_status")
+        .eq("workspace_id", num.workspace_id)
+        .eq("wa_message_id", u.id)
+        .maybeSingle();
+      if (!existing) continue;
+      if (deliveryRank(mapped) <= deliveryRank(existing.delivery_status)) continue;
+      await supabaseAdmin.from("messages").update({ delivery_status: mapped }).eq("id", existing.id);
+    }
+    if (opts.touchWebhook) {
+      await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+    }
+    stats.durationMs = Date.now() - startedAt;
+    return stats;
+  }
+
   const msgs = extractMessageRows(payload);
   stats.rowsSeen = msgs.length;
   if (opts.touchWebhook && msgs.length > 0) {
