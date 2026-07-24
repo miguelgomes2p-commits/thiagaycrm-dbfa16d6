@@ -121,6 +121,41 @@ function normalizeEvent(payload: Json): string {
   return String(raw).toLowerCase().replace(/_/g, ".");
 }
 
+function mapAckStatus(raw: string | number): "sent" | "delivered" | "read" | null {
+  const s = String(raw).toUpperCase();
+  if (s === "READ" || s === "PLAYED" || s === "4" || s === "5") return "read";
+  if (s === "DELIVERY_ACK" || s === "DELIVERED" || s === "3") return "delivered";
+  if (s === "SERVER_ACK" || s === "SENT" || s === "2" || s === "1") return "sent";
+  return null;
+}
+
+function deliveryRank(status: string | null | undefined): number {
+  switch (status) {
+    case "read": return 4;
+    case "delivered": return 3;
+    case "sent": return 2;
+    case "pending": return 1;
+    case "failed": return 0;
+    default: return 0;
+  }
+}
+
+function extractStatusUpdates(payload: Json): Array<{ id: string; status: string }> {
+  const out: Array<{ id: string; status: string }> = [];
+  const visit = (node: Json, depth = 0) => {
+    if (!node || typeof node !== "object" || depth > 8) return;
+    if (Array.isArray(node)) { node.forEach((n) => visit(n, depth + 1)); return; }
+    const id: string | undefined = node.keyId ?? node.key?.id ?? node.messageId ?? node.id;
+    const status: string | number | undefined = node.status ?? node.ack ?? node.messageStatus;
+    if (id && status !== undefined && status !== null) {
+      out.push({ id: String(id), status: String(status) });
+    }
+    for (const v of Object.values(node)) visit(v, depth + 1);
+  };
+  visit(payload);
+  return out;
+}
+
 function extractMessageRows(payload: Json): Json[] {
   const candidates = [
     payload.data?.messages?.records,
@@ -291,6 +326,29 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     const qr: string | undefined = payload.data?.qrcode?.base64 ?? payload.data?.base64 ?? payload.qrcode?.base64;
     if (qr) {
       await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: "qr", last_qr: qr, last_qr_at: new Date().toISOString() }).eq("id", num.id);
+    }
+    stats.durationMs = Date.now() - startedAt;
+    return stats;
+  }
+
+  if (event === "messages.update" || event === "message.update" || event === "send.message") {
+    const updates = extractStatusUpdates(payload);
+    for (const u of updates) {
+      if (!u.id || !u.status) continue;
+      const mapped = mapAckStatus(u.status);
+      if (!mapped) continue;
+      const { data: existing } = await supabaseAdmin
+        .from("messages")
+        .select("id, delivery_status")
+        .eq("workspace_id", num.workspace_id)
+        .eq("wa_message_id", u.id)
+        .maybeSingle();
+      if (!existing) continue;
+      if (deliveryRank(mapped) <= deliveryRank(existing.delivery_status)) continue;
+      await supabaseAdmin.from("messages").update({ delivery_status: mapped }).eq("id", existing.id);
+    }
+    if (opts.touchWebhook) {
+      await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
     }
     stats.durationMs = Date.now() - startedAt;
     return stats;
