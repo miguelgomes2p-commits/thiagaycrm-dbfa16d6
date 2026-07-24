@@ -357,7 +357,7 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
 export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ workspaceId: z.string().uuid(), webhookOrigin: z.string().url(), limit: z.number().int().positive().max(100).optional() }).parse(d),
+    z.object({ workspaceId: z.string().uuid(), webhookOrigin: z.string().url(), limit: z.number().int().positive().max(30).optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: numbers, error } = await context.supabase
@@ -383,10 +383,10 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
         const sevenDaysAgoSec = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
         let payload: unknown;
         try {
-          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 50, sevenDaysAgoSec);
+          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 10, sevenDaysAgoSec);
         } catch (syncError) {
           if ((syncError as { status?: number }).status !== 400) throw syncError;
-          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 50);
+          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 10);
         }
         const stats = await processEvolutionPayload(num.id, { event: "MESSAGES_SET", data: payload }, { source: "workspaceAutoSync" });
         results.push({ id: num.id, ok: true, insertedMessages: stats.insertedMessages, rowsSeen: stats.rowsSeen });

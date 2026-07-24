@@ -186,10 +186,10 @@ function ConversationsPage() {
     let running = false;
     // Polling adaptativo com LEADER LOCK cross-tab:
     // - Só 1 aba do navegador por workspace roda o polling (via localStorage lease).
-    // - Só dispara quando o webhook estiver "frio" (>2 min sem eventos).
-    // Isso evita N vendedores × N abas hitting Evolution a cada 60s.
-    const WEBHOOK_FRESH_MS = 60_000;
-    const POLL_INTERVAL_MS = 60_000;
+    // - Só dispara quando o webhook estiver bem "frio" (>5 min sem eventos).
+    // Isso evita N vendedores × N abas pressionando a Evolution e estourando RAM no Render.
+    const WEBHOOK_FRESH_MS = 5 * 60_000;
+    const POLL_INTERVAL_MS = 5 * 60_000;
     const LEASE_KEY = `lupus.inbox.poll.leader.${ws.id}`;
     const LEASE_TTL_MS = POLL_INTERVAL_MS + 30_000;
     const tabId = crypto.randomUUID();
@@ -214,6 +214,7 @@ function ConversationsPage() {
 
     const runSync = async () => {
       if (running || cancelled) return;
+      if (document.visibilityState !== "visible") return;
       if (!isLeader()) return;
       const { data: nums } = await supabase
         .from("whatsapp_numbers")
@@ -232,7 +233,7 @@ function ConversationsPage() {
       running = true;
       const startedAt = Date.now();
       try {
-        const r = await syncEvolutionWorkspace({ data: { workspaceId: ws.id, webhookOrigin: window.location.origin, limit: 30 } });
+        const r = await syncEvolutionWorkspace({ data: { workspaceId: ws.id, webhookOrigin: window.location.origin, limit: 10 } });
         const inserted = r.results.reduce((sum, item) => sum + (item.insertedMessages ?? 0), 0);
         const elapsed = Date.now() - startedAt;
         if (elapsed > 4000 || inserted > 0) {
@@ -248,7 +249,7 @@ function ConversationsPage() {
         running = false;
       }
     };
-    const kickoff = window.setTimeout(runSync, 10_000);
+    const kickoff = window.setTimeout(runSync, 60_000);
     const interval = window.setInterval(runSync, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
