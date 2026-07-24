@@ -31,10 +31,13 @@ function Onboarding() {
     if (!u.user) { setLoading(false); toast.error("Sessão expirada"); return; }
     const slug = slugify(name) + "-" + Math.random().toString(36).slice(2, 6);
     const { error } = await supabase.rpc("create_workspace_with_defaults", { _name: name.trim(), _slug: slug, _user_id: u.user.id });
+    if (error) { setLoading(false); toast.error(error.message); return; }
+    // Force refetch of workspaces BEFORE navigating, otherwise AppShell reads
+    // the stale empty cache and bounces back to /onboarding.
+    await qc.refetchQueries({ queryKey: ["my-workspaces"] });
+    await qc.refetchQueries({ queryKey: ["profile-me"] });
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
     toast.success("Empresa criada!");
-    qc.invalidateQueries();
     navigate({ to: "/app" });
   }
 
