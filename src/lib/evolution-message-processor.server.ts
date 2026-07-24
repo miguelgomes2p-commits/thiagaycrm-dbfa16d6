@@ -360,7 +360,10 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
   const msgs = extractMessageRows(payload);
   stats.rowsSeen = msgs.length;
   if (opts.touchWebhook && msgs.length > 0) {
-    await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+    const lastTs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+    if (Date.now() - lastTs > 60_000) {
+      await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+    }
   }
   if (msgs.length === 0) {
     if (event.includes("message")) {
