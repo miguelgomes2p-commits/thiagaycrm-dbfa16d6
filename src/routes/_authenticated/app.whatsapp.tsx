@@ -82,7 +82,7 @@ function WhatsappPage() {
     enabled: !!ws?.id,
     queryKey: ["wa-numbers", ws?.id],
     queryFn: () => list({ data: { workspaceId: ws!.id } }),
-    refetchInterval: 15000,
+    refetchInterval: 60000,
   });
 
   const templatesQ = useQuery({
