@@ -11,7 +11,6 @@ const WEBHOOK_EVENTS = [
   "QRCODE_UPDATED",
   "MESSAGES_UPSERT",
   "MESSAGES_UPDATE",
-  "SEND_MESSAGE",
 ];
 
 export class EvolutionError extends Error {
@@ -328,12 +327,13 @@ export function evolutionFindMessages(
   limit = 100,
   sinceUnixSeconds?: number,
 ) {
+  const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 20);
   return req<unknown>(baseUrl, apiKey, `/chat/findMessages/${encodeURIComponent(instanceName)}`, {
     method: "POST",
     body: JSON.stringify({
       where: sinceUnixSeconds ? { messageTimestamp: { gte: sinceUnixSeconds } } : {},
       page: 1,
-      offset: limit,
+      offset: safeLimit,
     }),
   });
 }

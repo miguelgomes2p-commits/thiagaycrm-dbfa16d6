@@ -218,7 +218,7 @@ export const refreshEvolutionQr = createServerFn({ method: "POST" })
  */
 export const checkEvolutionStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), webhookOrigin: z.string().url().optional() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
       .from("whatsapp_numbers")
@@ -230,29 +230,13 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
       throw new Error("Este número não é uma instância Evolution");
     }
     try {
-      const { evolutionConnectionState, evolutionSetWebhook } = await import("@/lib/evolution.server");
-      let webhookUpdated = false;
-      if (data.webhookOrigin) {
-        try {
-          await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, evolutionWebhookUrl(data.webhookOrigin, data.id));
-          webhookUpdated = true;
-        } catch (webhookError) {
-          await logEvolutionError({
-            workspaceId: num.workspace_id,
-            whatsappNumberId: data.id,
-            operation: "checkStatus.setWebhook",
-            baseUrl: num.provider_base_url,
-            instanceName: num.instance_name,
-            error: webhookError,
-          });
-        }
-      }
+      const { evolutionConnectionState } = await import("@/lib/evolution.server");
       const s = await evolutionConnectionState(num.provider_base_url, num.provider_api_key, num.instance_name);
       const state = s.instance?.state ?? "close";
       const mapped =
         state === "open" ? "connected" : state === "connecting" ? "connecting" : state === "close" ? "disconnected" : "error";
       await context.supabase.from("whatsapp_numbers").update({ connection_status: mapped }).eq("id", data.id);
-      return { state, mapped, webhookUpdated };
+      return { state, mapped };
     } catch (e) {
       await logEvolutionError({
         workspaceId: num.workspace_id,
@@ -304,7 +288,7 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
 export const syncEvolutionMessages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ id: z.string().uuid(), webhookOrigin: z.string().url(), limit: z.number().int().positive().max(500).optional() }).parse(d),
+    z.object({ id: z.string().uuid(), limit: z.number().int().positive().max(20).optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
@@ -317,26 +301,16 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
       throw new Error("Este número não é uma instância Evolution");
     }
 
-    const webhookUrl = evolutionWebhookUrl(data.webhookOrigin, data.id);
     try {
-      const { evolutionFindMessages, evolutionSetWebhook } = await import("@/lib/evolution.server");
-      await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl).catch((webhookError) =>
-        logEvolutionError({
-          workspaceId: num.workspace_id,
-          whatsappNumberId: data.id,
-          operation: "syncMessages.setWebhook",
-          baseUrl: num.provider_base_url,
-          instanceName: num.instance_name,
-          error: webhookError,
-        }),
-      );
-      const sevenDaysAgoSec = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+      const { evolutionFindMessages } = await import("@/lib/evolution.server");
+      const oneHourAgoSec = Math.floor((Date.now() - 60 * 60 * 1000) / 1000);
+      const limit = Math.min(data.limit ?? 10, 20);
       let payload: unknown;
       try {
-        payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, data.limit ?? 100, sevenDaysAgoSec);
+        payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit, oneHourAgoSec);
       } catch (syncError) {
         if ((syncError as { status?: number }).status !== 400) throw syncError;
-        payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, data.limit ?? 100);
+        payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit);
       }
       const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
       const stats = await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { source: "manualSync" });
@@ -357,7 +331,7 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
 export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ workspaceId: z.string().uuid(), webhookOrigin: z.string().url(), limit: z.number().int().positive().max(30).optional() }).parse(d),
+    z.object({ workspaceId: z.string().uuid(), limit: z.number().int().positive().max(10).optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: numbers, error } = await context.supabase
@@ -374,19 +348,21 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
     const { evolutionFindMessages } = await import("@/lib/evolution.server");
     const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
 
+    const connectedNumbers = (numbers ?? []).filter((num) => num.connection_status === "connected").slice(0, 2);
     const results: Array<{ id: string; ok: boolean; insertedMessages?: number; rowsSeen?: number; error?: string }> = [];
-    for (const num of numbers ?? []) {
+    for (const num of connectedNumbers) {
       try {
         // NOTE: setWebhook removido daqui — era chamado a cada 60s por cliente conectado,
         // recarregando listeners internos da Evolution e causando pressão de memória.
         // Webhook é configurado apenas: (1) ao criar instância, (2) no botão "Sincronizar" manual.
-        const sevenDaysAgoSec = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+        const fifteenMinutesAgoSec = Math.floor((Date.now() - 15 * 60 * 1000) / 1000);
+        const limit = Math.min(data.limit ?? 5, 10);
         let payload: unknown;
         try {
-          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 10, sevenDaysAgoSec);
+          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, limit, fifteenMinutesAgoSec);
         } catch (syncError) {
           if ((syncError as { status?: number }).status !== 400) throw syncError;
-          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, data.limit ?? 10);
+          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, limit);
         }
         const stats = await processEvolutionPayload(num.id, { event: "MESSAGES_SET", data: payload }, { source: "workspaceAutoSync" });
         results.push({ id: num.id, ok: true, insertedMessages: stats.insertedMessages, rowsSeen: stats.rowsSeen });

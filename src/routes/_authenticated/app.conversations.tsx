@@ -9,7 +9,6 @@ import {
   sendWhatsappAttachment,
   repairWhatsappAudioMedia,
 } from "@/lib/whatsapp.functions";
-import { syncWorkspaceEvolutionMessages } from "@/lib/evolution.functions";
 import { useLabels, useConversationLabels, useAssignLabel, useRemoveLabel } from "@/hooks/useLabels";
 import { LabelBadge } from "@/components/labels/LabelBadge";
 import { LabelPicker } from "@/components/labels/LabelPicker";
@@ -97,7 +96,6 @@ function ConversationsPage() {
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
   const repairAudio = useServerFn(repairWhatsappAudioMedia);
-  const syncEvolutionWorkspace = useServerFn(syncWorkspaceEvolutionMessages);
 
   const { data: labels } = useLabels(ws?.id);
   const { data: convLabelMap } = useConversationLabels(ws?.id);
@@ -179,93 +177,6 @@ function ConversationsPage() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ws?.id, qc]);
-
-  useEffect(() => {
-    if (!ws?.id || typeof window === "undefined") return;
-    let cancelled = false;
-    let running = false;
-    // Polling adaptativo com LEADER LOCK cross-tab:
-    // - Só 1 aba do navegador por workspace roda o polling (via localStorage lease).
-    // - Só dispara quando o webhook estiver bem "frio" (>5 min sem eventos).
-    // Isso evita N vendedores × N abas pressionando a Evolution e estourando RAM no Render.
-    const WEBHOOK_FRESH_MS = 5 * 60_000;
-    const POLL_INTERVAL_MS = 5 * 60_000;
-    const LEASE_KEY = `lupus.inbox.poll.leader.${ws.id}`;
-    const LEASE_TTL_MS = POLL_INTERVAL_MS + 30_000;
-    const tabId = crypto.randomUUID();
-
-    const isLeader = (): boolean => {
-      try {
-        const raw = localStorage.getItem(LEASE_KEY);
-        if (!raw) {
-          localStorage.setItem(LEASE_KEY, JSON.stringify({ tabId, expiresAt: Date.now() + LEASE_TTL_MS }));
-          return true;
-        }
-        const parsed = JSON.parse(raw) as { tabId: string; expiresAt: number };
-        if (parsed.tabId === tabId || parsed.expiresAt < Date.now()) {
-          localStorage.setItem(LEASE_KEY, JSON.stringify({ tabId, expiresAt: Date.now() + LEASE_TTL_MS }));
-          return true;
-        }
-        return false;
-      } catch {
-        return true; // se localStorage falhar, degrada pra comportamento antigo
-      }
-    };
-
-    const runSync = async () => {
-      if (running || cancelled) return;
-      if (document.visibilityState !== "visible") return;
-      if (!isLeader()) return;
-      const { data: nums } = await supabase
-        .from("whatsapp_numbers")
-        .select("last_webhook_at, connection_status")
-        .eq("workspace_id", ws.id)
-        .eq("provider", "evolution")
-        .eq("is_active", true);
-      const connected = (nums ?? []).filter((n) => n.connection_status === "connected");
-      if (connected.length === 0) return;
-      const mostRecent = connected.reduce((max, n) => {
-        const t = n.last_webhook_at ? new Date(n.last_webhook_at).getTime() : 0;
-        return t > max ? t : max;
-      }, 0);
-      const webhookFresh = mostRecent > 0 && Date.now() - mostRecent < WEBHOOK_FRESH_MS;
-      if (webhookFresh) return;
-      running = true;
-      const startedAt = Date.now();
-      try {
-        const r = await syncEvolutionWorkspace({ data: { workspaceId: ws.id, webhookOrigin: window.location.origin, limit: 10 } });
-        const inserted = r.results.reduce((sum, item) => sum + (item.insertedMessages ?? 0), 0);
-        const elapsed = Date.now() - startedAt;
-        if (elapsed > 4000 || inserted > 0) {
-          console.log("[inbox fallback sync]", { elapsedMs: elapsed, inserted, results: r.results.length });
-        }
-        if (inserted > 0) {
-          qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
-          if (activeId) qc.invalidateQueries({ queryKey: ["messages", activeId] });
-        }
-      } catch {
-        // Diagnóstico fica salvo em Logs Evolution.
-      } finally {
-        running = false;
-      }
-    };
-    const kickoff = window.setTimeout(runSync, 60_000);
-    const interval = window.setInterval(runSync, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(kickoff);
-      window.clearInterval(interval);
-      try {
-        const raw = localStorage.getItem(LEASE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as { tabId: string };
-          if (parsed.tabId === tabId) localStorage.removeItem(LEASE_KEY);
-        }
-      } catch { /* noop */ }
-    };
-  }, [activeId, qc, syncEvolutionWorkspace, ws?.id]);
-
-
 
   const labelById = useMemo(() => {
     const m = new Map<string, typeof labels extends (infer T)[] | undefined ? T : never>();

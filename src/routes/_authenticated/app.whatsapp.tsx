@@ -215,9 +215,9 @@ function WhatsappPage() {
   });
 
   const checkStatusM = useMutation({
-    mutationFn: (id: string) => checkStatus({ data: { id, webhookOrigin: origin } }),
+    mutationFn: (id: string) => checkStatus({ data: { id } }),
     onSuccess: (r) => {
-      toast.info(r.webhookUpdated ? `Estado: ${r.mapped} · webhook sincronizado` : `Estado: ${r.mapped}`);
+      toast.info(`Estado: ${r.mapped}`);
       qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -233,7 +233,7 @@ function WhatsappPage() {
   });
 
   const syncEvoMessagesM = useMutation({
-    mutationFn: (id: string) => syncEvoMessages({ data: { id, webhookOrigin: origin, limit: 200 } }),
+    mutationFn: (id: string) => syncEvoMessages({ data: { id, limit: 10 } }),
     onSuccess: (r: { stats?: { insertedMessages?: number; rowsSeen?: number } }) => {
       const ins = r?.stats?.insertedMessages ?? 0;
       const seen = r?.stats?.rowsSeen ?? 0;
