@@ -36,7 +36,7 @@ function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { data: workspaces } = useMyWorkspaces();
+  const { data: workspaces, isLoading: wsLoading, isFetching: wsFetching } = useMyWorkspaces();
   const { data: profile } = useCurrentProfile();
   const { data: authUser } = useQuery({
     queryKey: ["auth-user-email"],
@@ -46,12 +46,14 @@ function AppShell() {
   const qc = useQueryClient();
   const current = workspaces?.[0];
 
-  // Onboarding check runs once when workspaces load, not on every navigation.
+  // Only redirect to onboarding once we're sure the user truly has no workspace
+  // (query settled with an empty result). Avoids bouncing while the cache is
+  // stale/refetching right after workspace creation.
   useEffect(() => {
-    if (workspaces && workspaces.length === 0) {
+    if (!wsLoading && !wsFetching && workspaces && workspaces.length === 0) {
       navigate({ to: "/onboarding", replace: true });
     }
-  }, [workspaces, navigate]);
+  }, [workspaces, wsLoading, wsFetching, navigate]);
 
   async function signOut() {
     await qc.cancelQueries();
