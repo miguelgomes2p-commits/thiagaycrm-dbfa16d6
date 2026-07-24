@@ -234,8 +234,10 @@ function WhatsappPage() {
 
   const syncEvoMessagesM = useMutation({
     mutationFn: (id: string) => syncEvoMessages({ data: { id, webhookOrigin: origin, limit: 200 } }),
-    onSuccess: () => {
-      toast.success("Mensagens sincronizadas. Confira a tela Conversas.");
+    onSuccess: (r: { stats?: { insertedMessages?: number; rowsSeen?: number } }) => {
+      const ins = r?.stats?.insertedMessages ?? 0;
+      const seen = r?.stats?.rowsSeen ?? 0;
+      toast.success(`Sincronização concluída — ${ins} nova(s) de ${seen} vista(s). Confira em Conversas.`);
       qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["messages"] });
