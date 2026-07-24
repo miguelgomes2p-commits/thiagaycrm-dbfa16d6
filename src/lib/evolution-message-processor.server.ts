@@ -290,7 +290,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
   const source = opts.source ?? "webhook";
   const { data: num } = await supabaseAdmin
     .from("whatsapp_numbers")
-    .select("id, workspace_id, provider, instance_name, provider_base_url, provider_api_key")
+    .select("id, workspace_id, provider, instance_name, provider_base_url, provider_api_key, last_webhook_at")
     .eq("id", numberId)
     .maybeSingle();
   if (!num || num.provider !== "evolution") throw new Error("Número Evolution não encontrado");
@@ -348,7 +348,10 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
       await supabaseAdmin.from("messages").update({ delivery_status: mapped }).eq("id", existing.id);
     }
     if (opts.touchWebhook) {
-      await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+      const lastTs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+      if (Date.now() - lastTs > 60_000) {
+        await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+      }
     }
     stats.durationMs = Date.now() - startedAt;
     return stats;
@@ -357,7 +360,10 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
   const msgs = extractMessageRows(payload);
   stats.rowsSeen = msgs.length;
   if (opts.touchWebhook && msgs.length > 0) {
-    await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+    const lastTs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+    if (Date.now() - lastTs > 60_000) {
+      await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
+    }
   }
   if (msgs.length === 0) {
     if (event.includes("message")) {

@@ -40,15 +40,19 @@ export const Route = createFileRoute("/api/public/webhooks/whatsapp/$numberId")(
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: num } = await supabaseAdmin
           .from("whatsapp_numbers")
-          .select("id, workspace_id, phone_number_id, auto_reply_enabled, auto_reply_prompt, access_token")
+          .select("id, workspace_id, phone_number_id, auto_reply_enabled, auto_reply_prompt, access_token, last_webhook_at")
           .eq("id", params.numberId)
           .maybeSingle();
         if (!num) return new Response("Unknown number", { status: 404 });
 
-        await supabaseAdmin
-          .from("whatsapp_numbers")
-          .update({ last_webhook_at: new Date().toISOString() })
-          .eq("id", num.id);
+        // Throttle last_webhook_at writes to at most once per 60s per number.
+        const lastTs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+        if (Date.now() - lastTs > 60_000) {
+          await supabaseAdmin
+            .from("whatsapp_numbers")
+            .update({ last_webhook_at: new Date().toISOString() })
+            .eq("id", num.id);
+        }
 
         let payload: Json;
         try {
