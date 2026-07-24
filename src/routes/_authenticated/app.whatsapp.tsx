@@ -373,19 +373,19 @@ function WhatsappPage() {
                         </Button>
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="default"
                           onClick={() => syncEvoWebhookM.mutate(n.id)}
                           disabled={syncEvoWebhookM.isPending}
                         >
-                          <BellRing className="h-4 w-4 mr-1" /> Webhook
+                          <BellRing className={cn("h-4 w-4 mr-1", syncEvoWebhookM.isPending && "animate-pulse")} /> Sincronizar webhook
                         </Button>
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => syncEvoMessagesM.mutate(n.id)}
                           disabled={syncEvoMessagesM.isPending}
                         >
-                          <RefreshCw className={cn("h-4 w-4 mr-1", syncEvoMessagesM.isPending && "animate-spin")} /> Mensagens
+                          <RefreshCw className={cn("h-4 w-4 mr-1", syncEvoMessagesM.isPending && "animate-spin")} /> Puxar mensagens
                         </Button>
                         <Button
                           size="sm"
