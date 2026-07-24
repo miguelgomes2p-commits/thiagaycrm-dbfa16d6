@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_contacts_ws_phone ON public.contacts (workspace_id, phone);
