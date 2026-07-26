@@ -56,12 +56,16 @@ function AuthPage() {
   }
 
   useEffect(() => {
+    // Sempre exigir autenticação explícita ao acessar /auth.
+    // Se houver sessão ativa (ex.: magic link de convite), preserva para permitir
+    // definir senha; caso contrário, garante que o formulário apareça em branco.
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
+      if (data.session && invite) {
         setExistingSession({ email: data.session.user.email ?? null });
       }
     });
-  }, []);
+  }, [invite]);
+
 
   async function acceptInviteIfNeeded() {
     if (!invite || inviteAccepted) return;
