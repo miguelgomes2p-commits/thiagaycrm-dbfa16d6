@@ -167,12 +167,13 @@ function AuthPage() {
     const fullName = String(form.get("fullName") ?? "");
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password,
-        data: fullName.trim() ? { full_name: fullName.trim() } : undefined,
+      const result = await completeInviteWithPassword({
+        data: { token: invite ?? "", email: inviteSessionEmail, password, fullName },
       });
-      if (error) throw error;
-      await acceptInviteIfNeeded();
+      await supabase.auth.signOut({ scope: "local" });
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: result.email, password });
+      if (signInError) throw signInError;
+      setInviteAccepted(true);
       toast.success("Senha definida e convite aceito.");
       navigate({ to: "/app" });
     } catch (err) {
