@@ -399,8 +399,8 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     for (const r of existingRows ?? []) if (r.wa_message_id) existingIds.add(r.wa_message_id);
   }
 
-  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-  const cutoffSec = Math.floor((Date.now() - SEVEN_DAYS_MS) / 1000);
+  const HISTORY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  const cutoffSec = Math.floor((Date.now() - HISTORY_WINDOW_MS) / 1000);
   const isHistorySync = event === "messages.set" || source === "manualSync" || source === "workspaceAutoSync";
 
   for (const m of msgs) {
@@ -418,9 +418,11 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     const participantId = participantJid ? participantJid.split("@")[0] : undefined;
     const pushName: string | undefined = m.pushName ?? m.pushname ?? m.push_name ?? m.name;
 
-    // Ignora mensagens com mais de 7 dias (sincronização de histórico antigo).
+    // Ignora apenas mensagens antigas com timestamp válido fora da janela de 30 dias.
+    // Rows sem timestamp são preservadas e recebem `now()` como fallback (Evolution/Baileys
+    // às vezes omite o campo em histórico).
     const tsSec = messageTimestampSeconds(m);
-    if ((isHistorySync && !tsSec) || (tsSec && tsSec < cutoffSec)) {
+    if (tsSec && tsSec < cutoffSec) {
       stats.skippedDuplicates++;
       continue;
     }
