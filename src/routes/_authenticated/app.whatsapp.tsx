@@ -171,13 +171,12 @@ function WhatsappPage() {
 
 
 
-  // Domínio publicado — Meta e serviços externos precisam de URL pública.
-  const origin = (() => {
-    if (typeof window === "undefined") return "https://thiagaycrm.lovable.app";
-    const host = window.location.host;
-    const isLocal = host.includes("localhost") || host.includes("127.0.0.1") || host.includes("lovableproject.com");
-    return isLocal ? "https://thiagaycrm.lovable.app" : window.location.origin;
-  })();
+  // Webhook DEVE apontar sempre para URL pública estável de produção.
+  // Preview URLs (id-preview--*, lovableproject.com, localhost) mudam a cada
+  // commit e fazem os webhooks pararem de chegar após redeploys.
+  const PRODUCTION_ORIGIN = "https://thiagaycrm.lovable.app";
+  const origin = PRODUCTION_ORIGIN;
+
 
   const createEvoM = useMutation({
     mutationFn: async (v: { label: string; displayNumber: string; baseUrl: string; apiKey: string; instanceName: string }) => {
