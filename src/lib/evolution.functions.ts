@@ -323,23 +323,22 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
     const { evolutionFindMessages } = await import("@/lib/evolution.server");
     const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
 
-    const staleWebhookCutoff = Date.now() - 20_000;
-    const connectedNumbers = (numbers ?? []).filter((num) => {
-      if (num.connection_status === "disconnected" || num.connection_status === "error") return false;
-      const lastWebhookAt = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
-      return !lastWebhookAt || lastWebhookAt < staleWebhookCutoff;
-    });
+    // Sempre inclui números conectados: o backfill periódico serve tanto para números
+    // sem webhook recente quanto para reconciliar mensagens que o webhook possa ter perdido
+    // (media 400, restarts da Evolution, race conditions).
+    const connectedNumbers = (numbers ?? []).filter(
+      (num) => num.connection_status !== "disconnected" && num.connection_status !== "error",
+    );
     const results: Array<{ id: string; ok: boolean; insertedMessages?: number; rowsSeen?: number; error?: string }> = [];
     for (const num of connectedNumbers) {
       try {
-        // NOTE: setWebhook removido daqui — era chamado a cada 60s por cliente conectado,
-        // recarregando listeners internos da Evolution e causando pressão de memória.
-        // Webhook é configurado apenas: (1) ao criar instância, (2) no botão "Sincronizar" manual.
-        const fifteenMinutesAgoSec = Math.floor((Date.now() - 15 * 60 * 1000) / 1000);
-        const limit = Math.min(data.limit ?? 10, 25);
+        // Janela de 60 min garante que qualquer mensagem perdida por queda de webhook
+        // seja recuperada em até 1h, sem pressionar a Evolution.
+        const sinceSec = Math.floor((Date.now() - 60 * 60 * 1000) / 1000);
+        const limit = Math.min(data.limit ?? 25, 25);
         let payload: unknown;
         try {
-          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, limit, fifteenMinutesAgoSec);
+          payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, limit, sinceSec);
         } catch (syncError) {
           if ((syncError as { status?: number }).status !== 400) throw syncError;
           payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, limit);
