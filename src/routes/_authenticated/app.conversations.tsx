@@ -228,7 +228,8 @@ function ConversationsPage() {
 
   // Filtered + sorted list
   const visible = useMemo(() => {
-    let list = convsQ.data ?? [];
+    // Oculta grupos por decisão de produto (mesmo se existirem contatos type='group' no banco).
+    let list = (convsQ.data ?? []).filter((c) => (c.contacts as { type?: string } | null)?.type !== "group");
     if (view.search.trim()) {
       const q = view.search.trim().toLowerCase();
       list = list.filter((c) => {
