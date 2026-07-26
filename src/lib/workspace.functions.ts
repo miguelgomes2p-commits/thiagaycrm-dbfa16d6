@@ -4,12 +4,12 @@ import {
   assertWorkspaceAdmin,
   getRequestOrigin,
   hashInviteToken,
+  isWorkspaceRole,
   normalizeInviteEmail,
   type WorkspaceRole,
 } from "@/lib/workspace.server";
 
 type Role = WorkspaceRole;
-const ROLES: Role[] = ["owner", "admin", "manager", "agent"];
 
 export const listWorkspaceMembers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -43,7 +43,7 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspaceId: string; email: string; role: Role }) => d)
   .handler(async ({ data, context }) => {
-    if (!ROLES.includes(data.role)) throw new Error("Papel inválido.");
+    if (!isWorkspaceRole(data.role)) throw new Error("Papel inválido.");
     await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // find user by email (paginated search)
@@ -71,7 +71,7 @@ export const inviteMemberByEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspaceId: string; email: string; role: Role }) => d)
   .handler(async ({ data, context }) => {
-    if (!ROLES.includes(data.role)) throw new Error("Papel inválido.");
+    if (!isWorkspaceRole(data.role)) throw new Error("Papel inválido.");
     await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
 
     const email = normalizeInviteEmail(data.email);
@@ -137,12 +137,17 @@ export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: invite, error } = await supabaseAdmin
       .from("workspace_invitations")
-      .select("id, workspace_id, email, role, accepted_at, expires_at")
+      .select("id, workspace_id, email, role, accepted_by, accepted_at, expires_at")
       .eq("token_hash", hashInviteToken(token))
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!invite) throw new Error("Convite não encontrado ou expirado.");
-    if (invite.accepted_at) throw new Error("Este convite já foi usado.");
+    if (invite.accepted_at) {
+      if (invite.accepted_by === context.userId) {
+        return { ok: true as const, workspaceId: invite.workspace_id };
+      }
+      throw new Error("Este convite já foi usado.");
+    }
     if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
       throw new Error("Este convite expirou.");
     }
@@ -160,18 +165,105 @@ export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
 
     const { error: acceptError } = await supabaseAdmin
       .from("workspace_invitations")
-      .update({ accepted_by: context.userId, accepted_at: new Date().toISOString() })
+      .update({ accepted_by: context.userId, accepted_at: new Date().toISOString(), expires_at: new Date().toISOString() })
       .eq("id", invite.id);
     if (acceptError) throw new Error(acceptError.message);
 
     return { ok: true as const, workspaceId: invite.workspace_id };
   });
 
+export const completeWorkspaceInviteWithPassword = createServerFn({ method: "POST" })
+  .inputValidator((d: { token: string; email: string; password: string; fullName?: string }) => d)
+  .handler(async ({ data }) => {
+    const token = String(data.token ?? "").trim();
+    if (token.length < 20) throw new Error("Convite inválido.");
+
+    const email = normalizeInviteEmail(String(data.email ?? ""));
+    const password = String(data.password ?? "");
+    const fullName = String(data.fullName ?? "").trim();
+
+    if (password.length < 6) throw new Error("A senha deve ter pelo menos 6 caracteres.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: invite, error } = await supabaseAdmin
+      .from("workspace_invitations")
+      .select("id, workspace_id, email, role, accepted_by, accepted_at, expires_at")
+      .eq("token_hash", hashInviteToken(token))
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!invite) throw new Error("Convite não encontrado ou expirado.");
+    if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
+      throw new Error("Este convite expirou. Peça um novo convite ao administrador.");
+    }
+    if (email !== invite.email) {
+      throw new Error(`Use o email ${invite.email} para aceitar este convite.`);
+    }
+
+    let userId: string | null = null;
+    for (let page = 1; page <= 5 && !userId; page++) {
+      const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+      if (listError) throw new Error(listError.message);
+      const found = list.users.find((user) => (user.email ?? "").toLowerCase() === email);
+      if (found) userId = found.id;
+      if (list.users.length < 200) break;
+    }
+
+    if (invite.accepted_by && userId && invite.accepted_by !== userId) {
+      throw new Error("Este convite já foi usado por outro usuário.");
+    }
+    if (invite.accepted_by && !userId) {
+      throw new Error("Este convite já foi usado. Peça um novo convite ao administrador.");
+    }
+
+    if (userId) {
+      const { data: updated, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password,
+        email_confirm: true,
+        user_metadata: fullName ? { full_name: fullName } : undefined,
+      });
+      if (updateError) throw new Error(updateError.message);
+      userId = updated.user?.id ?? userId;
+    } else {
+      const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: fullName ? { full_name: fullName } : { full_name: email },
+      });
+      if (createError) throw new Error(createError.message);
+      userId = created.user?.id ?? null;
+    }
+
+    if (!userId) throw new Error("Não foi possível criar o usuário do convite.");
+
+    if (fullName) {
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .upsert({ id: userId, full_name: fullName }, { onConflict: "id" });
+      if (profileError) throw new Error(profileError.message);
+    }
+
+    const { error: memberError } = await supabaseAdmin.from("workspace_members").upsert(
+      { workspace_id: invite.workspace_id, user_id: userId, role: invite.role },
+      { onConflict: "workspace_id,user_id" },
+    );
+    if (memberError) throw new Error(memberError.message);
+
+    const now = new Date().toISOString();
+    const { error: acceptError } = await supabaseAdmin
+      .from("workspace_invitations")
+      .update({ accepted_by: userId, accepted_at: invite.accepted_at ?? now, expires_at: now })
+      .eq("id", invite.id);
+    if (acceptError) throw new Error(acceptError.message);
+
+    return { ok: true as const, email };
+  });
+
 export const updateMemberRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspaceId: string; userId: string; role: Role }) => d)
   .handler(async ({ data, context }) => {
-    if (!ROLES.includes(data.role)) throw new Error("Papel inválido.");
+    if (!isWorkspaceRole(data.role)) throw new Error("Papel inválido.");
     await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("workspace_members")
