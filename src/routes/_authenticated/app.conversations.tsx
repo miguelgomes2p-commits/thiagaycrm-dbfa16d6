@@ -94,8 +94,7 @@ function ConversationsPage() {
   const recordingTimerRef = useRef<number | null>(null);
   const repairingAudioRef = useRef(new Set<string>());
   const activeIdRef = useRef<string | null>(null);
-  const autoSyncInFlightRef = useRef(false);
-  const lastAutoSyncAtRef = useRef(0);
+
   const qc = useQueryClient();
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
