@@ -75,6 +75,45 @@ export const connectWhatsappNumber = createServerFn({ method: "POST" })
     return inserted;
   });
 
+export const updateN8nForwarding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        url: z.string().trim().url().or(z.literal("")).nullable().optional(),
+        authHeader: z.string().trim().max(1000).or(z.literal("")).nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("whatsapp_numbers")
+      .select("workspace_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Número não encontrado");
+    const { data: member } = await context.supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", row.workspace_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!member || (member.role !== "owner" && member.role !== "admin")) {
+      throw new Error("Apenas administradores podem alterar o webhook do N8N");
+    }
+    const { error } = await supabaseAdmin
+      .from("whatsapp_numbers")
+      .update({
+        n8n_webhook_url: data.url ? data.url : null,
+        n8n_webhook_auth_header: data.authHeader ? data.authHeader : null,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const deleteWhatsappNumber = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
