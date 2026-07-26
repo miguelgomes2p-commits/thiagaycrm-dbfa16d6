@@ -1345,6 +1345,48 @@ export type Database = {
           },
         ]
       }
+      webhook_events: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: number
+          last_error: string | null
+          locked_at: string | null
+          payload: Json
+          processed_at: string | null
+          raw_body: string | null
+          source: string
+          status: string
+          whatsapp_number_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: number
+          last_error?: string | null
+          locked_at?: string | null
+          payload: Json
+          processed_at?: string | null
+          raw_body?: string | null
+          source?: string
+          status?: string
+          whatsapp_number_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: number
+          last_error?: string | null
+          locked_at?: string | null
+          payload?: Json
+          processed_at?: string | null
+          raw_body?: string | null
+          source?: string
+          status?: string
+          whatsapp_number_id?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_numbers: {
         Row: {
           access_token: string | null
