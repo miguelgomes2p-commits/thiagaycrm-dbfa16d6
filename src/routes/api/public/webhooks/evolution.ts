@@ -86,55 +86,23 @@ export const Route = createFileRoute("/api/public/webhooks/evolution")({
         }
 
 
-        const forwardToN8n = async () => {
-          const url = wa.n8n_webhook_url?.trim();
-          if (!url) return { configured: false, forwarded: false };
+        try {
+          const { error: enqueueError } = await supabaseAdmin.from("webhook_events").insert({
+            source: "evolution",
+            whatsapp_number_id: wa.id,
+            payload: payload as never,
+            raw_body: raw.length > 1_000_000 ? null : raw,
+          });
 
-          const headers: Record<string, string> = { "Content-Type": "application/json" };
-          const auth = wa.n8n_webhook_auth_header?.trim();
-          if (auth) headers.Authorization = auth;
+          if (enqueueError) throw enqueueError;
 
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 5000);
-          const logForwardIssue = async (message: string, extra?: Record<string, unknown>) => {
-            try {
-              await supabaseAdmin.from("evolution_error_logs").insert({
-                workspace_id: wa.workspace_id,
-                whatsapp_number_id: wa.id,
-                operation: "n8n_forward",
-                error_message: message,
-                response_body: extra ? JSON.stringify(extra).slice(0, 4000) : null,
-              });
-            } catch {}
-          };
-
-          try {
-            const res = await fetch(url, { method: "POST", headers, body: raw, signal: controller.signal });
-            if (!res.ok) await logForwardIssue(`N8N respondeu ${res.status}`, { url, status: res.status });
-            return { configured: true, forwarded: res.ok, status: res.status };
-          } catch (err) {
-            const message = err instanceof Error ? err.message : "N8N forward failed";
-            await logForwardIssue(message, { url });
-            return { configured: true, forwarded: false, error: message };
-          } finally {
-            clearTimeout(timeout);
-          }
-        };
-
-        const processPayload = async () => {
+          return jsonResponse({ ok: true, queued: true, whatsapp_number_id: wa.id });
+        } catch (err) {
+          // Fallback síncrono: se a fila falhar, não perde a mensagem.
           const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
-          return processEvolutionPayload(wa.id, payload, { touchWebhook: true, source: "webhook" });
-        };
-
-        const [forwardResult, processResult] = await Promise.allSettled([forwardToN8n(), processPayload()]);
-        const n8n = forwardResult.status === "fulfilled" ? forwardResult.value : { configured: false, forwarded: false };
-
-        if (processResult.status === "rejected") {
-          const message = processResult.reason instanceof Error ? processResult.reason.message : "webhook error";
-          return textResponse(message, { status: 500 });
+          const result = await processEvolutionPayload(wa.id, payload, { touchWebhook: true, source: "webhook-fallback" });
+          return jsonResponse({ ok: true, mode: "sync-fallback", warning: err instanceof Error ? err.message : "enqueue failed", ...result });
         }
-
-        return jsonResponse({ ok: true, ...processResult.value, n8n });
       },
     },
   },
