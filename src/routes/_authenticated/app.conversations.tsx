@@ -126,7 +126,9 @@ function ConversationsPage() {
 
       return data ?? [];
     },
-    refetchInterval: 15000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
 
   // Membros do workspace + perfis para mostrar quem está atendendo cada conversa
@@ -160,7 +162,9 @@ function ConversationsPage() {
       const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).order("created_at", { ascending: false }).limit(300);
       return [...(data ?? [])].reverse();
     },
-    refetchInterval: activeId ? 8000 : false,
+    refetchInterval: activeId ? 3000 : false,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
