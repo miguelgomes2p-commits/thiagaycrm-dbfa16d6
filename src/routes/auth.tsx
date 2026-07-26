@@ -57,14 +57,15 @@ function AuthPage() {
 
   useEffect(() => {
     // Sempre exigir autenticação explícita ao acessar /auth.
-    // Se houver sessão ativa (ex.: magic link de convite), preserva para permitir
-    // definir senha; caso contrário, garante que o formulário apareça em branco.
+    // Se houver sessão ativa, encerra para forçar novo login.
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session && invite) {
-        setExistingSession({ email: data.session.user.email ?? null });
+      if (data.session) {
+        supabase.auth.signOut();
+        localStorage.removeItem("lupus:lastActivity");
+        localStorage.removeItem("lupus:sessionStart");
       }
     });
-  }, [invite]);
+  }, []);
 
 
   async function acceptInviteIfNeeded() {
@@ -74,27 +75,7 @@ function AuthPage() {
     toast.success("Convite aceito. Você já está no workspace.");
   }
 
-  async function handleContinue() {
-    try {
-      setLoading(true);
-      await acceptInviteIfNeeded();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao aceitar convite");
-      setLoading(false);
-      return;
-    }
-    navigate({ to: "/app" });
-  }
 
-  async function handleSignOutExisting() {
-    setLoading(true);
-    await supabase.auth.signOut();
-    localStorage.removeItem("lupus:lastActivity");
-    localStorage.removeItem("lupus:sessionStart");
-    setExistingSession(null);
-    setInviteAccepted(false);
-    setLoading(false);
-  }
 
 
   async function handleGoogle() {
