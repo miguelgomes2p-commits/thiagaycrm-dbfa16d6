@@ -9,7 +9,7 @@ import {
   sendWhatsappAttachment,
   repairWhatsappAudioMedia,
 } from "@/lib/whatsapp.functions";
-import { syncWorkspaceEvolutionMessages } from "@/lib/evolution.functions";
+
 import { useLabels, useConversationLabels, useAssignLabel, useRemoveLabel } from "@/hooks/useLabels";
 import { LabelBadge } from "@/components/labels/LabelBadge";
 import { LabelPicker } from "@/components/labels/LabelPicker";
