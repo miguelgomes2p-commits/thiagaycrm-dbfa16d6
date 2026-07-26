@@ -373,7 +373,8 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     }
   }
   if (msgs.length === 0) {
-    if (event.includes("message")) {
+    // Só logamos "noMessages" para eventos do webhook real (ruído puro para syncs manuais/auto).
+    if (event.includes("message") && source !== "manualSync" && source !== "workspaceAutoSync") {
       await logProcessorIssue({
         workspaceId: num.workspace_id,
         whatsappNumberId: num.id,
