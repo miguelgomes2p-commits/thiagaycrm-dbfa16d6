@@ -982,7 +982,7 @@ function ConversationsPage() {
 
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate flex items-center gap-1.5">
-                  <span className="truncate">{(() => { const ct = active.contacts as { name?: string; phone?: string | null } | null; return ct?.name?.trim() || (ct?.phone ? `+${ct.phone}` : "Sem nome"); })()}</span>
+                  <span className="truncate">{(active.contacts as { name?: string } | null)?.name?.trim() || "Anônimo"}</span>
                   {(active as { contact_id?: string | null }).contact_id && (
                     <button
                       type="button"
