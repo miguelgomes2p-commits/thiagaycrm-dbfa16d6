@@ -75,42 +75,44 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
           .eq("status", "processing")
           .lt("locked_at", staleCutoff);
 
-        // Reivindica lote via update...returning. Evita corrida entre invocações
-        // sobrepostas do cron: um único worker por linha.
-        const claimSql = `
-          UPDATE public.webhook_events
-             SET status = 'processing', locked_at = now(), attempts = attempts + 1
-           WHERE id IN (
-             SELECT id FROM public.webhook_events
-              WHERE status = 'pending'
-              ORDER BY created_at
-              LIMIT ${BATCH_SIZE}
-              FOR UPDATE SKIP LOCKED
-           )
-           RETURNING id, whatsapp_number_id, payload, raw_body, attempts;
-        `;
-        const { data: claimed, error: claimError } = await supabaseAdmin.rpc("exec_sql_returning", {
-          sql: claimSql,
-        });
-
-        // Fallback simples se a RPC não existir: SELECT + UPDATE (menos seguro em corrida,
-        // mas o cron é serializado e o SKIP LOCKED só cobre corridas simultâneas).
-        let batch: Array<{ id: number; whatsapp_number_id: string; payload: unknown; raw_body: string | null; attempts: number }>;
-        if (claimError || !claimed) {
-          const { data: pending } = await supabaseAdmin
-            .from("webhook_events")
-            .select("id, whatsapp_number_id, payload, raw_body, attempts")
-            .eq("status", "pending")
-            .order("created_at", { ascending: true })
-            .limit(BATCH_SIZE);
-          if (!pending || pending.length === 0) return Response.json({ ok: true, processed: 0 }, { headers: corsHeaders });
-          await supabaseAdmin
-            .from("webhook_events")
-            .update({ status: "processing", locked_at: new Date().toISOString() })
-            .in("id", pending.map((p) => p.id));
-          batch = pending as never;
-        } else {
-          batch = claimed as never;
+        // Reivindica lote: SELECT dos pendentes + UPDATE atômico via `id IN (...)`
+        // + filtro `status = 'pending'`. pg_cron serializa execuções da MESMA
+        // task, então corridas concorrentes só ocorrem se outro caller acionar
+        // o drain — o filtro `.eq("status","pending")` no update evita dupla
+        // reivindicação.
+        const { data: pending } = await supabaseAdmin
+          .from("webhook_events")
+          .select("id, whatsapp_number_id, payload, raw_body, attempts")
+          .eq("status", "pending")
+          .order("created_at", { ascending: true })
+          .limit(BATCH_SIZE);
+        if (!pending || pending.length === 0) {
+          return Response.json({ ok: true, processed: 0 }, { headers: corsHeaders });
+        }
+        const ids = pending.map((p) => p.id);
+        const { data: claimed } = await supabaseAdmin
+          .from("webhook_events")
+          .update({ status: "processing", locked_at: new Date().toISOString() })
+          .in("id", ids)
+          .eq("status", "pending")
+          .select("id, whatsapp_number_id, payload, raw_body, attempts");
+        const batch = (claimed ?? []) as Array<{
+          id: number;
+          whatsapp_number_id: string;
+          payload: unknown;
+          raw_body: string | null;
+          attempts: number;
+        }>;
+        // Incrementa attempts (não dá pra fazer numa única expressão via supabase-js).
+        if (batch.length > 0) {
+          await Promise.all(
+            batch.map((row) =>
+              supabaseAdmin
+                .from("webhook_events")
+                .update({ attempts: row.attempts + 1 })
+                .eq("id", row.id),
+            ),
+          );
         }
 
         if (!batch || batch.length === 0) {

@@ -28,6 +28,7 @@ import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app.admin'
 import { Route as ApiPublicWebhooksEvolutionRouteImport } from './routes/api/public/webhooks/evolution'
+import { Route as ApiPublicHooksDrainWebhookQueueRouteImport } from './routes/api/public/hooks/drain-webhook-queue'
 import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
 import { Route as ApiPublicWebhooksEvolutionNumberIdRouteImport } from './routes/api/public/webhooks/evolution.$numberId'
 
@@ -131,6 +132,12 @@ const ApiPublicWebhooksEvolutionRoute =
     path: '/api/public/webhooks/evolution',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDrainWebhookQueueRoute =
+  ApiPublicHooksDrainWebhookQueueRouteImport.update({
+    id: '/api/public/hooks/drain-webhook-queue',
+    path: '/api/public/hooks/drain-webhook-queue',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksWhatsappNumberIdRoute =
   ApiPublicWebhooksWhatsappNumberIdRouteImport.update({
     id: '/api/public/webhooks/whatsapp/$numberId',
@@ -162,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
@@ -183,6 +191,7 @@ export interface FileRoutesByTo {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
@@ -207,6 +216,7 @@ export interface FileRoutesById {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/app/'
+    | '/api/public/hooks/drain-webhook-queue'
     | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/app'
+    | '/api/public/hooks/drain-webhook-queue'
     | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
@@ -275,6 +287,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/_authenticated/app/'
+    | '/api/public/hooks/drain-webhook-queue'
     | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
@@ -286,6 +299,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiPublicHooksDrainWebhookQueueRoute: typeof ApiPublicHooksDrainWebhookQueueRoute
   ApiPublicWebhooksEvolutionRoute: typeof ApiPublicWebhooksEvolutionRouteWithChildren
   ApiPublicWebhooksWhatsappNumberIdRoute: typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
@@ -425,6 +439,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksEvolutionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/drain-webhook-queue': {
+      id: '/api/public/hooks/drain-webhook-queue'
+      path: '/api/public/hooks/drain-webhook-queue'
+      fullPath: '/api/public/hooks/drain-webhook-queue'
+      preLoaderRoute: typeof ApiPublicHooksDrainWebhookQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/whatsapp/$numberId': {
       id: '/api/public/webhooks/whatsapp/$numberId'
       path: '/api/public/webhooks/whatsapp/$numberId'
@@ -507,6 +528,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiAiChatRoute: ApiAiChatRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiPublicHooksDrainWebhookQueueRoute: ApiPublicHooksDrainWebhookQueueRoute,
   ApiPublicWebhooksEvolutionRoute: ApiPublicWebhooksEvolutionRouteWithChildren,
   ApiPublicWebhooksWhatsappNumberIdRoute:
     ApiPublicWebhooksWhatsappNumberIdRoute,
