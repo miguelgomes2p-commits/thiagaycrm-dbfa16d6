@@ -239,8 +239,18 @@ function ConversationsPage() {
 
   // Filtered + sorted list
   const visible = useMemo(() => {
-    // Oculta grupos por decisão de produto (mesmo se existirem contatos type='group' no banco).
-    let list = (convsQ.data ?? []).filter((c) => (c.contacts as { type?: string } | null)?.type !== "group");
+    // Oculta grupos: por tipo do contato, por JID @g.us ou por telefones anômalos (>15 dígitos são JIDs de grupo).
+    let list = (convsQ.data ?? []).filter((c) => {
+      const ct = c.contacts as { type?: string; phone?: string } | null;
+      if (ct?.type === "group") return false;
+      const jid = (c as { wa_contact_wa_id?: string }).wa_contact_wa_id ?? "";
+      if (jid.endsWith("@g.us")) return false;
+      const phone = ct?.phone ?? "";
+      if (phone.endsWith("@g.us")) return false;
+      if (/^\d{16,}$/.test(phone)) return false;
+      return true;
+    });
+
     if (view.search.trim()) {
       const q = view.search.trim().toLowerCase();
       list = list.filter((c) => {
