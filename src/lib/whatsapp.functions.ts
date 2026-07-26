@@ -19,7 +19,7 @@ export const listWhatsappNumbers = createServerFn({ method: "POST" })
     let query = supabaseAdmin
       .from("whatsapp_numbers")
       .select(
-        "id, label, display_number, phone_number_id, waba_id, is_active, webhook_verify_token, auto_reply_enabled, last_webhook_at, created_at, provider, instance_name, connection_status, last_qr_at, default_owner_id",
+        "id, label, display_number, phone_number_id, waba_id, is_active, webhook_verify_token, auto_reply_enabled, last_webhook_at, created_at, provider, instance_name, connection_status, last_qr_at, default_owner_id, n8n_webhook_url, n8n_webhook_auth_header",
       )
       .eq("workspace_id", data.workspaceId)
       .order("created_at");
@@ -73,6 +73,45 @@ export const connectWhatsappNumber = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return inserted;
+  });
+
+export const updateN8nForwarding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        url: z.string().trim().url().or(z.literal("")).nullable().optional(),
+        authHeader: z.string().trim().max(1000).or(z.literal("")).nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("whatsapp_numbers")
+      .select("workspace_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Número não encontrado");
+    const { data: member } = await context.supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", row.workspace_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!member || (member.role !== "owner" && member.role !== "admin")) {
+      throw new Error("Apenas administradores podem alterar o webhook do N8N");
+    }
+    const { error } = await supabaseAdmin
+      .from("whatsapp_numbers")
+      .update({
+        n8n_webhook_url: data.url ? data.url : null,
+        n8n_webhook_auth_header: data.authHeader ? data.authHeader : null,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const deleteWhatsappNumber = createServerFn({ method: "POST" })

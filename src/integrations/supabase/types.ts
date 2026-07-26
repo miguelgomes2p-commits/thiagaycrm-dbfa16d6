@@ -1362,6 +1362,8 @@ export type Database = {
           last_qr: string | null
           last_qr_at: string | null
           last_webhook_at: string | null
+          n8n_webhook_auth_header: string | null
+          n8n_webhook_url: string | null
           phone_number_id: string | null
           provider: Database["public"]["Enums"]["wa_provider"]
           provider_api_key: string | null
@@ -1387,6 +1389,8 @@ export type Database = {
           last_qr?: string | null
           last_qr_at?: string | null
           last_webhook_at?: string | null
+          n8n_webhook_auth_header?: string | null
+          n8n_webhook_url?: string | null
           phone_number_id?: string | null
           provider?: Database["public"]["Enums"]["wa_provider"]
           provider_api_key?: string | null
@@ -1412,6 +1416,8 @@ export type Database = {
           last_qr?: string | null
           last_qr_at?: string | null
           last_webhook_at?: string | null
+          n8n_webhook_auth_header?: string | null
+          n8n_webhook_url?: string | null
           phone_number_id?: string | null
           provider?: Database["public"]["Enums"]["wa_provider"]
           provider_api_key?: string | null
