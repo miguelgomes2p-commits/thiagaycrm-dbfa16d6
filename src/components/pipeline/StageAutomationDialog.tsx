@@ -106,6 +106,11 @@ export function StageAutomationDialog({
         <p className="text-xs text-muted-foreground -mt-2">
           As automações rodam automaticamente quando um lead entra nesta etapa.
         </p>
+        <div className="text-[11px] text-muted-foreground bg-primary/5 border border-primary/20 rounded-md px-2.5 py-1.5">
+          <Zap className="h-3 w-3 inline mr-1 text-primary" />
+          Todas as mensagens são enviadas pelo <strong>número da IA</strong> do workspace (o WhatsApp com n8n ativo).
+        </div>
+
 
         {!editing && (
           <div className="space-y-2">
