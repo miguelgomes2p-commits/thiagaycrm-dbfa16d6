@@ -326,13 +326,15 @@ export function evolutionFindMessages(
   instanceName: string,
   limit = 100,
   sinceUnixSeconds?: number,
+  page = 1,
 ) {
   const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 100);
+  const safePage = Math.max(Math.floor(page), 1);
   return req<unknown>(baseUrl, apiKey, `/chat/findMessages/${encodeURIComponent(instanceName)}`, {
     method: "POST",
     body: JSON.stringify({
       where: sinceUnixSeconds ? { messageTimestamp: { gte: sinceUnixSeconds } } : {},
-      page: 1,
+      page: safePage,
       offset: safeLimit,
     }),
   });
