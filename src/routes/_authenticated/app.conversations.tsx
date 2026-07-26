@@ -153,9 +153,10 @@ function ConversationsPage() {
 
       return data ?? [];
     },
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 10000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+    staleTime: 2000,
   });
 
   // Membros do workspace + perfis para mostrar quem está atendendo cada conversa
