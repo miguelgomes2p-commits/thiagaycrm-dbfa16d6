@@ -118,9 +118,31 @@ export const deleteWhatsappNumber = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
+    // Fetch provider details BEFORE delete so we can clean up the Evolution instance too.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: num } = await supabaseAdmin
+      .from("whatsapp_numbers")
+      .select("provider, provider_base_url, provider_api_key, instance_name")
+      .eq("id", data.id)
+      .maybeSingle();
+
     const { error } = await context.supabase.from("whatsapp_numbers").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
-    return { ok: true };
+
+    // Best-effort cleanup on Evolution (logout + delete). Never blocks the CRM delete.
+    let evolutionCleanup: { attempted: boolean; ok: boolean; error?: string } = { attempted: false, ok: false };
+    if (num?.provider === "evolution" && num.provider_base_url && num.provider_api_key && num.instance_name) {
+      evolutionCleanup.attempted = true;
+      try {
+        const { evolutionLogout, evolutionDeleteInstance } = await import("@/lib/evolution.server");
+        await evolutionLogout(num.provider_base_url, num.provider_api_key, num.instance_name).catch(() => {});
+        await evolutionDeleteInstance(num.provider_base_url, num.provider_api_key, num.instance_name);
+        evolutionCleanup.ok = true;
+      } catch (err) {
+        evolutionCleanup.error = err instanceof Error ? err.message : String(err);
+      }
+    }
+    return { ok: true, evolutionCleanup };
   });
 
 export const toggleAutoReply = createServerFn({ method: "POST" })
