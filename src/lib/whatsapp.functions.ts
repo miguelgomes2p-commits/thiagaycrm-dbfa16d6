@@ -19,7 +19,7 @@ export const listWhatsappNumbers = createServerFn({ method: "POST" })
     let query = supabaseAdmin
       .from("whatsapp_numbers")
       .select(
-        "id, label, display_number, phone_number_id, waba_id, is_active, webhook_verify_token, auto_reply_enabled, last_webhook_at, created_at, provider, instance_name, connection_status, last_qr_at, default_owner_id",
+        "id, label, display_number, phone_number_id, waba_id, is_active, webhook_verify_token, auto_reply_enabled, last_webhook_at, created_at, provider, instance_name, connection_status, last_qr_at, default_owner_id, n8n_webhook_url, n8n_webhook_auth_header",
       )
       .eq("workspace_id", data.workspaceId)
       .order("created_at");
