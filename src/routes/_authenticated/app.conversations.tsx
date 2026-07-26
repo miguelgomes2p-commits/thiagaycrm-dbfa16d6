@@ -113,12 +113,10 @@ function ConversationsPage() {
     enabled: !!ws?.id,
     queryKey: ["conversations", ws?.id],
     queryFn: async () => {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase.from("conversations")
         .select("*, contacts:contact_id(name, type, avatar_url)")
         .eq("workspace_id", ws!.id)
         .not("whatsapp_number_id", "is", null)
-        .gte("last_message_at", sevenDaysAgo)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(200);
 
@@ -154,9 +152,8 @@ function ConversationsPage() {
     enabled: !!activeId,
     queryKey: ["messages", activeId],
     queryFn: async () => {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).gte("created_at", sevenDaysAgo).order("created_at");
-      return data ?? [];
+      const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).order("created_at", { ascending: false }).limit(300);
+      return [...(data ?? [])].reverse();
     },
   });
 
@@ -186,10 +183,7 @@ function ConversationsPage() {
 
   // Filtered + sorted list
   const visible = useMemo(() => {
-    let list = (convsQ.data ?? []).filter((c) => {
-      const t = (c.contacts as { type?: string } | null)?.type;
-      return t !== "group";
-    });
+    let list = convsQ.data ?? [];
     if (view.search.trim()) {
       const q = view.search.trim().toLowerCase();
       list = list.filter((c) => {
