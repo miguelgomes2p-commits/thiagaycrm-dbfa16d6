@@ -1,6 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { runInBackground } from "@/lib/request-context";
-
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,9 +83,15 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
           return processEvolutionPayload(params.numberId, payload, { touchWebhook: true, source: "webhook" });
         };
 
-        runInBackground(Promise.allSettled([forwardToN8n(), processPayload()]));
-        return jsonResponse({ ok: true, queued: true });
+        const [forwardResult, processResult] = await Promise.allSettled([forwardToN8n(), processPayload()]);
+        const n8n = forwardResult.status === "fulfilled" ? forwardResult.value : { configured: false, forwarded: false };
 
+        if (processResult.status === "rejected") {
+          const error = processResult.reason instanceof Error ? processResult.reason.message : "webhook error";
+          return textResponse(error, { status: 500 });
+        }
+
+        return jsonResponse({ ok: true, ...processResult.value, n8n });
       },
     },
   },

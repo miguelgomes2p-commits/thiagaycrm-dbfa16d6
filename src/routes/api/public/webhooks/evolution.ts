@@ -1,6 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { runInBackground } from "@/lib/request-context";
-
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -126,11 +124,15 @@ export const Route = createFileRoute("/api/public/webhooks/evolution")({
           return processEvolutionPayload(wa.id, payload, { touchWebhook: true, source: "webhook" });
         };
 
-        // Responde 200 IMEDIATAMENTE. n8n não fica em retry por webhook lento.
-        // Forward para n8n e processamento pesado seguem em background via waitUntil.
-        runInBackground(Promise.allSettled([forwardToN8n(), processPayload()]));
-        return jsonResponse({ ok: true, queued: true });
+        const [forwardResult, processResult] = await Promise.allSettled([forwardToN8n(), processPayload()]);
+        const n8n = forwardResult.status === "fulfilled" ? forwardResult.value : { configured: false, forwarded: false };
 
+        if (processResult.status === "rejected") {
+          const message = processResult.reason instanceof Error ? processResult.reason.message : "webhook error";
+          return textResponse(message, { status: 500 });
+        }
+
+        return jsonResponse({ ok: true, ...processResult.value, n8n });
       },
     },
   },
