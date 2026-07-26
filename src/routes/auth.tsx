@@ -218,25 +218,8 @@ function AuthPage() {
             </div>
           )}
 
-          {existingSession && (
-            <div className="mt-6 rounded-lg border border-border bg-card p-4">
-              <p className="text-sm text-foreground">
-                Você já está autenticado{existingSession.email ? ` como ` : "."}
-                {existingSession.email && <span className="font-medium">{existingSession.email}</span>}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Por segurança, confirme se deseja continuar nesta sessão ou saia para entrar com outra conta.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button size="sm" onClick={handleContinue} disabled={loading} className="gradient-brand">
-                  Continuar
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleSignOutExisting} disabled={loading}>
-                  Sair e trocar de conta
-                </Button>
-              </div>
-            </div>
-          )}
+
+
 
 
           <Button onClick={handleGoogle} disabled={loading} variant="outline" className="w-full mt-6 h-11">
