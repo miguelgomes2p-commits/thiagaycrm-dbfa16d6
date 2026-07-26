@@ -134,7 +134,7 @@ export const refreshEvolutionQr = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
       .from("whatsapp_numbers")
-      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name")
+      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name, last_webhook_at, created_at")
       .eq("id", data.id)
       .single();
     if (error || !num) throw new Error("Número não encontrado");
@@ -177,7 +177,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
       .from("whatsapp_numbers")
-      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name")
+      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name, last_webhook_at, created_at")
       .eq("id", data.id)
       .single();
     if (error || !num) throw new Error("Número não encontrado");
@@ -185,12 +185,62 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
       throw new Error("Este número não é uma instância Evolution");
     }
     try {
-      const { evolutionConnectionState } = await import("@/lib/evolution.server");
+      const { evolutionConnectionState, evolutionFindMessages, evolutionSetWebhook } = await import("@/lib/evolution.server");
       const s = await evolutionConnectionState(num.provider_base_url, num.provider_api_key, num.instance_name);
       const state = s.instance?.state ?? "close";
+      const now = Date.now();
+      const lastActivityMs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+      const recentActivity = lastActivityMs > 0 && now - lastActivityMs < 15 * 60 * 1000;
       const mapped =
-        state === "open" ? "connected" : state === "connecting" ? "connecting" : state === "close" ? "disconnected" : "error";
-      await context.supabase.from("whatsapp_numbers").update({ connection_status: mapped }).eq("id", data.id);
+        state === "open"
+          ? "connected"
+          : state === "connecting"
+            ? "connecting"
+            : state === "close"
+              ? recentActivity
+                ? "connected"
+                : "disconnected"
+              : "error";
+      await context.supabase
+        .from("whatsapp_numbers")
+        .update({
+          connection_status: mapped,
+          ...(mapped === "connected" ? { last_webhook_at: new Date().toISOString() } : {}),
+        })
+        .eq("id", data.id);
+
+      if (state === "open") {
+        const webhookOrigin = "https://thiagaycrm.lovable.app";
+        const webhookUrl = `${webhookOrigin}/api/public/webhooks/evolution/${data.id}`;
+        await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl).catch((webhookError) =>
+          logEvolutionError({
+            workspaceId: num.workspace_id,
+            whatsappNumberId: data.id,
+            operation: "checkStatus.setWebhook",
+            baseUrl: num.provider_base_url,
+            instanceName: num.instance_name,
+            error: webhookError,
+          }),
+        );
+
+        if (!lastActivityMs || now - lastActivityMs > 60_000) {
+          try {
+            const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
+            const sinceSec = Math.floor((now - 30 * 24 * 60 * 60 * 1000) / 1000);
+            const payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, 50, sinceSec);
+            await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { touchWebhook: true, source: "statusWarmSync" });
+          } catch (syncError) {
+            await logEvolutionError({
+              workspaceId: num.workspace_id,
+              whatsappNumberId: data.id,
+              operation: "checkStatus.warmSync",
+              baseUrl: num.provider_base_url,
+              instanceName: num.instance_name,
+              error: syncError,
+            });
+          }
+        }
+      }
       return { state, mapped };
     } catch (e) {
       await logEvolutionError({
@@ -281,7 +331,7 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
           hasRange = false;
           payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit, undefined, page);
         }
-        const stats = await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { source: "manualSync" });
+        const stats = await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { touchWebhook: true, source: "manualSync" });
         aggregated.insertedMessages += stats.insertedMessages;
         aggregated.rowsSeen += stats.rowsSeen;
         aggregated.skippedDuplicates += stats.skippedDuplicates;
@@ -309,9 +359,18 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
     z.object({ workspaceId: z.string().uuid(), limit: z.number().int().positive().max(25).optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { data: numbers, error } = await context.supabase
+    const { data: member } = await context.supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!member) throw new Error("Workspace não encontrado");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: numbers, error } = await supabaseAdmin
       .from("whatsapp_numbers")
-      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at")
+      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at, created_at, updated_at")
       .eq("workspace_id", data.workspaceId)
       .eq("provider", "evolution")
       .eq("is_active", true)
@@ -320,18 +379,63 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
       .not("instance_name", "is", null);
     if (error) throw new Error(error.message);
 
-    const { evolutionFindMessages } = await import("@/lib/evolution.server");
+    const { evolutionConnectionState, evolutionFindMessages, evolutionSetWebhook } = await import("@/lib/evolution.server");
     const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
 
-    // Sempre inclui números conectados: o backfill periódico serve tanto para números
-    // sem webhook recente quanto para reconciliar mensagens que o webhook possa ter perdido
-    // (media 400, restarts da Evolution, race conditions).
-    const connectedNumbers = (numbers ?? []).filter(
-      (num) => num.connection_status !== "disconnected" && num.connection_status !== "error",
-    );
+    // Sincroniza todos os números plausivelmente vivos. A Evolution pode reportar
+    // "close" logo após um novo aparelho conectar, mesmo recebendo webhooks; não
+    // podemos parar o fallback por causa desse falso negativo.
+    const now = Date.now();
+    const connectedNumbers = (numbers ?? []).filter((num) => {
+      if (num.connection_status === "error") return false;
+      const lastActivityMs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+      const createdMs = num.created_at ? new Date(num.created_at).getTime() : 0;
+      const recentlyActive = lastActivityMs > 0 && now - lastActivityMs < 24 * 60 * 60 * 1000;
+      const recentlyCreated = createdMs > 0 && now - createdMs < 24 * 60 * 60 * 1000;
+      return num.connection_status !== "disconnected" || recentlyActive || recentlyCreated;
+    });
     const results: Array<{ id: string; ok: boolean; insertedMessages?: number; rowsSeen?: number; error?: string }> = [];
     for (const num of connectedNumbers) {
       try {
+        const nowMs = Date.now();
+        const createdMs = num.created_at ? new Date(num.created_at).getTime() : 0;
+        const updatedMs = num.updated_at ? new Date(num.updated_at).getTime() : 0;
+        if (createdMs > 0 && nowMs - createdMs > 30_000 && updatedMs > 0 && nowMs - updatedMs < 8_000) {
+          results.push({ id: num.id, ok: true, insertedMessages: 0, rowsSeen: 0 });
+          continue;
+        }
+
+        const lastActivityMs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+        const recentlyActive = lastActivityMs > 0 && Date.now() - lastActivityMs < 15 * 60 * 1000;
+        try {
+          const state = (await evolutionConnectionState(num.provider_base_url!, num.provider_api_key!, num.instance_name!)).instance?.state ?? "close";
+          if (state === "open") {
+            await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: "connected" }).eq("id", num.id);
+            const webhookUrl = `https://thiagaycrm.lovable.app/api/public/webhooks/evolution/${num.id}`;
+            await evolutionSetWebhook(num.provider_base_url!, num.provider_api_key!, num.instance_name!, webhookUrl).catch((webhookError) =>
+              logEvolutionError({
+                workspaceId: data.workspaceId,
+                whatsappNumberId: num.id,
+                operation: "workspaceSync.setWebhook",
+                baseUrl: num.provider_base_url,
+                instanceName: num.instance_name,
+                error: webhookError,
+              }),
+            );
+          } else if (state === "close" && !recentlyActive && num.connection_status === "connected") {
+            await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: "disconnected" }).eq("id", num.id);
+          }
+        } catch (stateError) {
+          await logEvolutionError({
+            workspaceId: data.workspaceId,
+            whatsappNumberId: num.id,
+            operation: "workspaceSync.connectionState",
+            baseUrl: num.provider_base_url,
+            instanceName: num.instance_name,
+            error: stateError,
+          });
+        }
+
         // Janela de 60 min garante que qualquer mensagem perdida por queda de webhook
         // seja recuperada em até 1h, sem pressionar a Evolution.
         const sinceSec = Math.floor((Date.now() - 60 * 60 * 1000) / 1000);
@@ -343,7 +447,8 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
           if ((syncError as { status?: number }).status !== 400) throw syncError;
           payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, limit);
         }
-        const stats = await processEvolutionPayload(num.id, { event: "MESSAGES_SET", data: payload }, { source: "workspaceAutoSync" });
+        const stats = await processEvolutionPayload(num.id, { event: "MESSAGES_SET", data: payload }, { touchWebhook: true, source: "workspaceAutoSync" });
+        await supabaseAdmin.from("whatsapp_numbers").update({ updated_at: new Date().toISOString() }).eq("id", num.id);
         results.push({ id: num.id, ok: true, insertedMessages: stats.insertedMessages, rowsSeen: stats.rowsSeen });
 
       } catch (e) {
