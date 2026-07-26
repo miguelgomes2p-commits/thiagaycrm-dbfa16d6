@@ -839,10 +839,10 @@ function QrSyncContent({
   // - "connected":  open + confirmação/leitura anterior + janela mínima de sincronização decorrida
   const syncingWindowMs = 4000;
   const hasQr = !!qrModal?.qr;
-  // Se a Evolution retorna "connected", tratamos como scan concluído — não exigimos
-  // ver uma transição prévia de "close/connecting" (evita travar quando a instância
-  // já estava conectada antes de abrir o modal, ou quando o scan é muito rápido).
-  const userAckScanned = manualConfirm || state === "connected" || everSawNonOpen;
+  // Só consideramos que o usuário escaneou quando: confirmou manualmente OU a instância
+  // reporta "connected". Ver qualquer outro estado (close/connecting) NÃO é ack — senão
+  // uma conta nova pula o QR direto para "sincronizando".
+  const userAckScanned = manualConfirm || state === "connected";
   const stableConnected =
     state === "connected" &&
     connectedAt !== null &&
