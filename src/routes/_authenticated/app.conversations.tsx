@@ -153,9 +153,10 @@ function ConversationsPage() {
 
       return data ?? [];
     },
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 10000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+    staleTime: 2000,
   });
 
   // Membros do workspace + perfis para mostrar quem está atendendo cada conversa
@@ -189,9 +190,10 @@ function ConversationsPage() {
       const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).order("created_at", { ascending: false }).limit(300);
       return [...(data ?? [])].reverse();
     },
-    refetchInterval: activeId ? 3000 : false,
-    refetchIntervalInBackground: true,
+    refetchInterval: activeId ? 8000 : false,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+    staleTime: 1500,
   });
 
   useEffect(() => {
@@ -199,25 +201,33 @@ function ConversationsPage() {
   }, [activeId]);
 
   // Auto-sync global vive em src/routes/_authenticated/app.tsx (AppShell).
-  // Aqui só reagimos a mudanças via TanStack Query + Realtime.
-
+  // Aqui só reagimos a mudanças via TanStack Query + Realtime, com debounce
+  // para evitar cascata de invalidations quando vários membros estão online.
 
   useEffect(() => {
     if (!activeId) return;
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const invalidate = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => qc.invalidateQueries({ queryKey: ["messages", activeId] }), 250);
+    };
     const ch = supabase.channel(`msgs-${activeId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${activeId}` },
-        () => qc.invalidateQueries({ queryKey: ["messages", activeId] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${activeId}` }, invalidate)
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { if (t) clearTimeout(t); supabase.removeChannel(ch); };
   }, [activeId, qc]);
 
   useEffect(() => {
     if (!ws?.id) return;
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const invalidate = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => qc.invalidateQueries({ queryKey: ["conversations", ws.id] }), 400);
+    };
     const ch = supabase.channel(`convs-${ws.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `workspace_id=eq.${ws.id}` },
-        () => qc.invalidateQueries({ queryKey: ["conversations", ws.id] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `workspace_id=eq.${ws.id}` }, invalidate)
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { if (t) clearTimeout(t); supabase.removeChannel(ch); };
   }, [ws?.id, qc]);
 
   const labelById = useMemo(() => {
@@ -228,7 +238,8 @@ function ConversationsPage() {
 
   // Filtered + sorted list
   const visible = useMemo(() => {
-    let list = convsQ.data ?? [];
+    // Oculta grupos por decisão de produto (mesmo se existirem contatos type='group' no banco).
+    let list = (convsQ.data ?? []).filter((c) => (c.contacts as { type?: string } | null)?.type !== "group");
     if (view.search.trim()) {
       const q = view.search.trim().toLowerCase();
       list = list.filter((c) => {
