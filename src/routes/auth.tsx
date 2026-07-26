@@ -43,7 +43,7 @@ function AuthPage() {
   const { invite } = Route.useSearch();
   const acceptInvite = useServerFn(acceptWorkspaceInvitation);
   const [loading, setLoading] = useState(false);
-  const [existingSession, setExistingSession] = useState<null | { email: string | null }>(null);
+  
   const [inviteAccepted, setInviteAccepted] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [challenge, setChallenge] = useState(() => newChallenge());
@@ -57,14 +57,15 @@ function AuthPage() {
 
   useEffect(() => {
     // Sempre exigir autenticação explícita ao acessar /auth.
-    // Se houver sessão ativa (ex.: magic link de convite), preserva para permitir
-    // definir senha; caso contrário, garante que o formulário apareça em branco.
+    // Se houver sessão ativa, encerra para forçar novo login.
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session && invite) {
-        setExistingSession({ email: data.session.user.email ?? null });
+      if (data.session) {
+        supabase.auth.signOut();
+        localStorage.removeItem("lupus:lastActivity");
+        localStorage.removeItem("lupus:sessionStart");
       }
     });
-  }, [invite]);
+  }, []);
 
 
   async function acceptInviteIfNeeded() {
@@ -74,27 +75,7 @@ function AuthPage() {
     toast.success("Convite aceito. Você já está no workspace.");
   }
 
-  async function handleContinue() {
-    try {
-      setLoading(true);
-      await acceptInviteIfNeeded();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao aceitar convite");
-      setLoading(false);
-      return;
-    }
-    navigate({ to: "/app" });
-  }
 
-  async function handleSignOutExisting() {
-    setLoading(true);
-    await supabase.auth.signOut();
-    localStorage.removeItem("lupus:lastActivity");
-    localStorage.removeItem("lupus:sessionStart");
-    setExistingSession(null);
-    setInviteAccepted(false);
-    setLoading(false);
-  }
 
 
   async function handleGoogle() {
@@ -133,30 +114,20 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        // Convite: se o usuário já está autenticado via magic-link do convite,
-        // apenas define a senha para permitir login futuro por email/senha.
-        if (existingSession) {
-          const { error } = await supabase.auth.updateUser({
-            password,
-            data: fullName ? { full_name: fullName } : undefined,
-          });
-          if (error) throw error;
-          toast.success("Senha definida! Você já pode entrar com email e senha.");
-        } else {
-          const { data, error } = await supabase.auth.signUp({
-            email, password,
-            options: {
-              emailRedirectTo: window.location.origin + "/auth" + (invite ? `?invite=${encodeURIComponent(invite)}` : ""),
-              data: { full_name: fullName },
-            },
-          });
-          if (error) throw error;
-          // Supabase disfarça email já cadastrado retornando user sem identities.
-          if (data.user && (data.user.identities?.length ?? 0) === 0) {
-            throw new Error("Este email já está cadastrado. Faça login ou recupere sua senha.");
-          }
-          toast.success("Conta criada! Redirecionando...");
+        const { data, error } = await supabase.auth.signUp({
+          email, password,
+          options: {
+            emailRedirectTo: window.location.origin + "/auth" + (invite ? `?invite=${encodeURIComponent(invite)}` : ""),
+            data: { full_name: fullName },
+          },
+        });
+        if (error) throw error;
+        // Supabase disfarça email já cadastrado retornando user sem identities.
+        if (data.user && (data.user.identities?.length ?? 0) === 0) {
+          throw new Error("Este email já está cadastrado. Faça login ou recupere sua senha.");
         }
+        toast.success("Conta criada! Redirecionando...");
+
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -247,25 +218,8 @@ function AuthPage() {
             </div>
           )}
 
-          {existingSession && (
-            <div className="mt-6 rounded-lg border border-border bg-card p-4">
-              <p className="text-sm text-foreground">
-                Você já está autenticado{existingSession.email ? ` como ` : "."}
-                {existingSession.email && <span className="font-medium">{existingSession.email}</span>}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Por segurança, confirme se deseja continuar nesta sessão ou saia para entrar com outra conta.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button size="sm" onClick={handleContinue} disabled={loading} className="gradient-brand">
-                  Continuar
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleSignOutExisting} disabled={loading}>
-                  Sair e trocar de conta
-                </Button>
-              </div>
-            </div>
-          )}
+
+
 
 
           <Button onClick={handleGoogle} disabled={loading} variant="outline" className="w-full mt-6 h-11">
