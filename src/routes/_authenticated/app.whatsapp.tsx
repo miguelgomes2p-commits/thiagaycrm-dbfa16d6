@@ -246,11 +246,11 @@ function WhatsappPage() {
   });
 
   const syncEvoMessagesM = useMutation({
-    mutationFn: (id: string) => syncEvoMessages({ data: { id, limit: 10 } }),
+    mutationFn: (id: string) => syncEvoMessages({ data: { id, limit: 100 } }),
     onSuccess: (r: { stats?: { insertedMessages?: number; rowsSeen?: number } }) => {
       const ins = r?.stats?.insertedMessages ?? 0;
       const seen = r?.stats?.rowsSeen ?? 0;
-      toast.success(`Sincronização concluída — ${ins} nova(s) de ${seen} vista(s). Confira em Conversas.`);
+      toast.success(`Últimos 7 dias sincronizados — ${ins} nova(s) de ${seen} vista(s). Confira em Conversas.`);
       qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["messages"] });
@@ -342,6 +342,11 @@ function WhatsappPage() {
                       {isEvo && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           {n.connection_status}
+                        </span>
+                      )}
+                      {isEvo && n8n_webhook_url && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/10 text-success">
+                          N8N ativo
                         </span>
                       )}
                     </div>

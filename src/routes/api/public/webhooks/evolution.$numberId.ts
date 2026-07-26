@@ -1,20 +1,41 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-api-key",
+  "Access-Control-Max-Age": "86400",
+};
+
+function textResponse(body: string, init?: ResponseInit) {
+  return new Response(body, {
+    ...init,
+    headers: { ...corsHeaders, ...(init?.headers ?? {}) },
+  });
+}
+
+function jsonResponse(body: unknown, init?: ResponseInit) {
+  return Response.json(body, {
+    ...init,
+    headers: { ...corsHeaders, ...(init?.headers ?? {}) },
+  });
+}
+
 export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")({
   server: {
     handlers: {
-      GET: async () => new Response("ok"),
+      OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
+      GET: async () => textResponse("ok"),
       POST: async ({ request, params }) => {
         const raw = await request.text();
         let payload: unknown;
         try {
           payload = JSON.parse(raw);
         } catch {
-          return new Response("bad json", { status: 400 });
+          return textResponse("bad json", { status: 400 });
         }
 
-        // Fire-and-forget: reencaminha payload cru para o N8N do cliente (se configurado)
-        try {
+        const forwardToN8n = async () => {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { data: wa } = await supabaseAdmin
             .from("whatsapp_numbers")
@@ -43,27 +64,34 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
               } catch {}
             };
 
-            fetch(url, { method: "POST", headers, body: raw, signal: controller.signal })
-              .then(async (res) => {
-                clearTimeout(timeout);
-                if (!res.ok) await logForwardIssue(`N8N respondeu ${res.status}`, { url, status: res.status });
-              })
-              .catch(async (err) => {
-                clearTimeout(timeout);
-                await logForwardIssue(err instanceof Error ? err.message : "N8N forward failed", { url });
-              });
+            try {
+              const res = await fetch(url, { method: "POST", headers, body: raw, signal: controller.signal });
+              if (!res.ok) await logForwardIssue(`N8N respondeu ${res.status}`, { url, status: res.status });
+              return { configured: true, forwarded: res.ok, status: res.status };
+            } catch (err) {
+              await logForwardIssue(err instanceof Error ? err.message : "N8N forward failed", { url });
+              return { configured: true, forwarded: false, error: err instanceof Error ? err.message : "N8N forward failed" };
+            } finally {
+              clearTimeout(timeout);
+            }
           }
-        } catch {
-          // Falha ao carregar config não pode quebrar o processamento do CRM
+          return { configured: false, forwarded: false };
+        };
+
+        const processPayload = async () => {
+          const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
+          return processEvolutionPayload(params.numberId, payload, { touchWebhook: true, source: "webhook" });
+        };
+
+        const [forwardResult, processResult] = await Promise.allSettled([forwardToN8n(), processPayload()]);
+        const n8n = forwardResult.status === "fulfilled" ? forwardResult.value : { configured: false, forwarded: false };
+
+        if (processResult.status === "rejected") {
+          const error = processResult.reason instanceof Error ? processResult.reason.message : "webhook error";
+          return textResponse(error, { status: 500 });
         }
 
-        try {
-          const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
-          const stats = await processEvolutionPayload(params.numberId, payload, { touchWebhook: true, source: "webhook" });
-          return Response.json({ ok: true, ...stats });
-        } catch (e) {
-          return new Response(e instanceof Error ? e.message : "webhook error", { status: 500 });
-        }
+        return jsonResponse({ ok: true, ...processResult.value, n8n });
       },
     },
   },

@@ -288,7 +288,7 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
 export const syncEvolutionMessages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ id: z.string().uuid(), limit: z.number().int().positive().max(20).optional() }).parse(d),
+    z.object({ id: z.string().uuid(), limit: z.number().int().positive().max(100).optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
@@ -303,11 +303,11 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
 
     try {
       const { evolutionFindMessages } = await import("@/lib/evolution.server");
-      const oneHourAgoSec = Math.floor((Date.now() - 60 * 60 * 1000) / 1000);
-      const limit = Math.min(data.limit ?? 10, 20);
+      const sevenDaysAgoSec = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+      const limit = Math.min(data.limit ?? 100, 100);
       let payload: unknown;
       try {
-        payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit, oneHourAgoSec);
+        payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit, sevenDaysAgoSec);
       } catch (syncError) {
         if ((syncError as { status?: number }).status !== 400) throw syncError;
         payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit);
@@ -331,7 +331,7 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
 export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ workspaceId: z.string().uuid(), limit: z.number().int().positive().max(10).optional() }).parse(d),
+    z.object({ workspaceId: z.string().uuid(), limit: z.number().int().positive().max(25).optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: numbers, error } = await context.supabase
@@ -356,7 +356,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
         // recarregando listeners internos da Evolution e causando pressão de memória.
         // Webhook é configurado apenas: (1) ao criar instância, (2) no botão "Sincronizar" manual.
         const fifteenMinutesAgoSec = Math.floor((Date.now() - 15 * 60 * 1000) / 1000);
-        const limit = Math.min(data.limit ?? 5, 10);
+        const limit = Math.min(data.limit ?? 10, 25);
         let payload: unknown;
         try {
           payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, limit, fifteenMinutesAgoSec);

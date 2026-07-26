@@ -285,6 +285,13 @@ function messageText(m: Json, media: ReturnType<typeof detectMediaKind>) {
   );
 }
 
+function firstString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 export async function processEvolutionPayload(numberId: string, payload: Json, opts: { touchWebhook?: boolean; source?: string } = {}): Promise<EvolutionProcessStats> {
   const startedAt = Date.now();
   const source = opts.source ?? "webhook";
@@ -439,12 +446,26 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         .eq("phone", waId)
         .maybeSingle();
       const canCallProvider = !!(num.provider_base_url && num.provider_api_key && num.instance_name);
-      const shouldFetchAvatar = !isGroup && canCallProvider;
-      const shouldFetchGroupMeta = isGroup && canCallProvider;
+      const shouldFetchAvatar = !isHistorySync && source !== "webhook" && !isGroup && canCallProvider;
+      const shouldFetchGroupMeta = !isHistorySync && source !== "webhook" && isGroup && canCallProvider;
 
       // Busca metadados do grupo (nome/foto) para eliminar "Grupo XXXXXX".
-      let groupSubject: string | null = null;
-      let groupPicture: string | null = null;
+      let groupSubject: string | null = isGroup
+        ? firstString(
+            m.groupSubject,
+            m.subject,
+            m.chatName,
+            m.chat_name,
+            m.pushName,
+            m.pushname,
+            m.name,
+            m.data?.groupSubject,
+            m.data?.subject,
+          )
+        : null;
+      let groupPicture: string | null = isGroup
+        ? firstString(m.groupPicture, m.pictureUrl, m.profilePictureUrl, m.avatarUrl, m.data?.pictureUrl)
+        : null;
       if (shouldFetchGroupMeta && (!exContact || !exContact.avatar_url || (exContact.name ?? "").startsWith("Grupo "))) {
         try {
           const { evolutionFetchGroupInfo } = await import("@/lib/evolution.server");
@@ -459,7 +480,6 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         const patch: { name?: string; avatar_url?: string } = {};
         if (!isGroup && !fromMe && pushName && pushName !== exContact.name && isPlaceholderName(exContact.name, waId)) patch.name = pushName;
         if (isGroup && groupSubject && ((exContact.name ?? "").startsWith("Grupo ") || isPlaceholderName(exContact.name, waId))) patch.name = groupSubject;
-        if (isGroup && groupPicture && !exContact.avatar_url) patch.avatar_url = groupPicture;
         if (isGroup && groupPicture && !exContact.avatar_url) patch.avatar_url = groupPicture;
         if (source === "webhook" && !isHistorySync && shouldFetchAvatar && !exContact.avatar_url) {
           try {
