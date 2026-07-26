@@ -168,45 +168,9 @@ function ConversationsPage() {
     activeIdRef.current = activeId;
   }, [activeId]);
 
-  useEffect(() => {
-    if (!ws?.id || typeof window === "undefined" || typeof document === "undefined") return;
+  // Auto-sync global vive em src/routes/_authenticated/app.tsx (AppShell).
+  // Aqui só reagimos a mudanças via TanStack Query + Realtime.
 
-    let cancelled = false;
-    const runAutoSync = async () => {
-      if (cancelled || document.hidden || autoSyncInFlightRef.current) return;
-      const now = Date.now();
-      if (now - lastAutoSyncAtRef.current < 20_000) return;
-
-      autoSyncInFlightRef.current = true;
-      lastAutoSyncAtRef.current = now;
-      try {
-        const result = await syncWorkspaceEvo({ data: { workspaceId: ws.id, limit: 10 } });
-        const inserted = result.results.reduce((sum, item) => sum + (item.insertedMessages ?? 0), 0);
-        if (inserted > 0) {
-          qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
-          const currentActiveId = activeIdRef.current;
-          if (currentActiveId) qc.invalidateQueries({ queryKey: ["messages", currentActiveId] });
-        }
-      } catch (error) {
-        console.warn("[inbox] sincronização automática Evolution falhou", error);
-      } finally {
-        autoSyncInFlightRef.current = false;
-      }
-    };
-
-    runAutoSync();
-    const interval = window.setInterval(runAutoSync, 30000);
-    const onVisibilityChange = () => {
-      if (!document.hidden) runAutoSync();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, [ws?.id, qc, syncWorkspaceEvo]);
 
   useEffect(() => {
     if (!activeId) return;
