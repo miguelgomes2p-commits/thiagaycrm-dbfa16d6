@@ -23,36 +23,34 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             .maybeSingle();
 
           const url = wa?.n8n_webhook_url?.trim();
-          if (url) {
+          if (url && wa) {
             const headers: Record<string, string> = { "Content-Type": "application/json" };
-            const auth = wa?.n8n_webhook_auth_header?.trim();
+            const auth = wa.n8n_webhook_auth_header?.trim();
             if (auth) headers["Authorization"] = auth;
 
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 5000);
 
-            fetch(url, { method: "POST", headers, body: raw, signal: controller.signal })
-              .then(async (res) => {
-                clearTimeout(timeout);
-                if (!res.ok) {
-                  await supabaseAdmin.from("evolution_error_logs").insert({
-                    workspace_id: wa.workspace_id,
-                    whatsapp_number_id: params.numberId,
-                    kind: "n8n_forward",
-                    message: `N8N respondeu ${res.status}`,
-                    metadata: { url, status: res.status },
-                  });
-                }
-              })
-              .catch(async (err) => {
-                clearTimeout(timeout);
+            const logForwardIssue = async (message: string, extra?: Record<string, unknown>) => {
+              try {
                 await supabaseAdmin.from("evolution_error_logs").insert({
                   workspace_id: wa.workspace_id,
                   whatsapp_number_id: params.numberId,
-                  kind: "n8n_forward",
-                  message: err instanceof Error ? err.message : "N8N forward failed",
-                  metadata: { url },
-                }).then(() => {}, () => {});
+                  operation: "n8n_forward",
+                  error_message: message,
+                  response_body: extra ? JSON.stringify(extra).slice(0, 4000) : null,
+                });
+              } catch {}
+            };
+
+            fetch(url, { method: "POST", headers, body: raw, signal: controller.signal })
+              .then(async (res) => {
+                clearTimeout(timeout);
+                if (!res.ok) await logForwardIssue(`N8N respondeu ${res.status}`, { url, status: res.status });
+              })
+              .catch(async (err) => {
+                clearTimeout(timeout);
+                await logForwardIssue(err instanceof Error ? err.message : "N8N forward failed", { url });
               });
           }
         } catch {
