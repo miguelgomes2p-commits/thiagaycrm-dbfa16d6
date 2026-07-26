@@ -187,14 +187,15 @@ function ConversationsPage() {
     enabled: !!activeId,
     queryKey: ["messages", activeId],
     queryFn: async () => {
-      const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).order("created_at", { ascending: false }).limit(300);
-      return [...(data ?? [])].reverse();
+      const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300);
+      return data ?? [];
     },
     refetchInterval: activeId ? 8000 : false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 1500,
   });
+
 
   useEffect(() => {
     activeIdRef.current = activeId;
