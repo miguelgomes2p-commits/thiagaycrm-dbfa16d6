@@ -27,6 +27,12 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       GET: async () => textResponse("ok"),
       POST: async ({ request, params }) => {
+        // Guard: URLs configuradas com template literal `{numberId}` não devem
+        // gerar 500 (a Evolution reenviaria em loop e satura ACKs legítimos).
+        const numberId = params.numberId;
+        if (!numberId || numberId === "{numberId}" || !/^[0-9a-f-]{36}$/i.test(numberId)) {
+          return jsonResponse({ ok: false, ignored: "invalid numberId in webhook URL" }, { status: 200 });
+        }
         const raw = await request.text();
         let payload: unknown;
         try {
@@ -34,6 +40,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
         } catch {
           return textResponse("bad json", { status: 400 });
         }
+
 
         const forwardToN8n = async () => {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -88,8 +95,14 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
 
         if (processResult.status === "rejected") {
           const error = processResult.reason instanceof Error ? processResult.reason.message : "webhook error";
+          // Números que não existem mais no CRM: responder 200 para a Evolution
+          // não reenfileirar o webhook em loop (sobrecarga que afeta ACKs).
+          if (/não encontrado|not found/i.test(error)) {
+            return jsonResponse({ ok: false, ignored: error }, { status: 200 });
+          }
           return textResponse(error, { status: 500 });
         }
+
 
         return jsonResponse({ ok: true, ...processResult.value, n8n });
       },
