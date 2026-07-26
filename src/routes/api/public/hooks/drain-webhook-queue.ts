@@ -123,13 +123,21 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
 
         let ok = 0;
         let failed = 0;
+        // Pré-verifica quais whatsapp_number_id ainda existem para não gastar
+        // tentativas em números deletados (webhooks órfãos da Evolution).
+        const uniqueNumberIds = Array.from(new Set(batch.map((b) => b.whatsapp_number_id).filter(Boolean)));
+        const { data: existingRows } = uniqueNumberIds.length
+          ? await supabaseAdmin.from("whatsapp_numbers").select("id").in("id", uniqueNumberIds)
+          : { data: [] as Array<{ id: string }> };
+        const existingSet = new Set((existingRows ?? []).map((r) => r.id));
+
         await Promise.all(
           batch.map(async (row) => {
             const numberId = row.whatsapp_number_id;
-            if (!numberId) {
+            if (!numberId || !existingSet.has(numberId)) {
               await supabaseAdmin
                 .from("webhook_events")
-                .update({ status: "done", processed_at: new Date().toISOString() })
+                .update({ status: "done", processed_at: new Date().toISOString(), last_error: numberId ? "orphan: whatsapp_number deletado" : "missing numberId" })
                 .eq("id", row.id);
               return;
             }
