@@ -370,7 +370,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: numbers, error } = await supabaseAdmin
       .from("whatsapp_numbers")
-      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at, created_at")
+      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at, created_at, updated_at")
       .eq("workspace_id", data.workspaceId)
       .eq("provider", "evolution")
       .eq("is_active", true)
@@ -397,6 +397,14 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
     const results: Array<{ id: string; ok: boolean; insertedMessages?: number; rowsSeen?: number; error?: string }> = [];
     for (const num of connectedNumbers) {
       try {
+        const nowMs = Date.now();
+        const createdMs = num.created_at ? new Date(num.created_at).getTime() : 0;
+        const updatedMs = num.updated_at ? new Date(num.updated_at).getTime() : 0;
+        if (createdMs > 0 && nowMs - createdMs > 30_000 && updatedMs > 0 && nowMs - updatedMs < 8_000) {
+          results.push({ id: num.id, ok: true, insertedMessages: 0, rowsSeen: 0 });
+          continue;
+        }
+
         const lastActivityMs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
         const recentlyActive = lastActivityMs > 0 && Date.now() - lastActivityMs < 15 * 60 * 1000;
         try {
@@ -440,6 +448,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
           payload = await evolutionFindMessages(num.provider_base_url!, num.provider_api_key!, num.instance_name!, limit);
         }
         const stats = await processEvolutionPayload(num.id, { event: "MESSAGES_SET", data: payload }, { touchWebhook: true, source: "workspaceAutoSync" });
+        await supabaseAdmin.from("whatsapp_numbers").update({ updated_at: new Date().toISOString() }).eq("id", num.id);
         results.push({ id: num.id, ok: true, insertedMessages: stats.insertedMessages, rowsSeen: stats.rowsSeen });
 
       } catch (e) {
