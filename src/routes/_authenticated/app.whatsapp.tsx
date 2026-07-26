@@ -159,6 +159,18 @@ function WhatsappPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const updateN8nFn = useServerFn(updateN8nForwarding);
+  const updateN8nM = useMutation({
+    mutationFn: (v: { id: string; url: string; authHeader: string }) => updateN8nFn({ data: v }),
+    onSuccess: () => {
+      toast.success("Webhook do N8N atualizado");
+      qc.invalidateQueries({ queryKey: ["wa-numbers", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
+
   // Domínio publicado — Meta e serviços externos precisam de URL pública.
   const origin = (() => {
     if (typeof window === "undefined") return "https://thiagaycrm.lovable.app";
