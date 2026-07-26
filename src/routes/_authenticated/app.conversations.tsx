@@ -118,7 +118,7 @@ function ConversationsPage() {
     queryKey: ["conversations", ws?.id],
     queryFn: async () => {
       const { data } = await supabase.from("conversations")
-        .select("*, contacts:contact_id(name, type, avatar_url)")
+        .select("*, contacts:contact_id(name, type, avatar_url, phone)")
         .eq("workspace_id", ws!.id)
         .not("whatsapp_number_id", "is", null)
         .order("last_message_at", { ascending: false, nullsFirst: false })
