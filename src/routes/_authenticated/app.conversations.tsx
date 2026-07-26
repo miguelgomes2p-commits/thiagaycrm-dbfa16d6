@@ -101,10 +101,37 @@ function ConversationsPage() {
   const repairAudio = useServerFn(repairWhatsappAudioMedia);
 
 
-  const { data: labels } = useLabels(ws?.id);
+  const { data: allLabels } = useLabels(ws?.id);
   const { data: convLabelMap } = useConversationLabels(ws?.id);
   const assignLabel = useAssignLabel(ws?.id);
   const removeLabel = useRemoveLabel(ws?.id);
+
+  // Números WhatsApp existentes no workspace (para filtrar etiquetas de sistema órfãs)
+  const { data: waNumberIds } = useQuery({
+    enabled: !!ws?.id,
+    queryKey: ["wa-number-ids", ws?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("whatsapp_numbers")
+        .select("id")
+        .eq("workspace_id", ws!.id);
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.id as string));
+    },
+  });
+
+  // Remove etiquetas de sistema cujo número WhatsApp não existe mais
+  const labels = useMemo(() => {
+    if (!allLabels) return allLabels;
+    if (!waNumberIds) return allLabels;
+    return allLabels.filter((l) => {
+      if (l.kind !== "system") return true;
+      const ref = l.system_ref ?? "";
+      if (!ref.startsWith("whatsapp_number:")) return true;
+      const id = ref.slice("whatsapp_number:".length);
+      return waNumberIds.has(id);
+    });
+  }, [allLabels, waNumberIds]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
