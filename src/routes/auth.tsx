@@ -43,7 +43,7 @@ function AuthPage() {
   const { invite } = Route.useSearch();
   const acceptInvite = useServerFn(acceptWorkspaceInvitation);
   const [loading, setLoading] = useState(false);
-  const [existingSession, setExistingSession] = useState<null | { email: string | null }>(null);
+  
   const [inviteAccepted, setInviteAccepted] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [challenge, setChallenge] = useState(() => newChallenge());
