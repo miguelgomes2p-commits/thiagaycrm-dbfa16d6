@@ -95,8 +95,14 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
 
         if (processResult.status === "rejected") {
           const error = processResult.reason instanceof Error ? processResult.reason.message : "webhook error";
+          // Números que não existem mais no CRM: responder 200 para a Evolution
+          // não reenfileirar o webhook em loop (sobrecarga que afeta ACKs).
+          if (/não encontrado|not found/i.test(error)) {
+            return jsonResponse({ ok: false, ignored: error }, { status: 200 });
+          }
           return textResponse(error, { status: 500 });
         }
+
 
         return jsonResponse({ ok: true, ...processResult.value, n8n });
       },
