@@ -102,9 +102,11 @@ function PipelinePage() {
     // Fire stage automations (WhatsApp messages, etc.) — non-blocking
     runAutomationsFn({ data: { leadId, stageId: newStageId } })
       .then((r) => {
-        if (r?.ran > 0) toast.success(`⚡ ${r.ran} automação(ões) executada(s)`);
+        if (r?.ran && r.ran > 0) toast.success(`⚡ ${r.ran} automação(ões) enviada(s) pelo número da IA`);
+        else if (r?.reason === "no_ai_number") toast.warning("Configure um número com n8n ativo para disparar automações");
       })
       .catch((e) => console.error("[automations]", (e as Error).message));
+
   }
 
   async function createLead(e: React.FormEvent<HTMLFormElement>) {
