@@ -192,12 +192,6 @@ export const completeWorkspaceInviteWithPassword = createServerFn({ method: "POS
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!invite) throw new Error("Convite não encontrado ou expirado.");
-    if (invite.accepted_by && userId && invite.accepted_by !== userId) {
-      throw new Error("Este convite já foi usado por outro usuário.");
-    }
-    if (invite.accepted_by && !userId) {
-      throw new Error("Este convite já foi usado. Peça um novo convite ao administrador.");
-    }
     if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
       throw new Error("Este convite expirou. Peça um novo convite ao administrador.");
     }
@@ -212,6 +206,13 @@ export const completeWorkspaceInviteWithPassword = createServerFn({ method: "POS
       const found = list.users.find((user) => (user.email ?? "").toLowerCase() === email);
       if (found) userId = found.id;
       if (list.users.length < 200) break;
+    }
+
+    if (invite.accepted_by && userId && invite.accepted_by !== userId) {
+      throw new Error("Este convite já foi usado por outro usuário.");
+    }
+    if (invite.accepted_by && !userId) {
+      throw new Error("Este convite já foi usado. Peça um novo convite ao administrador.");
     }
 
     if (userId) {
