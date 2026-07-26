@@ -431,6 +431,14 @@ function WhatsappPage() {
                     <CopyField label="Verify Token" value={n.webhook_verify_token ?? "Disponível apenas para admins"} mono />
                   </div>
                 )}
+
+                <N8nForwardingForm
+                  id={n.id}
+                  initialUrl={n.n8n_webhook_url ?? ""}
+                  initialAuth={n.n8n_webhook_auth_header ?? ""}
+                  onSave={(v) => updateN8nM.mutate(v)}
+                  pending={updateN8nM.isPending}
+                />
               </div>
             );
           })}
