@@ -577,8 +577,11 @@ function EvolutionConnectDialog({
           <Input name="displayNumber" required placeholder="+55 11 91234-5678" />
         </div>
         <div>
-          <Label>URL do servidor Evolution *</Label>
-          <Input name="baseUrl" required placeholder="https://sua-evolution.up.railway.app" className="text-xs" />
+          <Label>URL do servidor Evolution (Render/Portainer) *</Label>
+          <Input name="baseUrl" required placeholder="https://sua-evolution.onrender.com" className="text-xs" />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Endereço onde a Evolution API está hospedada. Não é a URL do CRM. O webhook para o CRM é configurado automaticamente.
+          </p>
         </div>
         <div>
           <Label>API Key global *</Label>
