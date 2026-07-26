@@ -828,21 +828,23 @@ function QrSyncContent({
   // - "checking":   QR ainda não chegou (buscando na Evolution)
   // - "syncing":    usuário confirmou leitura OU vimos a transição para open — janela de espera
   // - "connected":  open + confirmação/leitura anterior + janela mínima de sincronização decorrida
-  const syncingWindowMs = 6000;
+  const syncingWindowMs = 4000;
   const hasQr = !!qrModal?.qr;
-  const userAckScanned = manualConfirm || (state === "connected" && everSawNonOpen);
+  // Se a Evolution retorna "connected", tratamos como scan concluído — não exigimos
+  // ver uma transição prévia de "close/connecting" (evita travar quando a instância
+  // já estava conectada antes de abrir o modal, ou quando o scan é muito rápido).
+  const userAckScanned = manualConfirm || state === "connected" || everSawNonOpen;
   const stableConnected =
     state === "connected" &&
     connectedAt !== null &&
-    userAckScanned &&
     now - connectedAt >= syncingWindowMs;
 
   let phase: "qr" | "checking" | "syncing" | "connected";
   if (stableConnected) {
     phase = "connected";
+  } else if (state === "connected") {
+    phase = "syncing";
   } else if (!userAckScanned) {
-    // Enquanto o usuário não confirmou o scan e não tivemos transição open,
-    // NUNCA pulamos para "syncing" — mantemos o QR visível.
     phase = hasQr ? "qr" : "checking";
   } else {
     phase = "syncing";
