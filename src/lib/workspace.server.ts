@@ -3,6 +3,12 @@ import { createHash } from "crypto";
 
 export type WorkspaceRole = "owner" | "admin" | "manager" | "agent";
 
+export const WORKSPACE_ROLES: WorkspaceRole[] = ["owner", "admin", "manager", "agent"];
+
+export function isWorkspaceRole(role: string): role is WorkspaceRole {
+  return WORKSPACE_ROLES.includes(role as WorkspaceRole);
+}
+
 export async function assertWorkspaceAdmin(supabase: any, workspaceId: string, userId: string) {
   const { data } = await supabase
     .from("workspace_members")
