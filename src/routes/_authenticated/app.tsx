@@ -56,6 +56,62 @@ function AppShell() {
     }
   }, [workspaces, wsLoading, wsFetching, navigate]);
 
+  // --- Global Evolution auto-sync + realtime (funciona em toda a área logada) ---
+  const syncWorkspaceEvo = useServerFn(syncWorkspaceEvolutionMessages);
+  const autoSyncInFlight = useRef(false);
+  const lastAutoSyncAt = useRef(0);
+
+  useEffect(() => {
+    if (!current?.id || typeof window === "undefined" || typeof document === "undefined") return;
+    let cancelled = false;
+
+    const runSync = async () => {
+      if (cancelled || document.hidden || autoSyncInFlight.current) return;
+      const now = Date.now();
+      if (now - lastAutoSyncAt.current < 8_000) return;
+      autoSyncInFlight.current = true;
+      lastAutoSyncAt.current = now;
+      try {
+        const result = await syncWorkspaceEvo({ data: { workspaceId: current.id, limit: 10 } });
+        const inserted = result.results.reduce((s, r) => s + (r.insertedMessages ?? 0), 0);
+        if (inserted > 0) {
+          qc.invalidateQueries({ queryKey: ["conversations", current.id] });
+        }
+      } catch {
+        /* silencioso */
+      } finally {
+        autoSyncInFlight.current = false;
+      }
+    };
+
+    runSync();
+    const iv = window.setInterval(runSync, 10_000);
+    const onVis = () => { if (!document.hidden) runSync(); };
+    document.addEventListener("visibilitychange", onVis);
+
+    // Realtime workspace-wide: qualquer inserção em messages/conversations
+    // dispara invalidação imediata, sem esperar polling.
+    const ch = supabase
+      .channel(`ws-${current.id}-live`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `workspace_id=eq.${current.id}` },
+        () => qc.invalidateQueries({ queryKey: ["conversations", current.id] }))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `workspace_id=eq.${current.id}` },
+        (payload) => {
+          qc.invalidateQueries({ queryKey: ["conversations", current.id] });
+          const convId = (payload.new as { conversation_id?: string })?.conversation_id;
+          if (convId) qc.invalidateQueries({ queryKey: ["messages", convId] });
+        })
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVis);
+      supabase.removeChannel(ch);
+    };
+  }, [current?.id, qc, syncWorkspaceEvo]);
+
+
   async function signOut() {
     await qc.cancelQueries();
     qc.clear();
