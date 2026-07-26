@@ -411,8 +411,10 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     // Skip @lid (opaque WhatsApp identifiers) — não são números roteáveis
     // e causam "Bad Request" ao tentar enviar mensagens de volta.
     if (remoteJid.endsWith("@lid")) continue;
+    // Grupos removidos por decisão de produto: não ingerimos mais mensagens de @g.us.
+    if (remoteJid.endsWith("@g.us")) continue;
     const fromMe = asBoolean(key.fromMe);
-    const isGroup = remoteJid.endsWith("@g.us");
+    const isGroup = false;
     const waId = remoteJid.split("@")[0];
     if (!isProcessableWaId(waId)) continue;
     const participantJid: string | undefined = key.participant;
