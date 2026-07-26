@@ -344,7 +344,7 @@ function WhatsappPage() {
                           {n.connection_status}
                         </span>
                       )}
-                      {isEvo && n8n_webhook_url && (
+                      {isEvo && n.n8n_webhook_url && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/10 text-success">
                           N8N ativo
                         </span>
