@@ -881,8 +881,8 @@ function ConversationsPage() {
               )}
               {g.items.map((c) => {
                 const Icon = channelIcon[c.channel as keyof typeof channelIcon] ?? MessageSquare;
-                const contact = c.contacts as { name?: string; type?: string; avatar_url?: string | null } | null;
-                const name = contact?.name ?? "Anônimo";
+                const contact = c.contacts as { name?: string; type?: string; avatar_url?: string | null; phone?: string | null } | null;
+                const name = contact?.name?.trim() || (contact?.phone ? `+${contact.phone}` : "Sem nome");
                 const isGroup = contact?.type === "group";
                 const ids = convLabelMap?.get(c.id) ?? [];
                 const visibleLabels = ids.map((id) => labelById.get(id)).filter((l): l is NonNullable<typeof l> => !!l && (isAdmin || (l as { kind?: string }).kind !== "system"));
