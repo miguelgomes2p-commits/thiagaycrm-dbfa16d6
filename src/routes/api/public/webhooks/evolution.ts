@@ -81,8 +81,10 @@ export const Route = createFileRoute("/api/public/webhooks/evolution")({
           .maybeSingle();
 
         if (error || !wa) {
-          return textResponse("evolution instance not registered in CRM", { status: 404 });
+          // 200 para evitar retry-loop da Evolution quando a instância não está mais no CRM.
+          return jsonResponse({ ok: false, ignored: "evolution instance not registered", instance: instanceName }, { status: 200 });
         }
+
 
         const forwardToN8n = async () => {
           const url = wa.n8n_webhook_url?.trim();
