@@ -9,7 +9,7 @@ import {
   sendWhatsappAttachment,
   repairWhatsappAudioMedia,
 } from "@/lib/whatsapp.functions";
-import { syncWorkspaceEvolutionMessages } from "@/lib/evolution.functions";
+
 import { useLabels, useConversationLabels, useAssignLabel, useRemoveLabel } from "@/hooks/useLabels";
 import { LabelBadge } from "@/components/labels/LabelBadge";
 import { LabelPicker } from "@/components/labels/LabelPicker";
@@ -94,13 +94,12 @@ function ConversationsPage() {
   const recordingTimerRef = useRef<number | null>(null);
   const repairingAudioRef = useRef(new Set<string>());
   const activeIdRef = useRef<string | null>(null);
-  const autoSyncInFlightRef = useRef(false);
-  const lastAutoSyncAtRef = useRef(0);
+
   const qc = useQueryClient();
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
   const repairAudio = useServerFn(repairWhatsappAudioMedia);
-  const syncWorkspaceEvo = useServerFn(syncWorkspaceEvolutionMessages);
+
 
   const { data: labels } = useLabels(ws?.id);
   const { data: convLabelMap } = useConversationLabels(ws?.id);
@@ -168,45 +167,9 @@ function ConversationsPage() {
     activeIdRef.current = activeId;
   }, [activeId]);
 
-  useEffect(() => {
-    if (!ws?.id || typeof window === "undefined" || typeof document === "undefined") return;
+  // Auto-sync global vive em src/routes/_authenticated/app.tsx (AppShell).
+  // Aqui só reagimos a mudanças via TanStack Query + Realtime.
 
-    let cancelled = false;
-    const runAutoSync = async () => {
-      if (cancelled || document.hidden || autoSyncInFlightRef.current) return;
-      const now = Date.now();
-      if (now - lastAutoSyncAtRef.current < 20_000) return;
-
-      autoSyncInFlightRef.current = true;
-      lastAutoSyncAtRef.current = now;
-      try {
-        const result = await syncWorkspaceEvo({ data: { workspaceId: ws.id, limit: 10 } });
-        const inserted = result.results.reduce((sum, item) => sum + (item.insertedMessages ?? 0), 0);
-        if (inserted > 0) {
-          qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
-          const currentActiveId = activeIdRef.current;
-          if (currentActiveId) qc.invalidateQueries({ queryKey: ["messages", currentActiveId] });
-        }
-      } catch (error) {
-        console.warn("[inbox] sincronização automática Evolution falhou", error);
-      } finally {
-        autoSyncInFlightRef.current = false;
-      }
-    };
-
-    runAutoSync();
-    const interval = window.setInterval(runAutoSync, 30000);
-    const onVisibilityChange = () => {
-      if (!document.hidden) runAutoSync();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, [ws?.id, qc, syncWorkspaceEvo]);
 
   useEffect(() => {
     if (!activeId) return;
