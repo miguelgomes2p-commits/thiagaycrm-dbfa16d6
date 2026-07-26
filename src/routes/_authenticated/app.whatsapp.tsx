@@ -12,6 +12,7 @@ import {
   subscribeWhatsappWebhook,
   listWhatsappTemplates,
   sendWhatsappTemplate,
+  updateN8nForwarding,
 } from "@/lib/whatsapp.functions";
 import {
   createEvolutionInstance,
