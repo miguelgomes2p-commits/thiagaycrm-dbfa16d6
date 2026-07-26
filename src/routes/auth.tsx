@@ -56,16 +56,18 @@ function AuthPage() {
   }
 
   useEffect(() => {
-    // Sempre exigir autenticação explícita ao acessar /auth.
-    // Se houver sessão ativa, encerra para forçar novo login.
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        supabase.auth.signOut();
-        localStorage.removeItem("lupus:lastActivity");
-        localStorage.removeItem("lupus:sessionStart");
-      }
+    // Se o usuário já está autenticado (ex.: retorno do OAuth do Google),
+    // aceita convite pendente e segue para o app.
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      try {
+        await acceptInviteIfNeeded();
+      } catch {}
+      navigate({ to: "/app" });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
 
   async function acceptInviteIfNeeded() {
