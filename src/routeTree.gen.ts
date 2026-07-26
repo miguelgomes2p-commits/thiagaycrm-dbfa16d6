@@ -27,6 +27,7 @@ import { Route as AuthenticatedAppConversationsRouteImport } from './routes/_aut
 import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenticated/app.contacts'
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app.admin'
+import { Route as ApiPublicWebhooksEvolutionRouteImport } from './routes/api/public/webhooks/evolution'
 import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
 import { Route as ApiPublicWebhooksEvolutionNumberIdRouteImport } from './routes/api/public/webhooks/evolution.$numberId'
 
@@ -124,6 +125,12 @@ const AuthenticatedAppAdminRoute = AuthenticatedAppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const ApiPublicWebhooksEvolutionRoute =
+  ApiPublicWebhooksEvolutionRouteImport.update({
+    id: '/api/public/webhooks/evolution',
+    path: '/api/public/webhooks/evolution',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksWhatsappNumberIdRoute =
   ApiPublicWebhooksWhatsappNumberIdRouteImport.update({
     id: '/api/public/webhooks/whatsapp/$numberId',
@@ -132,9 +139,9 @@ const ApiPublicWebhooksWhatsappNumberIdRoute =
   } as any)
 const ApiPublicWebhooksEvolutionNumberIdRoute =
   ApiPublicWebhooksEvolutionNumberIdRouteImport.update({
-    id: '/api/public/webhooks/evolution/$numberId',
-    path: '/api/public/webhooks/evolution/$numberId',
-    getParentRoute: () => rootRouteImport,
+    id: '/$numberId',
+    path: '/$numberId',
+    getParentRoute: () => ApiPublicWebhooksEvolutionRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
@@ -175,6 +183,7 @@ export interface FileRoutesByTo {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
@@ -198,6 +207,7 @@ export interface FileRoutesById {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/app/'
+    | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
   fileRoutesByTo: FileRoutesByTo
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/app'
+    | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
   id:
@@ -263,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/_authenticated/app/'
+    | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
   fileRoutesById: FileRoutesById
@@ -273,7 +286,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
-  ApiPublicWebhooksEvolutionNumberIdRoute: typeof ApiPublicWebhooksEvolutionNumberIdRoute
+  ApiPublicWebhooksEvolutionRoute: typeof ApiPublicWebhooksEvolutionRouteWithChildren
   ApiPublicWebhooksWhatsappNumberIdRoute: typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 
@@ -405,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAdminRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/api/public/webhooks/evolution': {
+      id: '/api/public/webhooks/evolution'
+      path: '/api/public/webhooks/evolution'
+      fullPath: '/api/public/webhooks/evolution'
+      preLoaderRoute: typeof ApiPublicWebhooksEvolutionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/whatsapp/$numberId': {
       id: '/api/public/webhooks/whatsapp/$numberId'
       path: '/api/public/webhooks/whatsapp/$numberId'
@@ -414,10 +434,10 @@ declare module '@tanstack/react-router' {
     }
     '/api/public/webhooks/evolution/$numberId': {
       id: '/api/public/webhooks/evolution/$numberId'
-      path: '/api/public/webhooks/evolution/$numberId'
+      path: '/$numberId'
       fullPath: '/api/public/webhooks/evolution/$numberId'
       preLoaderRoute: typeof ApiPublicWebhooksEvolutionNumberIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ApiPublicWebhooksEvolutionRoute
     }
   }
 }
@@ -466,14 +486,28 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiPublicWebhooksEvolutionRouteChildren {
+  ApiPublicWebhooksEvolutionNumberIdRoute: typeof ApiPublicWebhooksEvolutionNumberIdRoute
+}
+
+const ApiPublicWebhooksEvolutionRouteChildren: ApiPublicWebhooksEvolutionRouteChildren =
+  {
+    ApiPublicWebhooksEvolutionNumberIdRoute:
+      ApiPublicWebhooksEvolutionNumberIdRoute,
+  }
+
+const ApiPublicWebhooksEvolutionRouteWithChildren =
+  ApiPublicWebhooksEvolutionRoute._addFileChildren(
+    ApiPublicWebhooksEvolutionRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiAiChatRoute: ApiAiChatRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
-  ApiPublicWebhooksEvolutionNumberIdRoute:
-    ApiPublicWebhooksEvolutionNumberIdRoute,
+  ApiPublicWebhooksEvolutionRoute: ApiPublicWebhooksEvolutionRouteWithChildren,
   ApiPublicWebhooksWhatsappNumberIdRoute:
     ApiPublicWebhooksWhatsappNumberIdRoute,
 }

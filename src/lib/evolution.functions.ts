@@ -1,52 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-
-// Grava um erro da Evolution no banco (para debug posterior).
-// Nunca falha silenciosamente é OK — logging é best-effort.
-async function logEvolutionError(params: {
-  workspaceId?: string | null;
-  whatsappNumberId?: string | null;
-  operation: string;
-  baseUrl?: string | null;
-  instanceName?: string | null;
-  error: unknown;
-}) {
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const e = params.error as {
-      status?: number;
-      bodyText?: string;
-      url?: string;
-      method?: string;
-      requestBody?: unknown;
-      message?: string;
-      friendlyMessage?: string;
-    };
-    const isEvoErr = typeof e?.status === "number" && typeof e?.url === "string";
-    await supabaseAdmin.from("evolution_error_logs").insert({
-      workspace_id: params.workspaceId ?? null,
-      whatsapp_number_id: params.whatsappNumberId ?? null,
-      operation: params.operation,
-      method: isEvoErr ? e.method ?? null : null,
-      url: isEvoErr ? e.url ?? null : null,
-      status: isEvoErr ? e.status ?? null : null,
-      request_body: isEvoErr && e.requestBody !== undefined
-        ? (e.requestBody as never)
-        : null,
-      response_body: isEvoErr ? e.bodyText ?? null : null,
-      error_message: e?.friendlyMessage ?? e?.message ?? String(params.error),
-      base_url: params.baseUrl ?? null,
-      instance_name: params.instanceName ?? null,
-    });
-  } catch (err) {
-    console.error("[evolution] failed to log error:", err);
-  }
-}
-
-function evolutionWebhookUrl(origin: string, whatsappNumberId: string) {
-  return `${origin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${whatsappNumberId}`;
-}
+import { logEvolutionError } from "@/lib/evolution-logging.server";
 
 /**
  * Cria e conecta uma instância na Evolution API, salvando o número aqui e
@@ -267,7 +222,7 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
     if (num.provider !== "evolution" || !num.provider_base_url || !num.provider_api_key || !num.instance_name) {
       throw new Error("Este número não é uma instância Evolution");
     }
-    const webhookUrl = evolutionWebhookUrl(data.webhookOrigin, data.id);
+    const webhookUrl = `${data.webhookOrigin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${data.id}`;
     try {
       const { evolutionSetWebhook } = await import("@/lib/evolution.server");
       await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl);
@@ -336,7 +291,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: numbers, error } = await context.supabase
       .from("whatsapp_numbers")
-      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status")
+      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at")
       .eq("workspace_id", data.workspaceId)
       .eq("provider", "evolution")
       .eq("is_active", true)
@@ -348,7 +303,12 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
     const { evolutionFindMessages } = await import("@/lib/evolution.server");
     const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
 
-    const connectedNumbers = (numbers ?? []).filter((num) => num.connection_status === "connected").slice(0, 2);
+    const staleWebhookCutoff = Date.now() - 20_000;
+    const connectedNumbers = (numbers ?? []).filter((num) => {
+      if (num.connection_status === "disconnected" || num.connection_status === "error") return false;
+      const lastWebhookAt = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+      return !lastWebhookAt || lastWebhookAt < staleWebhookCutoff;
+    });
     const results: Array<{ id: string; ok: boolean; insertedMessages?: number; rowsSeen?: number; error?: string }> = [];
     for (const num of connectedNumbers) {
       try {
