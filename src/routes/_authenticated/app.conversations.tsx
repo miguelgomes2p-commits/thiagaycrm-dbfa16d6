@@ -187,14 +187,15 @@ function ConversationsPage() {
     enabled: !!activeId,
     queryKey: ["messages", activeId],
     queryFn: async () => {
-      const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).order("created_at", { ascending: false }).limit(300);
-      return [...(data ?? [])].reverse();
+      const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300);
+      return data ?? [];
     },
     refetchInterval: activeId ? 8000 : false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 1500,
   });
+
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -238,8 +239,18 @@ function ConversationsPage() {
 
   // Filtered + sorted list
   const visible = useMemo(() => {
-    // Oculta grupos por decisão de produto (mesmo se existirem contatos type='group' no banco).
-    let list = (convsQ.data ?? []).filter((c) => (c.contacts as { type?: string } | null)?.type !== "group");
+    // Oculta grupos: por tipo do contato, por JID @g.us ou por telefones anômalos (>15 dígitos são JIDs de grupo).
+    let list = (convsQ.data ?? []).filter((c) => {
+      const ct = c.contacts as { type?: string; phone?: string } | null;
+      if (ct?.type === "group") return false;
+      const jid = (c as { wa_contact_wa_id?: string }).wa_contact_wa_id ?? "";
+      if (jid.endsWith("@g.us")) return false;
+      const phone = ct?.phone ?? "";
+      if (phone.endsWith("@g.us")) return false;
+      if (/^\d{16,}$/.test(phone)) return false;
+      return true;
+    });
+
     if (view.search.trim()) {
       const q = view.search.trim().toLowerCase();
       list = list.filter((c) => {
