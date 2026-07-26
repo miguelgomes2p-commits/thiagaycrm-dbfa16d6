@@ -177,7 +177,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
       .from("whatsapp_numbers")
-      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name")
+      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name, last_webhook_at, created_at")
       .eq("id", data.id)
       .single();
     if (error || !num) throw new Error("Número não encontrado");
@@ -331,7 +331,7 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
           hasRange = false;
           payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit, undefined, page);
         }
-        const stats = await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { source: "manualSync" });
+        const stats = await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { touchWebhook: true, source: "manualSync" });
         aggregated.insertedMessages += stats.insertedMessages;
         aggregated.rowsSeen += stats.rowsSeen;
         aggregated.skippedDuplicates += stats.skippedDuplicates;
