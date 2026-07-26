@@ -33,6 +33,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
         if (!numberId || numberId === "{numberId}" || !/^[0-9a-f-]{36}$/i.test(numberId)) {
           return jsonResponse({ ok: false, ignored: "invalid numberId in webhook URL" }, { status: 200 });
         }
+
         const raw = await request.text();
         let payload: unknown;
         try {
@@ -41,70 +42,28 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
           return textResponse("bad json", { status: 400 });
         }
 
-
-        const forwardToN8n = async () => {
+        // Enfileira o webhook e responde 200 imediatamente. O drain (pg_cron)
+        // processa a fila em background, evitando reenvios da Evolution quando
+        // o processamento passa de alguns segundos.
+        try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { data: wa } = await supabaseAdmin
-            .from("whatsapp_numbers")
-            .select("n8n_webhook_url, n8n_webhook_auth_header, workspace_id")
-            .eq("id", params.numberId)
-            .maybeSingle();
-
-          const url = wa?.n8n_webhook_url?.trim();
-          if (url && wa) {
-            const headers: Record<string, string> = { "Content-Type": "application/json" };
-            const auth = wa.n8n_webhook_auth_header?.trim();
-            if (auth) headers["Authorization"] = auth;
-
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000);
-
-            const logForwardIssue = async (message: string, extra?: Record<string, unknown>) => {
-              try {
-                await supabaseAdmin.from("evolution_error_logs").insert({
-                  workspace_id: wa.workspace_id,
-                  whatsapp_number_id: params.numberId,
-                  operation: "n8n_forward",
-                  error_message: message,
-                  response_body: extra ? JSON.stringify(extra).slice(0, 4000) : null,
-                });
-              } catch {}
-            };
-
-            try {
-              const res = await fetch(url, { method: "POST", headers, body: raw, signal: controller.signal });
-              if (!res.ok) await logForwardIssue(`N8N respondeu ${res.status}`, { url, status: res.status });
-              return { configured: true, forwarded: res.ok, status: res.status };
-            } catch (err) {
-              await logForwardIssue(err instanceof Error ? err.message : "N8N forward failed", { url });
-              return { configured: true, forwarded: false, error: err instanceof Error ? err.message : "N8N forward failed" };
-            } finally {
-              clearTimeout(timeout);
-            }
+          const { error } = await supabaseAdmin.from("webhook_events").insert({
+            source: "evolution",
+            whatsapp_number_id: numberId,
+            payload: payload as never,
+            raw_body: raw.length > 1_000_000 ? null : raw,
+          });
+          if (error) {
+            // Fallback: se falhar ao enfileirar, processa síncrono pra não perder.
+            const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
+            await processEvolutionPayload(numberId, payload, { touchWebhook: true, source: "webhook-fallback" });
+            return jsonResponse({ ok: true, mode: "sync-fallback" });
           }
-          return { configured: false, forwarded: false };
-        };
-
-        const processPayload = async () => {
-          const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
-          return processEvolutionPayload(params.numberId, payload, { touchWebhook: true, source: "webhook" });
-        };
-
-        const [forwardResult, processResult] = await Promise.allSettled([forwardToN8n(), processPayload()]);
-        const n8n = forwardResult.status === "fulfilled" ? forwardResult.value : { configured: false, forwarded: false };
-
-        if (processResult.status === "rejected") {
-          const error = processResult.reason instanceof Error ? processResult.reason.message : "webhook error";
-          // Números que não existem mais no CRM: responder 200 para a Evolution
-          // não reenfileirar o webhook em loop (sobrecarga que afeta ACKs).
-          if (/não encontrado|not found/i.test(error)) {
-            return jsonResponse({ ok: false, ignored: error }, { status: 200 });
-          }
-          return textResponse(error, { status: 500 });
+          return jsonResponse({ ok: true, queued: true });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "enqueue failed";
+          return textResponse(message, { status: 500 });
         }
-
-
-        return jsonResponse({ ok: true, ...processResult.value, n8n });
       },
     },
   },
