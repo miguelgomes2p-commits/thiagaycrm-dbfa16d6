@@ -336,7 +336,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: numbers, error } = await context.supabase
       .from("whatsapp_numbers")
-      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status")
+      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at")
       .eq("workspace_id", data.workspaceId)
       .eq("provider", "evolution")
       .eq("is_active", true)
@@ -348,7 +348,12 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
     const { evolutionFindMessages } = await import("@/lib/evolution.server");
     const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
 
-    const connectedNumbers = (numbers ?? []).filter((num) => num.connection_status === "connected").slice(0, 2);
+    const staleWebhookCutoff = Date.now() - 20_000;
+    const connectedNumbers = (numbers ?? []).filter((num) => {
+      if (num.connection_status === "disconnected" || num.connection_status === "error") return false;
+      const lastWebhookAt = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
+      return !lastWebhookAt || lastWebhookAt < staleWebhookCutoff;
+    });
     const results: Array<{ id: string; ok: boolean; insertedMessages?: number; rowsSeen?: number; error?: string }> = [];
     for (const num of connectedNumbers) {
       try {
