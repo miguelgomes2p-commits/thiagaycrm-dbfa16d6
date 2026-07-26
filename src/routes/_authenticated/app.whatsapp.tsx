@@ -471,6 +471,61 @@ function CopyField({ label, value, mono }: { label: string; value: string; mono?
   );
 }
 
+function N8nForwardingForm({
+  id,
+  initialUrl,
+  initialAuth,
+  onSave,
+  pending,
+}: {
+  id: string;
+  initialUrl: string;
+  initialAuth: string;
+  onSave: (v: { id: string; url: string; authHeader: string }) => void;
+  pending: boolean;
+}) {
+  const [url, setUrl] = useState(initialUrl);
+  const [auth, setAuth] = useState(initialAuth);
+  useEffect(() => setUrl(initialUrl), [initialUrl]);
+  useEffect(() => setAuth(initialAuth), [initialAuth]);
+  const dirty = url.trim() !== initialUrl.trim() || auth.trim() !== initialAuth.trim();
+  return (
+    <div className="border-t pt-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Reencaminhar eventos para o N8N (opcional)
+        </Label>
+        {initialUrl && <span className="text-[10px] text-success">✓ configurado</span>}
+      </div>
+      <div className="grid sm:grid-cols-[1fr_220px_auto] gap-2">
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://n8n.seucliente.com/webhook/xxxx"
+          className="h-9 text-xs"
+        />
+        <Input
+          value={auth}
+          onChange={(e) => setAuth(e.target.value)}
+          placeholder="Authorization (opcional)"
+          className="h-9 text-xs"
+        />
+        <Button
+          size="sm"
+          variant={dirty ? "default" : "outline"}
+          disabled={!dirty || pending}
+          onClick={() => onSave({ id, url: url.trim(), authHeader: auth.trim() })}
+        >
+          Salvar
+        </Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Todo evento cru da Evolution para este número será reencaminhado (fire-and-forget, timeout 5s).
+      </p>
+    </div>
+  );
+}
+
 function EvolutionConnectDialog({
   onSubmit,
   loading,
