@@ -99,7 +99,7 @@ function ConversationsPage() {
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
   const repairAudio = useServerFn(repairWhatsappAudioMedia);
-  const syncWorkspaceEvo = useServerFn(syncWorkspaceEvolutionMessages);
+
 
   const { data: labels } = useLabels(ws?.id);
   const { data: convLabelMap } = useConversationLabels(ws?.id);
