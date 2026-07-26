@@ -129,15 +129,30 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: {
-            emailRedirectTo: window.location.origin + "/auth" + (invite ? `?invite=${encodeURIComponent(invite)}` : ""),
-            data: { full_name: fullName },
-          },
-        });
-        if (error) throw error;
-        toast.success("Conta criada! Redirecionando...");
+        // Convite: se o usuário já está autenticado via magic-link do convite,
+        // apenas define a senha para permitir login futuro por email/senha.
+        if (existingSession) {
+          const { error } = await supabase.auth.updateUser({
+            password,
+            data: fullName ? { full_name: fullName } : undefined,
+          });
+          if (error) throw error;
+          toast.success("Senha definida! Você já pode entrar com email e senha.");
+        } else {
+          const { data, error } = await supabase.auth.signUp({
+            email, password,
+            options: {
+              emailRedirectTo: window.location.origin + "/auth" + (invite ? `?invite=${encodeURIComponent(invite)}` : ""),
+              data: { full_name: fullName },
+            },
+          });
+          if (error) throw error;
+          // Supabase disfarça email já cadastrado retornando user sem identities.
+          if (data.user && (data.user.identities?.length ?? 0) === 0) {
+            throw new Error("Este email já está cadastrado. Faça login ou recupere sua senha.");
+          }
+          toast.success("Conta criada! Redirecionando...");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

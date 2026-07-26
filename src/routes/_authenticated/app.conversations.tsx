@@ -118,7 +118,7 @@ function ConversationsPage() {
     queryKey: ["conversations", ws?.id],
     queryFn: async () => {
       const { data } = await supabase.from("conversations")
-        .select("*, contacts:contact_id(name, type, avatar_url)")
+        .select("*, contacts:contact_id(name, type, avatar_url, phone)")
         .eq("workspace_id", ws!.id)
         .not("whatsapp_number_id", "is", null)
         .order("last_message_at", { ascending: false, nullsFirst: false })
@@ -881,8 +881,8 @@ function ConversationsPage() {
               )}
               {g.items.map((c) => {
                 const Icon = channelIcon[c.channel as keyof typeof channelIcon] ?? MessageSquare;
-                const contact = c.contacts as { name?: string; type?: string; avatar_url?: string | null } | null;
-                const name = contact?.name ?? "Anônimo";
+                const contact = c.contacts as { name?: string; type?: string; avatar_url?: string | null; phone?: string | null } | null;
+                const name = contact?.name?.trim() || (contact?.phone ? `+${contact.phone}` : "Sem nome");
                 const isGroup = contact?.type === "group";
                 const ids = convLabelMap?.get(c.id) ?? [];
                 const visibleLabels = ids.map((id) => labelById.get(id)).filter((l): l is NonNullable<typeof l> => !!l && (isAdmin || (l as { kind?: string }).kind !== "system"));
@@ -982,7 +982,7 @@ function ConversationsPage() {
 
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate flex items-center gap-1.5">
-                  <span className="truncate">{(active.contacts as { name?: string } | null)?.name ?? "Anônimo"}</span>
+                  <span className="truncate">{(() => { const ct = active.contacts as { name?: string; phone?: string | null } | null; return ct?.name?.trim() || (ct?.phone ? `+${ct.phone}` : "Sem nome"); })()}</span>
                   {(active as { contact_id?: string | null }).contact_id && (
                     <button
                       type="button"
