@@ -63,6 +63,21 @@ function loadView() {
   } catch { return { activeLabels: [], groupBy: "none" as GroupMode, sortBy: "recent" as SortMode, filterMode: "OR" as FilterMode, search: "" }; }
 }
 
+function withTimeoutSignal(parent: AbortSignal | undefined, timeoutMs: number) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(new Error(`timeout:${timeoutMs}`)), timeoutMs);
+  const abort = () => controller.abort(parent?.reason ?? new Error("request aborted"));
+  if (parent?.aborted) abort();
+  else parent?.addEventListener("abort", abort, { once: true });
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      window.clearTimeout(timeout);
+      parent?.removeEventListener("abort", abort);
+    },
+  };
+}
+
 function ConversationsPage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
@@ -143,20 +158,27 @@ function ConversationsPage() {
   const convsQ = useQuery({
     enabled: !!ws?.id,
     queryKey: ["conversations", ws?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("conversations")
+    queryFn: async ({ signal }) => {
+      const timed = withTimeoutSignal(signal, 12_000);
+      const startedAt = performance.now();
+      try {
+        const { data, error } = await supabase.from("conversations")
         .select("*, contacts:contact_id(name, type, avatar_url, phone)")
         .eq("workspace_id", ws!.id)
         .not("whatsapp_number_id", "is", null)
         .order("last_message_at", { ascending: false, nullsFirst: false })
-        .limit(200);
+        .limit(200)
+        .abortSignal(timed.signal);
 
+        console.info(JSON.stringify({ scope: "frontend_conversations", event: "loaded", workspace_id: ws!.id, rows: data?.length ?? 0, duration_ms: Math.round(performance.now() - startedAt) }));
+        if (error) throw error;
       return data ?? [];
+      } finally {
+        timed.cleanup();
+      }
     },
-    refetchInterval: 10000,
-    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    staleTime: 2000,
+    staleTime: 10_000,
   });
 
   // Membros do workspace + perfis para mostrar quem está atendendo cada conversa
@@ -186,14 +208,22 @@ function ConversationsPage() {
   const msgsQ = useQuery({
     enabled: !!activeId,
     queryKey: ["messages", activeId],
-    queryFn: async () => {
-      const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeId!).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300);
+    queryFn: async ({ signal }) => {
+      const conversationId = activeId;
+      if (!conversationId) return [];
+      const timed = withTimeoutSignal(signal, 12_000);
+      const startedAt = performance.now();
+      try {
+        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
+        console.info(JSON.stringify({ scope: "frontend_messages", event: "loaded", conversation_id: conversationId, rows: data?.length ?? 0, duration_ms: Math.round(performance.now() - startedAt) }));
+        if (error) throw error;
       return data ?? [];
+      } finally {
+        timed.cleanup();
+      }
     },
-    refetchInterval: activeId ? 8000 : false,
-    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    staleTime: 1500,
+    staleTime: 10_000,
   });
 
 

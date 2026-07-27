@@ -21,12 +21,26 @@ function jsonResponse(body: unknown, init?: ResponseInit) {
   });
 }
 
+function logWebhook(event: string, data: Record<string, unknown>) {
+  console.info(JSON.stringify({ scope: "evolution_webhook", event, ts: new Date().toISOString(), ...data }));
+}
+
+function withTrace(payload: unknown, traceId: string, requestId: string) {
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    return { ...(payload as Record<string, unknown>), _crm_trace: { trace_id: traceId, request_id: requestId, received_at: new Date().toISOString() } };
+  }
+  return payload;
+}
+
 export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       GET: async () => textResponse("ok"),
       POST: async ({ request, params }) => {
+        const requestId = crypto.randomUUID();
+        const traceId = request.headers.get("x-correlation-id") ?? request.headers.get("x-request-id") ?? requestId;
+        const startedAt = Date.now();
         // Guard: URLs configuradas com template literal `{numberId}` não devem
         // gerar 500 (a Evolution reenviaria em loop e satura ACKs legítimos).
         const numberId = params.numberId;
@@ -50,18 +64,21 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
           const { error } = await supabaseAdmin.from("webhook_events").insert({
             source: "evolution",
             whatsapp_number_id: numberId,
-            payload: payload as never,
+            payload: withTrace(payload, traceId, requestId) as never,
             raw_body: raw.length > 1_000_000 ? null : raw,
           });
           if (error) {
             // Fallback: se falhar ao enfileirar, processa síncrono pra não perder.
             const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
-            await processEvolutionPayload(numberId, payload, { touchWebhook: true, source: "webhook-fallback" });
-            return jsonResponse({ ok: true, mode: "sync-fallback" });
+            await processEvolutionPayload(numberId, withTrace(payload, traceId, requestId), { touchWebhook: true, source: "webhook-fallback" });
+            logWebhook("sync_fallback", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, duration_ms: Date.now() - startedAt });
+            return jsonResponse({ ok: true, request_id: requestId, trace_id: traceId, mode: "sync-fallback" });
           }
-          return jsonResponse({ ok: true, queued: true });
+          logWebhook("queued", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, duration_ms: Date.now() - startedAt });
+          return jsonResponse({ ok: true, request_id: requestId, trace_id: traceId, queued: true });
         } catch (err) {
           const message = err instanceof Error ? err.message : "enqueue failed";
+          logWebhook("failed", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, duration_ms: Date.now() - startedAt, error: message.slice(0, 500) });
           return textResponse(message, { status: 500 });
         }
       },

@@ -295,6 +295,10 @@ function firstString(...values: unknown[]) {
 export async function processEvolutionPayload(numberId: string, payload: Json, opts: { touchWebhook?: boolean; source?: string } = {}): Promise<EvolutionProcessStats> {
   const startedAt = Date.now();
   const source = opts.source ?? "webhook";
+  const traceId = typeof payload?._crm_trace === "object" && payload._crm_trace && typeof payload._crm_trace.trace_id === "string"
+    ? payload._crm_trace.trace_id
+    : crypto.randomUUID();
+  console.info(JSON.stringify({ scope: "evolution_processor", event: "start", trace_id: traceId, whatsapp_number_id: numberId, source, ts: new Date().toISOString() }));
   const { data: num } = await supabaseAdmin
     .from("whatsapp_numbers")
     .select("id, workspace_id, provider, instance_name, provider_base_url, provider_api_key, last_webhook_at")
@@ -591,6 +595,15 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         media_url: mediaUrl,
         media_type: media.type,
         media_mime_type: mediaMime,
+        metadata: {
+          crm_trace: {
+            trace_id: traceId,
+            source,
+            event,
+            whatsapp_number_id: num.id,
+            received_at: new Date(startedAt).toISOString(),
+          },
+        },
       });
       if (msgErr) {
         if (msgErr.code === "23505") {
@@ -638,6 +651,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
   }
 
   stats.durationMs = Date.now() - startedAt;
+  console.info(JSON.stringify({ scope: "evolution_processor", event: "finish", trace_id: traceId, whatsapp_number_id: numberId, source, rows_seen: stats.rowsSeen, inserted_messages: stats.insertedMessages, skipped_duplicates: stats.skippedDuplicates, errors: stats.errors, duration_ms: stats.durationMs, ts: new Date().toISOString() }));
   // Métrica: registra processamentos lentos (>3s) ou com muitos rows para diagnóstico
   if (stats.durationMs > 3000 || stats.rowsSeen > 20 || stats.errors > 0) {
     console.log("[evolution processor]", JSON.stringify({ numberId, ...stats }));
