@@ -41,13 +41,13 @@ function TasksPage() {
     e.preventDefault();
     if (!ws) return;
     const fd = new FormData(e.currentTarget);
-    const { data: u } = await supabase.auth.getUser();
+    const { data: u } = await supabase.auth.getSession();
     const { error } = await supabase.from("tasks").insert({
       workspace_id: ws.id,
       title: String(fd.get("title")),
       description: String(fd.get("description") || "") || null,
       due_at: fd.get("due_at") ? String(fd.get("due_at")) : null,
-      created_by: u.user?.id,
+      created_by: u.session?.user?.id,
     });
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["tasks"] });

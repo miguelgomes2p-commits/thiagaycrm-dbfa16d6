@@ -502,10 +502,10 @@ function ConversationsPage() {
       if (isWa) {
         await sendWa({ data: { conversationId: activeIdLocal, body: content } });
       } else {
-        const { data: u } = await supabase.auth.getUser();
+        const { data: u } = await supabase.auth.getSession();
         await supabase.from("messages").insert({
           workspace_id: wsId, conversation_id: activeIdLocal, direction: "outbound", sender_type: "user",
-          sender_user_id: u.user?.id, content,
+          sender_user_id: u.session?.user?.id, content,
         });
         await supabase.from("conversations").update({
           last_message_preview: content, last_message_at: nowIso,
@@ -667,11 +667,11 @@ function ConversationsPage() {
         const { error } = await supabase.from("leads").update(payload as any).eq("id", lead.id);
         if (error) throw error;
       } else {
-        const { data: user } = await supabase.auth.getUser();
+        const { data: user } = await supabase.auth.getSession();
         const insertPayload = {
           workspace_id: ws.id,
           contact_id: contactId,
-          owner_id: user.user?.id,
+          owner_id: user.session?.user?.id,
           source: "WhatsApp",
           ...payload,
         };

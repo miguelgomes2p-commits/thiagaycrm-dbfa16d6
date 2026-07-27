@@ -41,7 +41,7 @@ function AppShell() {
   const { data: profile } = useCurrentProfile();
   const { data: authUser } = useQuery({
     queryKey: ["auth-user-email"],
-    queryFn: async () => (await supabase.auth.getUser()).data.user,
+    queryFn: async () => (await supabase.auth.getSession()).data.session?.user,
   });
   const isSuperAdmin = authUser?.email?.toLowerCase() === "miguelgomes2p@gmail.com";
   const qc = useQueryClient();
