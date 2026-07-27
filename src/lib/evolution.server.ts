@@ -39,6 +39,21 @@ export class EvolutionError extends Error {
   }
 }
 
+function mergeAbortSignals(parent: AbortSignal | null | undefined, timeoutMs: number) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(new Error(`Evolution timeout after ${timeoutMs}ms`)), timeoutMs);
+  const abortFromParent = () => controller.abort(parent?.reason ?? new Error("Evolution request aborted"));
+  if (parent?.aborted) abortFromParent();
+  else parent?.addEventListener("abort", abortFromParent, { once: true });
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timeout);
+      parent?.removeEventListener("abort", abortFromParent);
+    },
+  };
+}
+
 async function req<T>(baseUrl: string, apiKey: string, path: string, init?: RequestInit): Promise<T> {
   const url = baseUrl.replace(/\/+$/, "") + path;
   const method = (init?.method ?? "GET").toUpperCase();
@@ -50,9 +65,12 @@ async function req<T>(baseUrl: string, apiKey: string, path: string, init?: Requ
   let lastErr: Error | null = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let res: Response;
+    const timeoutMs = method === "GET" ? 8_000 : path.includes("getBase64FromMediaMessage") ? 12_000 : 15_000;
+    const abort = mergeAbortSignals(init?.signal, timeoutMs);
     try {
       res = await fetch(url, {
         ...init,
+        signal: abort.signal,
         headers: {
           apikey: apiKey,
           "Content-Type": "application/json",
@@ -61,18 +79,22 @@ async function req<T>(baseUrl: string, apiKey: string, path: string, init?: Requ
       });
     } catch (e) {
       lastErr = new Error(
-        `Não foi possível contatar a Evolution API (${e instanceof Error ? e.message : String(e)}). Verifique se o servidor está online.`,
+        abort.signal.aborted
+          ? `Evolution API demorou demais para responder (${timeoutMs}ms).`
+          : `Não foi possível contatar a Evolution API (${e instanceof Error ? e.message : String(e)}). Verifique se o servidor está online.`,
       );
+      abort.cleanup();
       if (attempt < maxAttempts) {
         await new Promise((r) => setTimeout(r, 800 * attempt));
         continue;
       }
       throw lastErr;
     }
+    abort.cleanup();
     const text = await res.text();
     if (res.ok) return text ? (JSON.parse(text) as T) : ({} as T);
 
-    if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < maxAttempts) {
+    if ((res.status === 408 || res.status === 429 || res.status === 502 || res.status === 503 || res.status === 504) && attempt < maxAttempts) {
       await new Promise((r) => setTimeout(r, 1200 * attempt));
       continue;
     }
