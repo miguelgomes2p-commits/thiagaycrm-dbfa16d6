@@ -10,6 +10,23 @@ const BATCH_SIZE = 100;
 const MAX_ATTEMPTS = 5;
 const LOCK_TIMEOUT_MS = 60_000;
 const MAX_CYCLES = 6; // até 600 eventos por chamada (BATCH_SIZE * MAX_CYCLES)
+const PROCESS_CONCURRENCY = 6;
+
+function logDrain(event: string, data: Record<string, unknown>) {
+  console.info(JSON.stringify({ scope: "webhook_queue", event, ts: new Date().toISOString(), ...data }));
+}
+
+async function runLimited<T>(items: T[], limit: number, worker: (item: T) => Promise<void>) {
+  let index = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (index < items.length) {
+      const item = items[index];
+      index += 1;
+      await worker(item);
+    }
+  });
+  await Promise.all(runners);
+}
 
 async function forwardToN8n(
   supabaseAdmin: Awaited<ReturnType<typeof getAdmin>>,
@@ -66,7 +83,10 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async () => {
+        const requestId = crypto.randomUUID();
+        const startedAt = Date.now();
         const supabaseAdmin = await getAdmin();
+        logDrain("start", { request_id: requestId });
 
         // Reabre eventos travados há mais tempo do que LOCK_TIMEOUT_MS (crash do worker).
         const staleCutoff = new Date(Date.now() - LOCK_TIMEOUT_MS).toISOString();
@@ -106,13 +126,6 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
           }>;
           if (batch.length === 0) break;
 
-          // Incrementa attempts em background (não bloqueia processamento).
-          void Promise.all(
-            batch.map((row) =>
-              supabaseAdmin.from("webhook_events").update({ attempts: row.attempts + 1 }).eq("id", row.id),
-            ),
-          );
-
           // Pré-verifica quais whatsapp_number_id ainda existem.
           const uniqueNumberIds = Array.from(new Set(batch.map((b) => b.whatsapp_number_id).filter(Boolean)));
           const { data: existingRows } = uniqueNumberIds.length
@@ -120,13 +133,17 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
             : { data: [] as Array<{ id: string }> };
           const existingSet = new Set((existingRows ?? []).map((r) => r.id));
 
-          await Promise.all(
-            batch.map(async (row) => {
+          await runLimited(
+            batch,
+            PROCESS_CONCURRENCY,
+            async (row) => {
+              const eventStartedAt = Date.now();
               const numberId = row.whatsapp_number_id;
+              const attempt = row.attempts + 1;
               if (!numberId || !existingSet.has(numberId)) {
                 await supabaseAdmin
                   .from("webhook_events")
-                  .update({ status: "done", processed_at: new Date().toISOString(), last_error: numberId ? "orphan: whatsapp_number deletado" : "missing numberId" })
+                  .update({ status: "done", attempts: attempt, processed_at: new Date().toISOString(), last_error: numberId ? "orphan: whatsapp_number deletado" : "missing numberId" })
                   .eq("id", row.id);
                 return;
               }
@@ -136,30 +153,34 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
                 await processEvolutionPayload(numberId, row.payload, { touchWebhook: true, source: "queue" });
                 await supabaseAdmin
                   .from("webhook_events")
-                  .update({ status: "done", processed_at: new Date().toISOString(), last_error: null })
+                  .update({ status: "done", attempts: attempt, processed_at: new Date().toISOString(), last_error: null })
                   .eq("id", row.id);
+                logDrain("event_done", { request_id: requestId, event_id: row.id, whatsapp_number_id: numberId, attempt, duration_ms: Date.now() - eventStartedAt });
                 totalOk += 1;
               } catch (err) {
                 const message = err instanceof Error ? err.message : "unknown error";
-                const nextStatus = row.attempts >= MAX_ATTEMPTS ? "failed" : "pending";
+                const nextStatus = attempt >= MAX_ATTEMPTS ? "failed" : "pending";
                 await supabaseAdmin
                   .from("webhook_events")
                   .update({
                     status: nextStatus,
+                    attempts: attempt,
                     last_error: message.slice(0, 2000),
                     locked_at: null,
                   })
                   .eq("id", row.id);
+                logDrain("event_failed", { request_id: requestId, event_id: row.id, whatsapp_number_id: numberId, attempt, next_status: nextStatus, duration_ms: Date.now() - eventStartedAt, error: message.slice(0, 500) });
                 totalFailed += 1;
               }
-            }),
+            },
           );
 
           totalProcessed += batch.length;
           if (batch.length < BATCH_SIZE) break;
         }
 
-        return Response.json({ ok: true, processed: totalProcessed, ok_count: totalOk, failed: totalFailed }, { headers: corsHeaders });
+        logDrain("finish", { request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, duration_ms: Date.now() - startedAt });
+        return Response.json({ ok: true, request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, duration_ms: Date.now() - startedAt }, { headers: corsHeaders });
       },
     },
   },

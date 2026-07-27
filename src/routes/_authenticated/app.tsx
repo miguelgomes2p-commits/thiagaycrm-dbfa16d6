@@ -1,10 +1,8 @@
 import { createFileRoute, Outlet, Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { syncWorkspaceEvolutionMessages } from "@/lib/evolution.functions";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
   Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
@@ -56,60 +54,32 @@ function AppShell() {
     }
   }, [workspaces, wsLoading, wsFetching, navigate]);
 
-  // --- Global Evolution auto-sync + realtime (funciona em toda a área logada) ---
-  const syncWorkspaceEvo = useServerFn(syncWorkspaceEvolutionMessages);
-  const autoSyncInFlight = useRef(false);
-  const lastAutoSyncAt = useRef(0);
-
+  // Realtime global leve: mantém a lista de conversas fresca sem polling pesado.
+  // O fallback de sincronização com Evolution não pode rodar por usuário/aba; isso
+  // amplifica carga no Worker, Evolution e banco e causa comportamento intermitente.
   useEffect(() => {
     if (!current?.id || typeof window === "undefined" || typeof document === "undefined") return;
-    let cancelled = false;
-
-    const runSync = async () => {
-      if (cancelled || document.hidden || autoSyncInFlight.current) return;
-      const now = Date.now();
-      if (now - lastAutoSyncAt.current < 8_000) return;
-      autoSyncInFlight.current = true;
-      lastAutoSyncAt.current = now;
-      try {
-        const result = await syncWorkspaceEvo({ data: { workspaceId: current.id, limit: 10 } });
-        const inserted = result.results.reduce((s, r) => s + (r.insertedMessages ?? 0), 0);
-        if (inserted > 0) {
-          qc.invalidateQueries({ queryKey: ["conversations", current.id] });
-        }
-      } catch {
-        /* silencioso */
-      } finally {
-        autoSyncInFlight.current = false;
-      }
+    let invalidateTimer: ReturnType<typeof setTimeout> | null = null;
+    const invalidateConversations = () => {
+      if (invalidateTimer) clearTimeout(invalidateTimer);
+      invalidateTimer = setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ["conversations", current.id], exact: true });
+      }, 350);
     };
 
-    runSync();
-    const iv = window.setInterval(runSync, 10_000);
-    const onVis = () => { if (!document.hidden) runSync(); };
-    document.addEventListener("visibilitychange", onVis);
-
-    // Realtime workspace-wide: qualquer inserção em messages/conversations
-    // dispara invalidação imediata, sem esperar polling.
     const ch = supabase
       .channel(`ws-${current.id}-live`)
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `workspace_id=eq.${current.id}` },
-        () => qc.invalidateQueries({ queryKey: ["conversations", current.id] }))
+        invalidateConversations)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `workspace_id=eq.${current.id}` },
-        (payload) => {
-          qc.invalidateQueries({ queryKey: ["conversations", current.id] });
-          const convId = (payload.new as { conversation_id?: string })?.conversation_id;
-          if (convId) qc.invalidateQueries({ queryKey: ["messages", convId] });
-        })
+        invalidateConversations)
       .subscribe();
 
     return () => {
-      cancelled = true;
-      window.clearInterval(iv);
-      document.removeEventListener("visibilitychange", onVis);
+      if (invalidateTimer) clearTimeout(invalidateTimer);
       supabase.removeChannel(ch);
     };
-  }, [current?.id, qc, syncWorkspaceEvo]);
+  }, [current?.id, qc]);
 
 
   async function signOut() {
