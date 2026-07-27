@@ -76,99 +76,90 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
           .eq("status", "processing")
           .lt("locked_at", staleCutoff);
 
-        // Reivindica lote: SELECT dos pendentes + UPDATE atômico via `id IN (...)`
-        // + filtro `status = 'pending'`. pg_cron serializa execuções da MESMA
-        // task, então corridas concorrentes só ocorrem se outro caller acionar
-        // o drain — o filtro `.eq("status","pending")` no update evita dupla
-        // reivindicação.
-        const { data: pending } = await supabaseAdmin
-          .from("webhook_events")
-          .select("id, whatsapp_number_id, payload, raw_body, attempts")
-          .eq("status", "pending")
-          .order("created_at", { ascending: true })
-          .limit(BATCH_SIZE);
-        if (!pending || pending.length === 0) {
-          return Response.json({ ok: true, processed: 0 }, { headers: corsHeaders });
-        }
-        const ids = pending.map((p) => p.id);
-        const { data: claimed } = await supabaseAdmin
-          .from("webhook_events")
-          .update({ status: "processing", locked_at: new Date().toISOString() })
-          .in("id", ids)
-          .eq("status", "pending")
-          .select("id, whatsapp_number_id, payload, raw_body, attempts");
-        const batch = (claimed ?? []) as Array<{
-          id: number;
-          whatsapp_number_id: string;
-          payload: unknown;
-          raw_body: string | null;
-          attempts: number;
-        }>;
-        // Incrementa attempts (não dá pra fazer numa única expressão via supabase-js).
-        if (batch.length > 0) {
-          await Promise.all(
-            batch.map((row) =>
-              supabaseAdmin
-                .from("webhook_events")
-                .update({ attempts: row.attempts + 1 })
-                .eq("id", row.id),
-            ),
-          );
-        }
-
-        if (!batch || batch.length === 0) {
-          return Response.json({ ok: true, processed: 0 }, { headers: corsHeaders });
-        }
-
         const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
 
-        let ok = 0;
-        let failed = 0;
-        // Pré-verifica quais whatsapp_number_id ainda existem para não gastar
-        // tentativas em números deletados (webhooks órfãos da Evolution).
-        const uniqueNumberIds = Array.from(new Set(batch.map((b) => b.whatsapp_number_id).filter(Boolean)));
-        const { data: existingRows } = uniqueNumberIds.length
-          ? await supabaseAdmin.from("whatsapp_numbers").select("id").in("id", uniqueNumberIds)
-          : { data: [] as Array<{ id: string }> };
-        const existingSet = new Set((existingRows ?? []).map((r) => r.id));
+        let totalProcessed = 0;
+        let totalOk = 0;
+        let totalFailed = 0;
 
-        await Promise.all(
-          batch.map(async (row) => {
-            const numberId = row.whatsapp_number_id;
-            if (!numberId || !existingSet.has(numberId)) {
-              await supabaseAdmin
-                .from("webhook_events")
-                .update({ status: "done", processed_at: new Date().toISOString(), last_error: numberId ? "orphan: whatsapp_number deletado" : "missing numberId" })
-                .eq("id", row.id);
-              return;
-            }
-            try {
-              await Promise.all([
-                processEvolutionPayload(numberId, row.payload, { touchWebhook: true, source: "queue" }),
-                forwardToN8n(supabaseAdmin, numberId, row.raw_body, row.payload),
-              ]);
-              await supabaseAdmin
-                .from("webhook_events")
-                .update({ status: "done", processed_at: new Date().toISOString(), last_error: null })
-                .eq("id", row.id);
-              ok += 1;
-            } catch (err) {
-              const message = err instanceof Error ? err.message : "unknown error";
-              const nextStatus = row.attempts >= MAX_ATTEMPTS ? "failed" : "pending";
-              await supabaseAdmin
-                .from("webhook_events")
-                .update({
-                  status: nextStatus,
-                  last_error: message.slice(0, 2000),
-                  locked_at: null,
-                })
-                .eq("id", row.id);
-              failed += 1;
-            }
-          }),
-        );
+        for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
+          const { data: pending } = await supabaseAdmin
+            .from("webhook_events")
+            .select("id, whatsapp_number_id, payload, raw_body, attempts")
+            .eq("status", "pending")
+            .order("created_at", { ascending: true })
+            .limit(BATCH_SIZE);
+          if (!pending || pending.length === 0) break;
+          const ids = pending.map((p) => p.id);
+          const { data: claimed } = await supabaseAdmin
+            .from("webhook_events")
+            .update({ status: "processing", locked_at: new Date().toISOString() })
+            .in("id", ids)
+            .eq("status", "pending")
+            .select("id, whatsapp_number_id, payload, raw_body, attempts");
+          const batch = (claimed ?? []) as Array<{
+            id: number;
+            whatsapp_number_id: string;
+            payload: unknown;
+            raw_body: string | null;
+            attempts: number;
+          }>;
+          if (batch.length === 0) break;
 
-        return Response.json({ ok: true, processed: batch.length, ok_count: ok, failed }, { headers: corsHeaders });
+          // Incrementa attempts em background (não bloqueia processamento).
+          void Promise.all(
+            batch.map((row) =>
+              supabaseAdmin.from("webhook_events").update({ attempts: row.attempts + 1 }).eq("id", row.id),
+            ),
+          );
+
+          // Pré-verifica quais whatsapp_number_id ainda existem.
+          const uniqueNumberIds = Array.from(new Set(batch.map((b) => b.whatsapp_number_id).filter(Boolean)));
+          const { data: existingRows } = uniqueNumberIds.length
+            ? await supabaseAdmin.from("whatsapp_numbers").select("id").in("id", uniqueNumberIds)
+            : { data: [] as Array<{ id: string }> };
+          const existingSet = new Set((existingRows ?? []).map((r) => r.id));
+
+          await Promise.all(
+            batch.map(async (row) => {
+              const numberId = row.whatsapp_number_id;
+              if (!numberId || !existingSet.has(numberId)) {
+                await supabaseAdmin
+                  .from("webhook_events")
+                  .update({ status: "done", processed_at: new Date().toISOString(), last_error: numberId ? "orphan: whatsapp_number deletado" : "missing numberId" })
+                  .eq("id", row.id);
+                return;
+              }
+              try {
+                // n8n forward é fire-and-forget: não bloqueia o processamento da mensagem.
+                void forwardToN8n(supabaseAdmin, numberId, row.raw_body, row.payload);
+                await processEvolutionPayload(numberId, row.payload, { touchWebhook: true, source: "queue" });
+                await supabaseAdmin
+                  .from("webhook_events")
+                  .update({ status: "done", processed_at: new Date().toISOString(), last_error: null })
+                  .eq("id", row.id);
+                totalOk += 1;
+              } catch (err) {
+                const message = err instanceof Error ? err.message : "unknown error";
+                const nextStatus = row.attempts >= MAX_ATTEMPTS ? "failed" : "pending";
+                await supabaseAdmin
+                  .from("webhook_events")
+                  .update({
+                    status: nextStatus,
+                    last_error: message.slice(0, 2000),
+                    locked_at: null,
+                  })
+                  .eq("id", row.id);
+                totalFailed += 1;
+              }
+            }),
+          );
+
+          totalProcessed += batch.length;
+          if (batch.length < BATCH_SIZE) break;
+        }
+
+        return Response.json({ ok: true, processed: totalProcessed, ok_count: totalOk, failed: totalFailed }, { headers: corsHeaders });
       },
     },
   },
