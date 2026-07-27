@@ -40,10 +40,10 @@ function LabelsPage() {
       if (error) return toast.error(error.message);
       toast.success("Etiqueta atualizada");
     } else {
-      const { data: u } = await supabase.auth.getUser();
+      const { data: u } = await supabase.auth.getSession();
       const { error } = await supabase.from("labels").insert({
         workspace_id: ws.id, name, color, kind: "custom", scope: "conversation",
-        created_by: u.user?.id, sort_order: (custom.length + 1) * 10,
+        created_by: u.session?.user?.id, sort_order: (custom.length + 1) * 10,
       });
       if (error) return toast.error(error.message);
       toast.success("Etiqueta criada");

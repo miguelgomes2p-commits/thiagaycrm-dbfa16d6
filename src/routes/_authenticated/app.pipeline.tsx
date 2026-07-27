@@ -113,7 +113,7 @@ function PipelinePage() {
     e.preventDefault();
     if (!ws || !pipelineQ.data?.pipe || !pipelineQ.data.stages[0]) return;
     const fd = new FormData(e.currentTarget);
-    const { data: user } = await supabase.auth.getUser();
+    const { data: user } = await supabase.auth.getSession();
     const priority = (String(fd.get("priority") || "medium")) as "low" | "medium" | "high" | "urgent";
     const { error } = await supabase.from("leads").insert({
       workspace_id: ws.id,
@@ -124,7 +124,7 @@ function PipelinePage() {
       source: String(fd.get("source") || "") || null,
       priority,
       contact_id: String(fd.get("contact_id") || "") || null,
-      owner_id: user.user?.id,
+      owner_id: user.session?.user?.id,
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Lead criado");

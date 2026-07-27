@@ -31,7 +31,7 @@ export function useCurrentProfile() {
   return useQuery({
     queryKey: ["profile-me"],
     queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
+      const { data: u } = await supabase.auth.getSession();
       if (!u.user) return null;
       const { data, error } = await supabase
         .from("profiles").select("*").eq("id", u.user.id).maybeSingle();

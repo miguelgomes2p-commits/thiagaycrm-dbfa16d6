@@ -27,7 +27,7 @@ function Onboarding() {
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
-    const { data: u } = await supabase.auth.getUser();
+    const { data: u } = await supabase.auth.getSession();
     if (!u.user) { setLoading(false); toast.error("Sessão expirada"); return; }
     const slug = slugify(name) + "-" + Math.random().toString(36).slice(2, 6);
     const { error } = await supabase.rpc("create_workspace_with_defaults", { _name: name.trim(), _slug: slug, _user_id: u.user.id });

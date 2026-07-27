@@ -86,14 +86,14 @@ export function useAssignLabel(workspaceId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ conversationId, labelId }: { conversationId: string; labelId: string }) => {
-      const { data: u } = await supabase.auth.getUser();
+      const { data: u } = await supabase.auth.getSession();
       const { error } = await supabase
         .from("conversation_labels")
         .insert({
           conversation_id: conversationId,
           label_id: labelId,
           workspace_id: workspaceId!,
-          assigned_by: u.user?.id,
+          assigned_by: u.session?.user?.id,
         });
       if (error && !error.message.includes("duplicate")) throw error;
     },
