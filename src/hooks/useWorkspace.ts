@@ -34,7 +34,7 @@ export function useCurrentProfile() {
       const { data: u } = await supabase.auth.getSession();
       if (!u.session?.user) return null;
       const { data, error } = await supabase
-        .from("profiles").select("*").eq("id", u.session?.user.id).maybeSingle();
+        .from("profiles").select("*").eq("id", u.session!.user.id).maybeSingle();
       if (error) throw error;
       return data;
     },
