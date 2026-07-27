@@ -6,9 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
 };
 
-const BATCH_SIZE = 25;
+const BATCH_SIZE = 100;
 const MAX_ATTEMPTS = 5;
 const LOCK_TIMEOUT_MS = 60_000;
+const MAX_CYCLES = 6; // até 600 eventos por chamada (BATCH_SIZE * MAX_CYCLES)
 
 async function forwardToN8n(
   supabaseAdmin: Awaited<ReturnType<typeof getAdmin>>,
