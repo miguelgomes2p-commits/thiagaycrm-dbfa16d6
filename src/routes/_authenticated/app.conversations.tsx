@@ -219,7 +219,11 @@ function ConversationsPage() {
       const timed = withTimeoutSignal(signal, 12_000);
       const startedAt = performance.now();
       try {
-        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
+        // Só carregamos mensagens dos últimos 30 dias. O histórico continua
+        // no banco (removido após 45 dias por rotina server-side) mas fora da UI.
+        const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).gte("created_at", since30d).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
+
         console.info(JSON.stringify({ scope: "frontend_messages", event: "loaded", conversation_id: conversationId, rows: data?.length ?? 0, duration_ms: Math.round(performance.now() - startedAt) }));
         if (error) throw error;
       return data ?? [];
