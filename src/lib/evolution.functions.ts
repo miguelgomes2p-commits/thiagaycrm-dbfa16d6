@@ -226,7 +226,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
         if (!lastActivityMs || now - lastActivityMs > 60_000) {
           try {
             const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
-            const sinceSec = Math.floor((now - 30 * 24 * 60 * 60 * 1000) / 1000);
+            const sinceSec = Math.floor((now - 7 * 24 * 60 * 60 * 1000) / 1000);
             const payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, 50, sinceSec);
             await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { touchWebhook: true, source: "statusWarmSync" });
           } catch (syncError) {
@@ -309,7 +309,7 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
     try {
       const { evolutionFindMessages } = await import("@/lib/evolution.server");
       const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
-      const thirtyDaysAgoSec = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+      const sevenDaysAgoSec = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
       const limit = Math.min(data.limit ?? 100, 100);
       const MAX_PAGES = 8; // até 800 mensagens em uma sincronização
       const aggregated: {
@@ -324,7 +324,7 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
         let payload: unknown;
         try {
           payload = hasRange
-            ? await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit, thirtyDaysAgoSec, page)
+            ? await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit, sevenDaysAgoSec, page)
             : await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, limit, undefined, page);
         } catch (syncError) {
           if ((syncError as { status?: number }).status !== 400 || !hasRange) throw syncError;
