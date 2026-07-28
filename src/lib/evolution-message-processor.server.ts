@@ -700,7 +700,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         if (cached) cached.last_message_at = messageCreatedAt;
       }
 
-      if (isNew && !fromMe) {
+      if (!exConv && !fromMe) {
         // Atribuição já foi feita pelo trigger tg_conversation_autoassign (usa o dono do número).
         // Aqui apenas registramos o item na fila para histórico/dashboard.
         const { data: convRow } = await supabaseAdmin
@@ -709,7 +709,11 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
           .eq("id", convId)
           .maybeSingle();
         const agent = convRow?.assigned_to ?? null;
-        await supabaseAdmin.from("queue_entries").insert({ workspace_id: num.workspace_id, conversation_id: convId, assigned_to: agent, assigned_at: agent ? new Date().toISOString() : null });
+        // ON CONFLICT: queue_entries tem UNIQUE(conversation_id); ignora se já existe.
+        await supabaseAdmin.from("queue_entries").upsert(
+          { workspace_id: num.workspace_id, conversation_id: convId, assigned_to: agent, assigned_at: agent ? new Date().toISOString() : null },
+          { onConflict: "conversation_id", ignoreDuplicates: true },
+        );
       }
 
     } catch (e) {
