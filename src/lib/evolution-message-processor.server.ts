@@ -408,6 +408,41 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
   const cutoffSec = Math.floor((Date.now() - HISTORY_WINDOW_MS) / 1000);
   const isHistorySync = event === "messages.set" || source === "manualSync" || source === "workspaceAutoSync";
 
+  // Batch prefetch de contatos e conversas para eliminar N+1 (crítico para MESSAGES_SET
+  // com histórico grande: reduz 2*N SELECTs para 2 SELECTs).
+  const candidateWaIds = new Set<string>();
+  for (const m of msgs) {
+    const k = keyOf(m);
+    const jid = String(k?.remoteJid ?? "");
+    if (!jid || jid.includes("status@") || jid.endsWith("@lid") || jid.endsWith("@g.us")) continue;
+    const wid = jid.split("@")[0];
+    if (isProcessableWaId(wid)) candidateWaIds.add(wid);
+  }
+  const contactByPhone = new Map<string, { id: string; name: string | null; avatar_url: string | null }>();
+  const convByWaId = new Map<string, { id: string; last_message_at: string | null }>();
+  if (candidateWaIds.size > 0) {
+    const waIdArr = Array.from(candidateWaIds);
+    const [{ data: preContacts }, { data: preConvs }] = await Promise.all([
+      supabaseAdmin
+        .from("contacts")
+        .select("id, name, avatar_url, phone")
+        .eq("workspace_id", num.workspace_id)
+        .in("phone", waIdArr),
+      supabaseAdmin
+        .from("conversations")
+        .select("id, last_message_at, wa_contact_wa_id")
+        .eq("workspace_id", num.workspace_id)
+        .eq("whatsapp_number_id", num.id)
+        .in("wa_contact_wa_id", waIdArr),
+    ]);
+    for (const c of preContacts ?? []) {
+      if (c.phone) contactByPhone.set(c.phone, { id: c.id, name: c.name ?? null, avatar_url: c.avatar_url ?? null });
+    }
+    for (const c of preConvs ?? []) {
+      if (c.wa_contact_wa_id) convByWaId.set(c.wa_contact_wa_id, { id: c.id, last_message_at: c.last_message_at ?? null });
+    }
+  }
+
   for (const m of msgs) {
     const key = keyOf(m);
     const remoteJid = String(key?.remoteJid ?? "");
