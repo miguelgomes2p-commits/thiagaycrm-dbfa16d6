@@ -395,14 +395,15 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
       return num.connection_status !== "disconnected" || recentlyActive || recentlyCreated;
     });
     const results: Array<{ id: string; ok: boolean; insertedMessages?: number; rowsSeen?: number; error?: string }> = [];
-    for (const num of connectedNumbers) {
+
+    const syncOneNumber = async (num: typeof connectedNumbers[number]) => {
       try {
         const nowMs = Date.now();
         const createdMs = num.created_at ? new Date(num.created_at).getTime() : 0;
         const updatedMs = num.updated_at ? new Date(num.updated_at).getTime() : 0;
         if (createdMs > 0 && nowMs - createdMs > 30_000 && updatedMs > 0 && nowMs - updatedMs < 8_000) {
           results.push({ id: num.id, ok: true, insertedMessages: 0, rowsSeen: 0 });
-          continue;
+          return;
         }
 
         const lastActivityMs = num.last_webhook_at ? new Date(num.last_webhook_at).getTime() : 0;
@@ -436,8 +437,6 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
           });
         }
 
-        // Janela de 60 min garante que qualquer mensagem perdida por queda de webhook
-        // seja recuperada em até 1h, sem pressionar a Evolution.
         const sinceSec = Math.floor((Date.now() - 60 * 60 * 1000) / 1000);
         const limit = Math.min(data.limit ?? 25, 25);
         let payload: unknown;
@@ -450,7 +449,6 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
         const stats = await processEvolutionPayload(num.id, { event: "MESSAGES_SET", data: payload }, { touchWebhook: true, source: "workspaceAutoSync" });
         await supabaseAdmin.from("whatsapp_numbers").update({ updated_at: new Date().toISOString() }).eq("id", num.id);
         results.push({ id: num.id, ok: true, insertedMessages: stats.insertedMessages, rowsSeen: stats.rowsSeen });
-
       } catch (e) {
         await logEvolutionError({
           workspaceId: data.workspaceId,
@@ -462,7 +460,19 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
         });
         results.push({ id: num.id, ok: false, error: (e as { friendlyMessage?: string; message?: string })?.friendlyMessage ?? (e as Error)?.message ?? String(e) });
       }
-    }
+    };
+
+    // Concorrência limitada (4) para reduzir o tempo total de N contas de "soma" para "máximo",
+    // sem sobrecarregar a Evolution API.
+    const CONCURRENCY = 4;
+    let cursor = 0;
+    const workers = Array.from({ length: Math.min(CONCURRENCY, connectedNumbers.length) }, async () => {
+      while (cursor < connectedNumbers.length) {
+        const idx = cursor++;
+        await syncOneNumber(connectedNumbers[idx]);
+      }
+    });
+    await Promise.all(workers);
     return { ok: true, results };
   });
 
