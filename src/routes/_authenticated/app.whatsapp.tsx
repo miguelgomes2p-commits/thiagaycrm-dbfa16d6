@@ -84,8 +84,34 @@ function WhatsappPage() {
     enabled: !!ws?.id,
     queryKey: ["wa-numbers", ws?.id],
     queryFn: () => list({ data: { workspaceId: ws!.id } }),
-    refetchInterval: 60000,
+    // Polling substituído por Realtime + debounce (ver useEffect abaixo).
+    refetchInterval: false,
+    staleTime: 15_000,
   });
+
+  // Realtime: invalida com debounce quando qualquer whatsapp_numbers do workspace muda
+  // (evita 1 request/min mesmo com a página parada).
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!ws?.id) return;
+    const channel = supabase
+      .channel(`wa-numbers-${ws.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "whatsapp_numbers", filter: `workspace_id=eq.${ws.id}` },
+        () => {
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            qc.invalidateQueries({ queryKey: ["wa-numbers", ws.id] });
+          }, 500);
+        },
+      )
+      .subscribe();
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [ws?.id, qc]);
 
   const templatesQ = useQuery({
     enabled: !!ws?.id,
