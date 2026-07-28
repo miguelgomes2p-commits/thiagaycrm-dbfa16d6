@@ -656,6 +656,8 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
           ...(fromMe ? { unread_count: 0 } : {}),
         }).eq("id", convId);
         conversationLastAt = messageCreatedAt;
+        const cached = convByWaId.get(waId);
+        if (cached) cached.last_message_at = messageCreatedAt;
       }
 
       if (isNew && !fromMe) {
