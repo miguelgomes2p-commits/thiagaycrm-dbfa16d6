@@ -98,12 +98,15 @@ export const Route = createFileRoute("/api/public/webhooks/evolution")({
 
 
         try {
+          const evt = String((payload as Record<string, unknown>).event ?? (payload as Record<string, unknown>).type ?? "").toLowerCase();
+          const eventKind = evt === "messages.set" || evt === "messages_set" ? "history" : "realtime";
           const { error: enqueueError } = await supabaseAdmin.from("webhook_events").insert({
             source: "evolution",
             whatsapp_number_id: wa.id,
             payload: withTrace(payload, traceId, requestId) as never,
             raw_body: raw.length > 1_000_000 ? null : raw,
-          });
+            event_kind: eventKind,
+          } as never);
 
           if (enqueueError) throw enqueueError;
 
