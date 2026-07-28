@@ -61,12 +61,17 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
         // o processamento passa de alguns segundos.
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const evt = (payload && typeof payload === "object" && !Array.isArray(payload))
+            ? String((payload as Record<string, unknown>).event ?? (payload as Record<string, unknown>).type ?? "").toLowerCase()
+            : "";
+          const eventKind = evt === "messages.set" || evt === "messages_set" ? "history" : "realtime";
           const { error } = await supabaseAdmin.from("webhook_events").insert({
             source: "evolution",
             whatsapp_number_id: numberId,
             payload: withTrace(payload, traceId, requestId) as never,
             raw_body: raw.length > 1_000_000 ? null : raw,
-          });
+            event_kind: eventKind,
+          } as never);
           if (error) {
             // Fallback: se falhar ao enfileirar, processa síncrono pra não perder.
             const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
