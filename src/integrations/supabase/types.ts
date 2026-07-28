@@ -1349,6 +1349,7 @@ export type Database = {
         Row: {
           attempts: number
           created_at: string
+          event_kind: string
           id: number
           last_error: string | null
           locked_at: string | null
@@ -1362,6 +1363,7 @@ export type Database = {
         Insert: {
           attempts?: number
           created_at?: string
+          event_kind?: string
           id?: number
           last_error?: string | null
           locked_at?: string | null
@@ -1375,6 +1377,7 @@ export type Database = {
         Update: {
           attempts?: number
           created_at?: string
+          event_kind?: string
           id?: number
           last_error?: string | null
           locked_at?: string | null
