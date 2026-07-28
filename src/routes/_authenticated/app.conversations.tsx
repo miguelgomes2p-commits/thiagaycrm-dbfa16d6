@@ -161,14 +161,19 @@ function ConversationsPage() {
     queryFn: async ({ signal }) => {
       const timed = withTimeoutSignal(signal, 12_000);
       const startedAt = performance.now();
+      // Janela de visualização: só mostramos conversas ativas nos últimos 30 dias.
+      // O restante permanece no banco (retido por 45 dias via pg_cron) mas não polui a UI.
+      const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       try {
         const { data, error } = await supabase.from("conversations")
         .select("*, contacts:contact_id(name, type, avatar_url, phone)")
         .eq("workspace_id", ws!.id)
         .not("whatsapp_number_id", "is", null)
+        .gte("last_message_at", since30d)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(200)
         .abortSignal(timed.signal);
+
 
         console.info(JSON.stringify({ scope: "frontend_conversations", event: "loaded", workspace_id: ws!.id, rows: data?.length ?? 0, duration_ms: Math.round(performance.now() - startedAt) }));
         if (error) throw error;
@@ -214,7 +219,11 @@ function ConversationsPage() {
       const timed = withTimeoutSignal(signal, 12_000);
       const startedAt = performance.now();
       try {
-        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
+        // Só carregamos mensagens dos últimos 30 dias. O histórico continua
+        // no banco (removido após 45 dias por rotina server-side) mas fora da UI.
+        const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).gte("created_at", since30d).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
+
         console.info(JSON.stringify({ scope: "frontend_messages", event: "loaded", conversation_id: conversationId, rows: data?.length ?? 0, duration_ms: Math.round(performance.now() - startedAt) }));
         if (error) throw error;
       return data ?? [];
