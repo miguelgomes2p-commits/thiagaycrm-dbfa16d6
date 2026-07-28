@@ -1694,6 +1694,7 @@ export type Database = {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
+      purge_old_messages: { Args: never; Returns: undefined }
       renave_seed_endpoints: {
         Args: { _workspace_id: string }
         Returns: number
