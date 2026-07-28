@@ -353,7 +353,10 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     const mediaType = mediaTypeOf(data.mimeType);
     const ext = extOf(data.mimeType, data.fileName);
     const safeName = data.fileName.replace(/[^\w.() -]/g, "_").slice(0, 140) || `arquivo.${ext}`;
-    const evolutionAudioPayload = data.base64.includes(",") ? data.base64 : `data:${data.mimeType};base64,${cleanBase64}`;
+    // Data URIs não aceitam o parâmetro `codecs=...` no mime — Evolution/ffmpeg
+    // rejeita com 400 Bad Request. Usa apenas o mime base (ex.: `audio/webm`).
+    const audioMimeForUri = (data.mimeType.split(";")[0] || "audio/ogg").trim();
+    const evolutionAudioPayload = data.base64.includes(",") ? data.base64 : `data:${audioMimeForUri};base64,${cleanBase64}`;
     const path = `${conv.workspace_id}/${conv.id}/${crypto.randomUUID()}-${safeName}`;
     const { error: upErr } = await supabaseAdmin.storage
       .from("wa-media")
