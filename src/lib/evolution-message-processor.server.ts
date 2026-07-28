@@ -483,12 +483,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
       if (!text && !media.type) continue;
 
       let contactId: string;
-      const { data: exContact } = await supabaseAdmin
-        .from("contacts")
-        .select("id, name, avatar_url")
-        .eq("workspace_id", num.workspace_id)
-        .eq("phone", waId)
-        .maybeSingle();
+      const exContact = contactByPhone.get(waId) ?? null;
       const canCallProvider = !!(num.provider_base_url && num.provider_api_key && num.instance_name);
       const shouldFetchAvatar = !isHistorySync && source !== "webhook" && !isGroup && canCallProvider;
       const shouldFetchGroupMeta = !isHistorySync && source !== "webhook" && isGroup && canCallProvider;
