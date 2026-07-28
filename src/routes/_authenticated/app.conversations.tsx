@@ -237,28 +237,114 @@ function ConversationsPage() {
 
   useEffect(() => {
     if (!activeId) return;
-    let t: ReturnType<typeof setTimeout> | null = null;
-    const invalidate = () => {
-      if (t) clearTimeout(t);
-      t = setTimeout(() => qc.invalidateQueries({ queryKey: ["messages", activeId] }), 250);
+    const msgsKey = ["messages", activeId] as const;
+    let invalidateTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleInvalidate = () => {
+      if (invalidateTimer) clearTimeout(invalidateTimer);
+      invalidateTimer = setTimeout(() => qc.invalidateQueries({ queryKey: msgsKey }), 400);
     };
+
     const ch = supabase.channel(`msgs-${activeId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${activeId}` }, invalidate)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${activeId}` },
+        (payload) => {
+          // Atualização incremental via cache: elimina refetch de 300 linhas a cada evento.
+          const newRow = (payload.new ?? null) as { id?: string } | null;
+          const oldRow = (payload.old ?? null) as { id?: string } | null;
+          const evt = payload.eventType;
+          try {
+            if (evt === "INSERT" && newRow?.id) {
+              qc.setQueryData<unknown[]>(msgsKey, (prev) => {
+                if (!Array.isArray(prev)) return prev;
+                if (prev.some((m) => (m as { id?: string })?.id === newRow.id)) return prev;
+                return [...prev, newRow];
+              });
+              return;
+            }
+            if (evt === "UPDATE" && newRow?.id) {
+              qc.setQueryData<unknown[]>(msgsKey, (prev) => {
+                if (!Array.isArray(prev)) return prev;
+                let found = false;
+                const next = prev.map((m) => {
+                  if ((m as { id?: string })?.id === newRow.id) {
+                    found = true;
+                    return { ...(m as object), ...newRow };
+                  }
+                  return m;
+                });
+                return found ? next : prev;
+              });
+              return;
+            }
+            if (evt === "DELETE" && oldRow?.id) {
+              qc.setQueryData<unknown[]>(msgsKey, (prev) => {
+                if (!Array.isArray(prev)) return prev;
+                return prev.filter((m) => (m as { id?: string })?.id !== oldRow.id);
+              });
+              return;
+            }
+          } catch {
+            scheduleInvalidate();
+          }
+        },
+      )
       .subscribe();
-    return () => { if (t) clearTimeout(t); supabase.removeChannel(ch); };
+    return () => {
+      if (invalidateTimer) clearTimeout(invalidateTimer);
+      supabase.removeChannel(ch);
+    };
   }, [activeId, qc]);
 
   useEffect(() => {
     if (!ws?.id) return;
-    let t: ReturnType<typeof setTimeout> | null = null;
-    const invalidate = () => {
-      if (t) clearTimeout(t);
-      t = setTimeout(() => qc.invalidateQueries({ queryKey: ["conversations", ws.id] }), 400);
+    const convsKey = ["conversations", ws.id] as const;
+    let invalidateTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleInvalidate = () => {
+      if (invalidateTimer) clearTimeout(invalidateTimer);
+      invalidateTimer = setTimeout(() => qc.invalidateQueries({ queryKey: convsKey }), 500);
     };
+
     const ch = supabase.channel(`convs-${ws.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `workspace_id=eq.${ws.id}` }, invalidate)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations", filter: `workspace_id=eq.${ws.id}` },
+        (payload) => {
+          const evt = payload.eventType;
+          const newRow = (payload.new ?? null) as Record<string, unknown> | null;
+          const oldRow = (payload.old ?? null) as Record<string, unknown> | null;
+          // UPDATE: mescla campos no cache preservando o join com contacts (evita refetch da lista).
+          if (evt === "UPDATE" && newRow?.id) {
+            qc.setQueryData<Array<Record<string, unknown>>>(convsKey, (prev) => {
+              if (!Array.isArray(prev)) return prev;
+              let found = false;
+              const next = prev.map((c) => {
+                if (c.id === newRow.id) {
+                  found = true;
+                  return { ...c, ...newRow, contacts: c.contacts };
+                }
+                return c;
+              });
+              return found ? next : prev;
+            });
+            return;
+          }
+          if (evt === "DELETE" && oldRow?.id) {
+            qc.setQueryData<Array<Record<string, unknown>>>(convsKey, (prev) => {
+              if (!Array.isArray(prev)) return prev;
+              return prev.filter((c) => c.id !== oldRow.id);
+            });
+            return;
+          }
+          // INSERT: precisa do join com contacts; refaz com debounce.
+          scheduleInvalidate();
+        },
+      )
       .subscribe();
-    return () => { if (t) clearTimeout(t); supabase.removeChannel(ch); };
+    return () => {
+      if (invalidateTimer) clearTimeout(invalidateTimer);
+      supabase.removeChannel(ch);
+    };
   }, [ws?.id, qc]);
 
   const labelById = useMemo(() => {
