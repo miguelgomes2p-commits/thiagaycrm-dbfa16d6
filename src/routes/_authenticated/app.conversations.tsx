@@ -352,6 +352,14 @@ function ConversationsPage() {
               const next = prev.map((c) => {
                 if (c.id === newRow.id) {
                   found = true;
+                  // Se o UPDATE traz last_message_at mais antigo que o cache, preserva os campos
+                  // de preview/ordenação para evitar que um evento atrasado sobrescreva o mais recente.
+                  const curAt = new Date((c as { last_message_at?: string }).last_message_at ?? 0).getTime();
+                  const newAt = new Date((newRow as { last_message_at?: string }).last_message_at ?? 0).getTime();
+                  if (newAt && curAt && newAt < curAt) {
+                    const { last_message_at: _a, last_message_preview: _p, ...rest } = newRow as Record<string, unknown>;
+                    return { ...c, ...rest, contacts: c.contacts };
+                  }
                   return { ...c, ...newRow, contacts: c.contacts };
                 }
                 return c;
