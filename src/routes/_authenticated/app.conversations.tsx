@@ -247,6 +247,7 @@ function ConversationsPage() {
   useEffect(() => {
     if (!activeId) return;
     const msgsKey = ["messages", activeId] as const;
+    const convsKey = ws?.id ? (["conversations", ws.id] as const) : null;
     let invalidateTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleInvalidate = () => {
       if (invalidateTimer) clearTimeout(invalidateTimer);
@@ -258,17 +259,38 @@ function ConversationsPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${activeId}` },
         (payload) => {
-          // Atualização incremental via cache: elimina refetch de 300 linhas a cada evento.
-          const newRow = (payload.new ?? null) as { id?: string } | null;
+          const newRow = (payload.new ?? null) as { id?: string; content?: string | null; direction?: string; created_at?: string } | null;
           const oldRow = (payload.old ?? null) as { id?: string } | null;
           const evt = payload.eventType;
           try {
             if (evt === "INSERT" && newRow?.id) {
               qc.setQueryData<unknown[]>(msgsKey, (prev) => {
                 if (!Array.isArray(prev)) return prev;
-                if (prev.some((m) => (m as { id?: string })?.id === newRow.id)) return prev;
-                return [...prev, newRow];
+                // Deduplica: remove qualquer entrada otimista (mesmo conteúdo + outbound) e evita duplicar por id.
+                const filtered = prev.filter((m) => {
+                  const mm = m as { id?: string; _optimistic?: boolean; direction?: string; content?: string | null };
+                  if (mm.id === newRow.id) return false;
+                  if (mm._optimistic && mm.direction === "outbound" && newRow.direction === "outbound" && (mm.content ?? "") === (newRow.content ?? "")) return false;
+                  return true;
+                });
+                return [...filtered, newRow];
               });
+              // Atualiza preview/ordenação da conversa ativa imediatamente,
+              // ignorando eventos mais antigos que o já cacheado (evita race).
+              if (convsKey && newRow.created_at) {
+                qc.setQueryData<Array<Record<string, unknown>>>(convsKey, (prev) => {
+                  if (!Array.isArray(prev)) return prev;
+                  const updated = prev.map((c) => {
+                    if ((c as { id?: string }).id !== activeId) return c;
+                    const curAt = new Date((c as { last_message_at?: string }).last_message_at ?? 0).getTime();
+                    const newAt = new Date(newRow.created_at!).getTime();
+                    if (newAt < curAt) return c;
+                    return { ...c, last_message_preview: (newRow.content ?? "").slice(0, 200), last_message_at: newRow.created_at };
+                  });
+                  updated.sort((a, b) => new Date((b as { last_message_at?: string }).last_message_at ?? 0).getTime() - new Date((a as { last_message_at?: string }).last_message_at ?? 0).getTime());
+                  return updated;
+                });
+              }
               return;
             }
             if (evt === "UPDATE" && newRow?.id) {
@@ -303,7 +325,7 @@ function ConversationsPage() {
       if (invalidateTimer) clearTimeout(invalidateTimer);
       supabase.removeChannel(ch);
     };
-  }, [activeId, qc]);
+  }, [activeId, ws?.id, qc]);
 
   useEffect(() => {
     if (!ws?.id) return;
