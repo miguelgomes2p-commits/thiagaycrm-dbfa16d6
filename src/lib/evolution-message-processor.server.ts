@@ -404,7 +404,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     for (const r of existingRows ?? []) if (r.wa_message_id) existingIds.add(r.wa_message_id);
   }
 
-  const HISTORY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  const HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
   const cutoffSec = Math.floor((Date.now() - HISTORY_WINDOW_MS) / 1000);
   const isHistorySync = event === "messages.set" || source === "manualSync" || source === "workspaceAutoSync";
 
@@ -539,46 +539,86 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
             avatarUrl = pic?.profilePictureUrl ?? null;
           } catch { /* best-effort */ }
         }
-        const { data: created, error: cErr } = await supabaseAdmin
+        const initialName = isGroup
+          ? (groupSubject ?? `Grupo ${waId.slice(-6)}`)
+          : (!fromMe && pushName ? pushName : waId);
+        // UPSERT atômico: elimina race condition entre webhooks concorrentes.
+        // Se dois processos chegarem juntos, o segundo recebe a linha existente
+        // sem sobrescrever nome/avatar (ignoreDuplicates=true) e nós lemos o registro
+        // canônico logo depois.
+        const { error: upsertErr } = await supabaseAdmin
           .from("contacts")
-          .insert({
-            workspace_id: num.workspace_id,
-            type: isGroup ? "group" : "person",
-            name: isGroup ? (groupSubject ?? `Grupo ${waId.slice(-6)}`) : (!fromMe && pushName ? pushName : waId),
-            phone: waId,
-            avatar_url: avatarUrl,
-          })
-          .select("id")
-          .single();
-        if (cErr || !created) {
+          .upsert(
+            {
+              workspace_id: num.workspace_id,
+              type: isGroup ? "group" : "person",
+              name: initialName,
+              phone: waId,
+              avatar_url: avatarUrl,
+            },
+            { onConflict: "workspace_id,phone", ignoreDuplicates: true },
+          );
+        if (upsertErr) {
           stats.errors++;
-          await logProcessorIssue({ workspaceId: num.workspace_id, whatsappNumberId: num.id, operation: `${opts.source ?? "webhook"}.contactInsert`, instanceName: num.instance_name, message: cErr?.message ?? "Falha ao criar contato", payload: m });
+          await logProcessorIssue({ workspaceId: num.workspace_id, whatsappNumberId: num.id, operation: `${opts.source ?? "webhook"}.contactUpsert`, instanceName: num.instance_name, message: upsertErr.message, payload: m });
           continue;
         }
-        contactId = created.id;
-        contactByPhone.set(waId, { id: contactId, name: null, avatar_url: null });
+        const { data: canonical, error: readErr } = await supabaseAdmin
+          .from("contacts")
+          .select("id, name, avatar_url")
+          .eq("workspace_id", num.workspace_id)
+          .eq("phone", waId)
+          .maybeSingle();
+        if (readErr || !canonical) {
+          stats.errors++;
+          await logProcessorIssue({ workspaceId: num.workspace_id, whatsappNumberId: num.id, operation: `${opts.source ?? "webhook"}.contactRead`, instanceName: num.instance_name, message: readErr?.message ?? "Falha ao ler contato após upsert", payload: m });
+          continue;
+        }
+        contactId = canonical.id;
+        contactByPhone.set(waId, { id: contactId, name: canonical.name ?? null, avatar_url: canonical.avatar_url ?? null });
       }
 
 
       const exConv = convByWaId.get(waId) ?? null;
-      const isNew = !exConv;
       let convId: string;
       let conversationLastAt = exConv?.last_message_at ?? null;
       if (exConv) {
         convId = exConv.id;
       } else {
-        const { data: created, error: convErr } = await supabaseAdmin
+        // UPSERT atômico com ignoreDuplicates: se outro processo já criou a conversa,
+        // não sobrescrevemos status/contact_id — apenas lemos o id canônico.
+        const { error: convUpsertErr } = await supabaseAdmin
           .from("conversations")
-          .insert({ workspace_id: num.workspace_id, contact_id: contactId, channel: "whatsapp", status: "open", whatsapp_number_id: num.id, wa_contact_wa_id: waId })
-          .select("id")
-          .single();
-        if (convErr || !created) {
+          .upsert(
+            {
+              workspace_id: num.workspace_id,
+              contact_id: contactId,
+              channel: "whatsapp",
+              status: "open",
+              whatsapp_number_id: num.id,
+              wa_contact_wa_id: waId,
+            },
+            { onConflict: "whatsapp_number_id,wa_contact_wa_id", ignoreDuplicates: true },
+          );
+        if (convUpsertErr) {
           stats.errors++;
-          await logProcessorIssue({ workspaceId: num.workspace_id, whatsappNumberId: num.id, operation: `${opts.source ?? "webhook"}.conversationInsert`, instanceName: num.instance_name, message: convErr?.message ?? "Falha ao criar conversa", payload: m });
+          await logProcessorIssue({ workspaceId: num.workspace_id, whatsappNumberId: num.id, operation: `${opts.source ?? "webhook"}.conversationUpsert`, instanceName: num.instance_name, message: convUpsertErr.message, payload: m });
           continue;
         }
-        convId = created.id;
-        convByWaId.set(waId, { id: convId, last_message_at: null });
+        const { data: canonicalConv, error: convReadErr } = await supabaseAdmin
+          .from("conversations")
+          .select("id, last_message_at")
+          .eq("whatsapp_number_id", num.id)
+          .eq("wa_contact_wa_id", waId)
+          .maybeSingle();
+        if (convReadErr || !canonicalConv) {
+          stats.errors++;
+          await logProcessorIssue({ workspaceId: num.workspace_id, whatsappNumberId: num.id, operation: `${opts.source ?? "webhook"}.conversationRead`, instanceName: num.instance_name, message: convReadErr?.message ?? "Falha ao ler conversa após upsert", payload: m });
+          continue;
+        }
+        convId = canonicalConv.id;
+        conversationLastAt = canonicalConv.last_message_at ?? null;
+        convByWaId.set(waId, { id: convId, last_message_at: conversationLastAt });
         stats.createdConversations++;
       }
 
