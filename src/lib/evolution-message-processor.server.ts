@@ -556,16 +556,11 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
           continue;
         }
         contactId = created.id;
+        contactByPhone.set(waId, { id: contactId, name: null, avatar_url: null });
       }
 
 
-      const { data: exConv } = await supabaseAdmin
-        .from("conversations")
-        .select("id, last_message_at")
-        .eq("workspace_id", num.workspace_id)
-        .eq("whatsapp_number_id", num.id)
-        .eq("wa_contact_wa_id", waId)
-        .maybeSingle();
+      const exConv = convByWaId.get(waId) ?? null;
       const isNew = !exConv;
       let convId: string;
       let conversationLastAt = exConv?.last_message_at ?? null;
@@ -583,6 +578,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
           continue;
         }
         convId = created.id;
+        convByWaId.set(waId, { id: convId, last_message_at: null });
         stats.createdConversations++;
       }
 
