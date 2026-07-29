@@ -22,7 +22,23 @@ type Automation = {
   message: string | null;
   delay_seconds: number;
   active: boolean;
+  trigger_type: "stage_enter" | "recurring";
+  interval_seconds: number | null;
+  max_runs: number | null;
 };
+
+const INTERVAL_UNITS: Array<{ key: "m" | "h" | "d"; label: string; seconds: number }> = [
+  { key: "m", label: "minutos", seconds: 60 },
+  { key: "h", label: "horas", seconds: 3600 },
+  { key: "d", label: "dias", seconds: 86400 },
+];
+
+function splitInterval(sec: number | null | undefined): { value: number; unit: "m" | "h" | "d" } {
+  if (!sec || sec <= 0) return { value: 1, unit: "d" };
+  if (sec % 86400 === 0) return { value: sec / 86400, unit: "d" };
+  if (sec % 3600 === 0) return { value: sec / 3600, unit: "h" };
+  return { value: Math.max(1, Math.round(sec / 60)), unit: "m" };
+}
 
 const VARIABLES = [
   { key: "{{contact.name}}", desc: "Nome do contato salvo no CRM", example: "João Silva" },
