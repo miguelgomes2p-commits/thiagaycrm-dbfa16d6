@@ -323,6 +323,16 @@ function PipelinePage() {
                   <p className="text-xs whitespace-pre-wrap text-muted-foreground">{infoLead.notes}</p>
                 </div>
               )}
+              <div className="pt-3 border-t border-border flex justify-end">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteLead(infoLead.id)}
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" /> Excluir lead
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
