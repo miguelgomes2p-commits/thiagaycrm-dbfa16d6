@@ -211,10 +211,101 @@ export function StageAutomationDialog({
                 </div>
               </div>
             </div>
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <Label className="text-sm">Quando disparar</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing((p) => ({ ...p, trigger_type: "stage_enter" }))}
+                  className={`text-left rounded-md border p-2.5 transition-colors ${
+                    (editing.trigger_type ?? "stage_enter") === "stage_enter"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/40"
+                  }`}
+                >
+                  <div className="text-xs font-medium">Ao entrar na etapa</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Envia 1x quando o lead cai aqui</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing((p) => ({
+                    ...p,
+                    trigger_type: "recurring",
+                    interval_seconds: p?.interval_seconds ?? 86400,
+                    max_runs: p?.max_runs ?? 3,
+                  }))}
+                  className={`text-left rounded-md border p-2.5 transition-colors ${
+                    editing.trigger_type === "recurring"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/40"
+                  }`}
+                >
+                  <div className="text-xs font-medium">Follow-up recorrente</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Repete de tempos em tempos</div>
+                </button>
+              </div>
+
+              {editing.trigger_type === "recurring" && (() => {
+                const { value, unit } = splitInterval(editing.interval_seconds);
+                return (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <Label className="text-[11px] text-muted-foreground">A cada</Label>
+                      <div className="flex gap-1.5 mt-1">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={value}
+                          onChange={(e) => {
+                            const n = Math.max(1, Number(e.target.value) || 1);
+                            const u = INTERVAL_UNITS.find((x) => x.key === unit)!;
+                            setEditing((p) => ({ ...p, interval_seconds: n * u.seconds }));
+                          }}
+                          className="w-20"
+                        />
+                        <select
+                          value={unit}
+                          onChange={(e) => {
+                            const u = INTERVAL_UNITS.find((x) => x.key === (e.target.value as "m" | "h" | "d"))!;
+                            setEditing((p) => ({ ...p, interval_seconds: value * u.seconds }));
+                          }}
+                          className="flex-1 h-10 rounded-md border border-input bg-background px-2 text-sm"
+                        >
+                          {INTERVAL_UNITS.map((u) => (
+                            <option key={u.key} value={u.key}>{u.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[11px] text-muted-foreground">Máximo de envios</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={editing.max_runs ?? 3}
+                        onChange={(e) =>
+                          setEditing((p) => ({ ...p, max_runs: Math.max(1, Number(e.target.value) || 1) }))
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+                    <p className="col-span-2 text-[10px] text-muted-foreground">
+                      Para automaticamente se o lead sair desta etapa ou atingir o limite.
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
+
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div>
                 <Label className="text-sm">Ativa</Label>
-                <p className="text-xs text-muted-foreground">Dispara ao mover lead para "{stageName}"</p>
+                <p className="text-xs text-muted-foreground">
+                  {editing.trigger_type === "recurring"
+                    ? `Agenda follow-ups ao mover lead para "${stageName}"`
+                    : `Dispara ao mover lead para "${stageName}"`}
+                </p>
               </div>
               <Switch checked={editing.active ?? true} onCheckedChange={(v) => setEditing((p) => ({ ...p, active: v }))} />
             </div>
