@@ -165,11 +165,13 @@ function ConversationsPage() {
       // O restante permanece no banco (retido por 45 dias via pg_cron) mas não polui a UI.
       const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       try {
+        // Aceita conversas com last_message_at recente OU sem mensagem (criadas há
+        // menos de 30 dias). Assim recém-criadas sem histórico ainda aparecem.
         const { data, error } = await supabase.from("conversations")
         .select("*, contacts:contact_id(name, type, avatar_url, phone)")
         .eq("workspace_id", ws!.id)
         .not("whatsapp_number_id", "is", null)
-        .gte("last_message_at", since30d)
+        .or(`last_message_at.gte.${since30d},and(last_message_at.is.null,created_at.gte.${since30d})`)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(200)
         .abortSignal(timed.signal);
