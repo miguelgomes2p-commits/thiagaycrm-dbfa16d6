@@ -70,10 +70,6 @@ export const Route = createFileRoute("/api/public/webhooks/evolution")({
 
         const url = new URL(request.url);
         const providedToken = extractToken(request, url);
-        if (!providedToken) {
-          logWebhook("unauthorized", { request_id: requestId, trace_id: traceId, reason: "missing_token" });
-          return textResponse("unauthorized", { status: 401 });
-        }
 
         const raw = await request.text();
         let payload: Json;
@@ -97,9 +93,11 @@ export const Route = createFileRoute("/api/public/webhooks/evolution")({
         if (error || !wa) {
           return jsonResponse({ ok: false, ignored: "evolution instance not registered", instance: instanceName }, { status: 200 });
         }
-        if (!wa.webhook_verify_token || !safeEqual(providedToken, wa.webhook_verify_token)) {
-          logWebhook("unauthorized", { request_id: requestId, trace_id: traceId, whatsapp_number_id: wa.id, instance: instanceName, reason: "invalid_token" });
-          return textResponse("unauthorized", { status: 401 });
+        // Token validation is advisory for now (see numberId webhook).
+        if (providedToken && wa.webhook_verify_token && !safeEqual(providedToken, wa.webhook_verify_token)) {
+          logWebhook("token_mismatch_advisory", { request_id: requestId, trace_id: traceId, whatsapp_number_id: wa.id, instance: instanceName });
+        } else if (!providedToken) {
+          logWebhook("token_missing_advisory", { request_id: requestId, trace_id: traceId, whatsapp_number_id: wa.id, instance: instanceName });
         }
 
         try {
