@@ -221,10 +221,10 @@ function ConversationsPage() {
       const timed = withTimeoutSignal(signal, 12_000);
       const startedAt = performance.now();
       try {
-        // Só carregamos mensagens dos últimos 30 dias. O histórico continua
-        // no banco (removido após 45 dias por rotina server-side) mas fora da UI.
-        const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).gte("created_at", since30d).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
+        // Retenção server-side (pg_cron purge_old_messages_daily) já cuida da
+        // janela de 45 dias — não aplicamos filtro extra aqui pra não esconder
+        // convs cujo histórico está entre 30 e 45 dias.
+        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
 
         console.info(JSON.stringify({ scope: "frontend_messages", event: "loaded", conversation_id: conversationId, rows: data?.length ?? 0, duration_ms: Math.round(performance.now() - startedAt) }));
         if (error) throw error;
