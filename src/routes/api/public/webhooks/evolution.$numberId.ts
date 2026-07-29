@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-api-key",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-api-key, x-webhook-token",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -32,6 +32,23 @@ function withTrace(payload: unknown, traceId: string, requestId: string) {
   return payload;
 }
 
+function safeEqual(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
+function extractToken(request: Request, url: URL) {
+  const header =
+    request.headers.get("x-webhook-token") ??
+    request.headers.get("x-hub-signature") ??
+    null;
+  if (header && header.trim()) return header.trim();
+  const q = url.searchParams.get("token");
+  return q && q.trim() ? q.trim() : null;
+}
+
 export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")({
   server: {
     handlers: {
@@ -41,11 +58,30 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
         const requestId = crypto.randomUUID();
         const traceId = request.headers.get("x-correlation-id") ?? request.headers.get("x-request-id") ?? requestId;
         const startedAt = Date.now();
-        // Guard: URLs configuradas com template literal `{numberId}` não devem
-        // gerar 500 (a Evolution reenviaria em loop e satura ACKs legítimos).
         const numberId = params.numberId;
         if (!numberId || numberId === "{numberId}" || !/^[0-9a-f-]{36}$/i.test(numberId)) {
           return jsonResponse({ ok: false, ignored: "invalid numberId in webhook URL" }, { status: 200 });
+        }
+
+        const url = new URL(request.url);
+        const providedToken = extractToken(request, url);
+        if (!providedToken) {
+          logWebhook("unauthorized", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, reason: "missing_token" });
+          return textResponse("unauthorized", { status: 401 });
+        }
+
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: wa, error: waErr } = await supabaseAdmin
+          .from("whatsapp_numbers")
+          .select("id, webhook_verify_token")
+          .eq("id", numberId)
+          .maybeSingle();
+        if (waErr || !wa) {
+          return jsonResponse({ ok: false, ignored: "number not registered" }, { status: 200 });
+        }
+        if (!wa.webhook_verify_token || !safeEqual(providedToken, wa.webhook_verify_token)) {
+          logWebhook("unauthorized", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, reason: "invalid_token" });
+          return textResponse("unauthorized", { status: 401 });
         }
 
         const raw = await request.text();
@@ -56,11 +92,7 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
           return textResponse("bad json", { status: 400 });
         }
 
-        // Enfileira o webhook e responde 200 imediatamente. O drain (pg_cron)
-        // processa a fila em background, evitando reenvios da Evolution quando
-        // o processamento passa de alguns segundos.
         try {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const evt = (payload && typeof payload === "object" && !Array.isArray(payload))
             ? String((payload as Record<string, unknown>).event ?? (payload as Record<string, unknown>).type ?? "").toLowerCase()
             : "";
@@ -73,7 +105,6 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             event_kind: eventKind,
           } as never);
           if (error) {
-            // Fallback: se falhar ao enfileirar, processa síncrono pra não perder.
             const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
             await processEvolutionPayload(numberId, withTrace(payload, traceId, requestId), { touchWebhook: true, source: "webhook-fallback" });
             logWebhook("sync_fallback", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, duration_ms: Date.now() - startedAt });
