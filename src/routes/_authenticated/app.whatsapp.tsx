@@ -382,6 +382,18 @@ function WhatsappPage() {
                     {isEvo && n.instance_name && (
                       <div className="mt-1 text-xs text-muted-foreground font-mono">instância: {n.instance_name}</div>
                     )}
+                    {isEvo && (n.wa_profile_name || n.wa_owner_jid) && (
+                      <div className="mt-1 text-xs">
+                        <span className="text-muted-foreground">Conta conectada: </span>
+                        {n.wa_profile_name && <span className="font-medium">{n.wa_profile_name}</span>}
+                        {n.wa_owner_jid && (
+                          <span className="text-muted-foreground font-mono">
+                            {n.wa_profile_name ? " · " : ""}
+                            {n.wa_owner_jid.replace(/@.*/, "")}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {n.last_webhook_at ? (
                       <div className="mt-1 text-xs text-muted-foreground inline-flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3 text-success" /> Último evento há{" "}
