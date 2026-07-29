@@ -180,38 +180,42 @@ export const executeRenaveEndpoint = createServerFn({ method: "POST" })
       });
 
       // 8) log HTTP
+      const epHeaders = (ep.headers ?? {}) as Record<string, unknown>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await supabaseAdmin.from("renave_http_logs").insert({
         workspace_id: data.workspaceId,
         operation_id: op.id,
         endpoint_code: data.endpointCode,
         method: ep.method,
         url,
-        request_headers: { Authorization: "***", ...(ep.headers ?? {}) },
-        request_body: data.body ?? null,
+        request_headers: { Authorization: "***", ...epHeaders },
+        request_body: (data.body ?? null) as unknown,
         response_status: result.status,
         response_headers: result.headers,
         response_body:
           typeof result.body === "string" ? { raw: result.body.slice(0, 4000) } : result.body,
         duration_ms: result.durationMs,
-      });
+      } as any);
 
       const ok = result.status >= 200 && result.status < 300;
       await supabaseAdmin
         .from("renave_operations")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .update({
           status: ok ? "sucesso" : "falha",
           response_payload:
             typeof result.body === "string" ? { raw: result.body.slice(0, 4000) } : result.body,
           error_message: ok ? null : `HTTP ${result.status}: ${result.bodyText.slice(0, 300)}`,
-        })
+        } as any)
         .eq("id", op.id);
 
       return {
         ok,
-        operationId: op.id,
+        operationId: op.id as string,
         status: result.status,
-        body: result.body,
+        body: JSON.parse(JSON.stringify(result.body ?? null)) as unknown,
       };
+
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       await supabaseAdmin
