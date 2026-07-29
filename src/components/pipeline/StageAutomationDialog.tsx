@@ -147,8 +147,13 @@ export function StageAutomationDialog({
                   <MessageSquare className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium truncate">{a.name}</span>
+                    {a.trigger_type === "recurring" && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                        follow-up · a cada {splitInterval(a.interval_seconds).value}{splitInterval(a.interval_seconds).unit} · até {a.max_runs}x
+                      </span>
+                    )}
                     {!a.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">inativa</span>}
                   </div>
                   <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{a.message}</div>
@@ -162,7 +167,7 @@ export function StageAutomationDialog({
                 </div>
               </div>
             ))}
-            <Button variant="outline" className="w-full" onClick={() => setEditing({ name: "", message: "", delay_seconds: 0, active: true })}>
+            <Button variant="outline" className="w-full" onClick={() => setEditing({ name: "", message: "", delay_seconds: 0, active: true, trigger_type: "stage_enter" })}>
               <Plus className="h-4 w-4 mr-1.5" /> Nova automação
             </Button>
           </div>
