@@ -289,6 +289,8 @@ function QuickOpButton({ workspaceId, vehicleId, type, label, icon: Icon }: {
 
 /* ----------------------- OPERAÇÕES ----------------------- */
 function OperationsTab({ workspaceId }: { workspaceId: string }) {
+  const qc = useQueryClient();
+  const retryFn = useServerFn(retryRenaveOperation);
   const { data } = useQuery({
     queryKey: ["renave-operations", workspaceId],
     queryFn: async () => {
@@ -302,6 +304,15 @@ function OperationsTab({ workspaceId }: { workspaceId: string }) {
     },
   });
 
+  const retry = useMutation({
+    mutationFn: async (id: string) => retryFn({ data: { operationId: id } }),
+    onSuccess: () => {
+      toast.success("Reenfileirada");
+      qc.invalidateQueries({ queryKey: ["renave-operations", workspaceId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
@@ -313,6 +324,7 @@ function OperationsTab({ workspaceId }: { workspaceId: string }) {
               <th className="text-left p-3">Endpoint</th>
               <th className="text-left p-3">Status</th>
               <th className="text-left p-3">Erro</th>
+              <th className="text-left p-3">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -323,10 +335,18 @@ function OperationsTab({ workspaceId }: { workspaceId: string }) {
                 <td className="p-3 font-mono text-xs">{o.endpoint_code ?? "—"}</td>
                 <td className="p-3"><OpStatus status={o.status} /></td>
                 <td className="p-3 text-xs text-red-400 truncate max-w-xs">{o.error_message ?? "—"}</td>
+                <td className="p-3">
+                  {o.status === "falha" && o.endpoint_code && (
+                    <Button size="sm" variant="outline" disabled={retry.isPending}
+                      onClick={() => retry.mutate(o.id)}>
+                      <RefreshCw className="h-3 w-3 mr-1" />Reprocessar
+                    </Button>
+                  )}
+                </td>
               </tr>
             ))}
             {(!data || data.length === 0) && (
-              <tr><td colSpan={5} className="p-8 text-center text-muted-foreground text-sm">Nenhuma operação registrada</td></tr>
+              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground text-sm">Nenhuma operação registrada</td></tr>
             )}
           </tbody>
         </table>
@@ -334,6 +354,7 @@ function OperationsTab({ workspaceId }: { workspaceId: string }) {
     </Card>
   );
 }
+
 function OpStatus({ status }: { status: string }) {
   const map: Record<string, string> = {
     pendente: "bg-amber-500/20 text-amber-300",
