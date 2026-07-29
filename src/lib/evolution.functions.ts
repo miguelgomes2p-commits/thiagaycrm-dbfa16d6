@@ -299,7 +299,7 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
       .from("whatsapp_numbers")
-      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name")
+      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name, webhook_verify_token")
       .eq("id", data.id)
       .single();
     if (error || !num) throw new Error("Número não encontrado");
@@ -309,7 +309,7 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
     const webhookUrl = `${data.webhookOrigin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${data.id}`;
     try {
       const { evolutionSetWebhook } = await import("@/lib/evolution.server");
-      await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl);
+      await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl, num.webhook_verify_token);
       return { ok: true, webhookUrl };
     } catch (e) {
       await logEvolutionError({
