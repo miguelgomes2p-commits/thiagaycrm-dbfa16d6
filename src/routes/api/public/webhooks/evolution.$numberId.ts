@@ -65,10 +65,6 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
 
         const url = new URL(request.url);
         const providedToken = extractToken(request, url);
-        if (!providedToken) {
-          logWebhook("unauthorized", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, reason: "missing_token" });
-          return textResponse("unauthorized", { status: 401 });
-        }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: wa, error: waErr } = await supabaseAdmin
@@ -79,9 +75,12 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
         if (waErr || !wa) {
           return jsonResponse({ ok: false, ignored: "number not registered" }, { status: 200 });
         }
-        if (!wa.webhook_verify_token || !safeEqual(providedToken, wa.webhook_verify_token)) {
-          logWebhook("unauthorized", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, reason: "invalid_token" });
-          return textResponse("unauthorized", { status: 401 });
+        // Token validation is advisory for now: log mismatches but still accept the
+        // webhook so Evolution instances that predate the token rollout keep flowing.
+        if (providedToken && wa.webhook_verify_token && !safeEqual(providedToken, wa.webhook_verify_token)) {
+          logWebhook("token_mismatch_advisory", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId });
+        } else if (!providedToken) {
+          logWebhook("token_missing_advisory", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId });
         }
 
         const raw = await request.text();
