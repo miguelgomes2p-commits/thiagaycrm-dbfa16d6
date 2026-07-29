@@ -77,9 +77,9 @@ async function handler() {
       });
       const newCount = run.runs_count + 1;
       const isDone = automation.max_runs != null && newCount >= automation.max_runs;
-      const nextAt = isDone
-        ? run.next_run_at // ignored when completed
-        : new Date(Date.now() + (automation.interval_seconds ?? 3600) * 1000).toISOString();
+      const nextAt = new Date(
+        Date.now() + (automation.interval_seconds ?? 3600) * 1000,
+      ).toISOString();
 
       if (!res.ok) {
         // Non-fatal: still consume the slot so we don't hammer, but log reason.
