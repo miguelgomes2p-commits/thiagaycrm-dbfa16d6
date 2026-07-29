@@ -212,6 +212,38 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
       if (state === "open") {
         const webhookOrigin = "https://thiagaycrm.lovable.app";
         const webhookUrl = `${webhookOrigin}/api/public/webhooks/evolution/${data.id}`;
+        try {
+          const { evolutionFetchInstance } = await import("@/lib/evolution.server");
+          const info = await evolutionFetchInstance(num.provider_base_url, num.provider_api_key, num.instance_name);
+          const arr = Array.isArray(info) ? info : [info];
+          const first = (arr[0] ?? {}) as Record<string, unknown>;
+          const inst = ((first.instance ?? first) as Record<string, unknown>) ?? {};
+          const ownerJid =
+            (inst.owner as string | undefined) ??
+            (inst.ownerJid as string | undefined) ??
+            (first.ownerJid as string | undefined) ??
+            null;
+          const profileName =
+            (inst.profileName as string | undefined) ??
+            (first.profileName as string | undefined) ??
+            (inst.pushName as string | undefined) ??
+            null;
+          if (ownerJid || profileName) {
+            await supabaseAdmin
+              .from("whatsapp_numbers")
+              .update({ wa_owner_jid: ownerJid, wa_profile_name: profileName })
+              .eq("id", data.id);
+          }
+        } catch (fetchErr) {
+          await logEvolutionError({
+            workspaceId: num.workspace_id,
+            whatsappNumberId: data.id,
+            operation: "checkStatus.fetchInstance",
+            baseUrl: num.provider_base_url,
+            instanceName: num.instance_name,
+            error: fetchErr,
+          });
+        }
         await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl).catch((webhookError) =>
           logEvolutionError({
             workspaceId: num.workspace_id,
