@@ -133,6 +133,17 @@ function PipelinePage() {
     setOpen(false);
   }
 
+  async function deleteLead(leadId: string) {
+    if (!ws) return;
+    if (!confirm("Excluir este lead permanentemente? Esta ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("leads").delete().eq("id", leadId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Lead excluído");
+    setInfoLead(null);
+    qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
+    qc.invalidateQueries({ queryKey: ["dashboard", ws.id] });
+  }
+
   return (
     <div className="p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
