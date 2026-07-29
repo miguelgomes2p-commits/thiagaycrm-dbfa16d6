@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, MessageSquare, Sparkles, Zap, LayoutGrid, ShieldCheck, Bot } from "lucide-react";
+import { ArrowRight, ArrowDown, LayoutGrid, MessageSquare, Bot, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
@@ -10,89 +10,167 @@ function Landing() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
-      <header className="sticky top-0 z-40 backdrop-blur-lg bg-background/70 border-b border-border">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg overflow-hidden border border-border">
+            <div className="h-9 w-9 rounded-md overflow-hidden border border-border">
               <img src="/lupus-logo.jpeg" alt="Lupus" className="h-full w-full object-cover" />
             </div>
             <span className="font-semibold tracking-tight">Lupus CRM</span>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#recursos" className="hover:text-foreground">Recursos</a>
-            <a href="#ia" className="hover:text-foreground">IA</a>
-            <a href="#precos" className="hover:text-foreground">Preços</a>
+            <a href="#cta" className="hover:text-foreground">Começar</a>
           </nav>
           <div className="flex items-center gap-2">
             <Link to="/auth">
               <Button variant="ghost" size="sm">Entrar</Button>
             </Link>
             <Link to="/auth">
-              <Button size="sm" className="gradient-brand text-primary-foreground border-0">Começar grátis</Button>
+              <Button size="sm">Começar grátis</Button>
             </Link>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-primary/20 blur-[120px]" />
-        </div>
-        <div className="mx-auto max-w-7xl px-6 py-24 md:py-32 text-center">
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05]">
-            Toda venda começa <br />
-            com uma <span className="text-gradient-brand">conversa.</span>
-          </h1>
-          <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Pipeline visual, inbox omnichannel e assistente de IA em uma única tela.
-            Automatize follow-ups, resuma conversas e feche mais negócios.
-          </p>
-          <div className="mt-10 flex items-center justify-center gap-3">
-            <Link to="/auth">
-              <Button size="lg" className="gradient-brand text-primary-foreground border-0 h-12 px-6">
-                Começar grátis <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Button size="lg" variant="outline" className="h-12 px-6">Ver demo</Button>
+      <section className="mx-auto max-w-7xl px-6 py-16 md:py-24">
+        <div className="grid gap-12 md:grid-cols-2 md:items-center">
+          {/* Left */}
+          <div className="animate-fade-in-up">
+            <span
+              className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+              style={{ backgroundColor: "#FCEBEB", color: "#991B1B" }}
+            >
+              Feito para revenda de veículos
+            </span>
+            <h1 className="mt-5 text-4xl md:text-5xl font-medium tracking-tight leading-[1.1]">
+              Da mensagem no WhatsApp à nota fiscal emitida.
+            </h1>
+            <p className="mt-5 text-base text-muted-foreground max-w-lg">
+              Sem trocar de tela: a conversa vira lead, o lead vira negociação e a
+              venda do veículo já sai com NF-e e RENAVAM.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link to="/auth">
+                <Button size="lg" className="h-11 px-5">
+                  Começar grátis <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <a href="#recursos">
+                <Button size="lg" variant="outline" className="h-11 px-5">
+                  Ver como funciona
+                </Button>
+              </a>
+            </div>
+          </div>
+
+          {/* Right — conversation-to-lead card */}
+          <div className="animate-fade-in-up">
+            <div
+              className="rounded-lg border border-border bg-card p-4"
+              style={{ boxShadow: "var(--shadow-card)" }}
+            >
+              {/* WhatsApp bubble */}
+              <div className="flex justify-end">
+                <div
+                  className="max-w-[80%] rounded-lg rounded-tr-sm px-3 py-2 text-sm"
+                  style={{ backgroundColor: "#DCF8C6", color: "#111827" }}
+                >
+                  Tem o Corolla 2022 ainda disponível?
+                  <div className="mt-1 text-[10px] text-right opacity-60">14:32</div>
+                </div>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex justify-center py-3">
+                <ArrowDown className="h-4 w-4 text-muted-foreground" />
+              </div>
+
+              {/* Lead card */}
+              <div className="rounded-md border border-border bg-muted p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Novo lead</div>
+                    <div className="mt-0.5 font-medium text-sm">Corolla XEi 2022</div>
+                  </div>
+                  <span
+                    className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
+                    style={{ backgroundColor: "#FCEBEB", color: "#991B1B" }}
+                  >
+                    Quente
+                  </span>
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Atribuído a Miguel · Etapa: Qualificado
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="recursos" className="mx-auto max-w-7xl px-6 py-20">
-        <h2 className="text-3xl md:text-4xl font-bold text-center tracking-tight">Tudo em um só lugar</h2>
-        <p className="mt-4 text-center text-muted-foreground max-w-2xl mx-auto">
-          Contatos, pipeline, conversas e IA. Sem alternar entre 10 abas.
-        </p>
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
+      {/* Recursos */}
+      <section id="recursos" className="mx-auto max-w-7xl px-6 py-20 border-t border-border">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl md:text-3xl font-medium tracking-tight">
+            Quatro módulos, um fluxo só
+          </h2>
+          <p className="mt-3 text-muted-foreground">
+            Do primeiro contato à venda registrada no RENAVE, sem sair do CRM.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-4 md:grid-cols-2">
           {[
-            { icon: LayoutGrid, title: "Pipeline Kanban", desc: "Arraste cartões entre etapas, veja valor e prioridade em segundos." },
-            { icon: MessageSquare, title: "Inbox omnichannel", desc: "WhatsApp, Instagram, Email e mais em uma caixa unificada." },
-            { icon: Bot, title: "IA integrada", desc: "Assistente que responde, resume, qualifica leads e gera propostas." },
-            { icon: Zap, title: "Automações visuais", desc: "Construtor no estilo n8n para orquestrar seu fluxo de vendas." },
-            { icon: ShieldCheck, title: "Multi-tenant seguro", desc: "Cada empresa isolada por RLS. Pronto para milhares de usuários." },
-            { icon: Sparkles, title: "Design moderno", desc: "Interface responsiva, dark mode, atalhos e comando global." },
+            {
+              icon: LayoutGrid,
+              title: "Pipeline Kanban",
+              desc: "Arraste leads entre etapas, defina responsáveis e acompanhe cada negociação em uma tela só.",
+            },
+            {
+              icon: MessageSquare,
+              title: "Inbox de WhatsApp unificada",
+              desc: "Todas as conversas dos números conectados em uma caixa, com etiquetas, atribuição e histórico por contato.",
+            },
+            {
+              icon: Bot,
+              title: "Assistente de IA",
+              desc: "Resume a conversa, sugere a próxima resposta e ajuda a qualificar o lead direto no chat.",
+            },
+            {
+              icon: FileText,
+              title: "NF-e + RENAVE",
+              desc: "Emite nota fiscal de entrada e saída do veículo e envia o registro para o RENAVAM automaticamente.",
+            },
           ].map((f) => (
-            <div key={f.title} className="card-elevated p-6 hover:border-primary/40 transition-colors group">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <f.icon className="h-5 w-5 text-primary" />
+            <div
+              key={f.title}
+              className="rounded-lg border border-border bg-card p-6"
+              style={{ boxShadow: "var(--shadow-card)" }}
+            >
+              <div className="flex items-center justify-center h-9 w-9 rounded-md border border-border bg-background">
+                <f.icon className="h-4 w-4 text-primary" />
               </div>
-              <h3 className="font-semibold">{f.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{f.desc}</p>
+              <h3 className="mt-4 font-medium">{f.title}</h3>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section id="precos" className="mx-auto max-w-4xl px-6 py-24 text-center">
-        <div className="card-elevated p-12 relative overflow-hidden">
-          <div className="absolute inset-0 -z-10 opacity-30 gradient-brand" />
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Pronto para vender mais?</h2>
+      <section id="cta" className="mx-auto max-w-4xl px-6 py-20">
+        <div
+          className="rounded-lg border border-border bg-card p-10 md:p-12 text-center"
+          style={{ boxShadow: "var(--shadow-card)" }}
+        >
+          <h2 className="text-2xl md:text-3xl font-medium tracking-tight">
+            Pronto para vender mais?
+          </h2>
           <p className="mt-3 text-muted-foreground">Crie sua conta em 30 segundos.</p>
-          <Link to="/auth" className="inline-block mt-8">
-            <Button size="lg" className="gradient-brand text-primary-foreground border-0 h-12 px-8">
+          <Link to="/auth" className="inline-block mt-7">
+            <Button size="lg" className="h-11 px-6">
               Começar agora <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
