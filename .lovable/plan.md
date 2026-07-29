@@ -1,68 +1,94 @@
 ## Objetivo
 
-Ligar a integração RENAVE/SERPRO de verdade: hoje só existem tabelas + UI. Depois deste plano, os botões de operação disparam chamadas reais à API oficial, com autenticação por certificado do cliente, e a fila reprocessa falhas automaticamente.
+Antes de disparar as chamadas do RENAVE v2 (grupo Estabelecimento), o CRM precisa emitir a NF-e modelo 55 (entrada de compra e saída de venda) automaticamente e amarrar a chave da NF-e nas operações RENAVE de entrada e saída.
 
 ## Escopo
 
-### 1. Armazenamento seguro do certificado `.p12`
-- Novo bucket privado `renave-certs` (Storage) para guardar `pfx` por workspace.
-- Ajustar `renave_config` para referenciar `cert_path` + guardar `cert_password_encrypted` (via `pgsodium` se disponível, caso contrário coluna cifrada no servidor).
-- Upload/rotação feita só por `owner/admin` do workspace.
+### 1. Config do emissor (Focus NFe) por workspace
+Nova tabela `nfe_config`:
+- `provider` (fixo `focus_nfe`), `environment` (`homologacao`/`producao`)
+- `token_homolog_enc`, `token_prod_enc` (cifrados via `RENAVE_ENC_KEY` reaproveitando `encryptSecret`)
+- `cnpj_emitente`, `ie_emitente`, `regime_tributario` (1/2/3), `serie_padrao`, `proxima_numeracao` (opcional; Focus controla)
+- `cfop_entrada_padrao` (ex.: 1102/2102), `cfop_saida_padrao` (5102/6102)
+- `natureza_operacao_entrada`, `natureza_operacao_saida`
+- Endereço do emitente (logradouro, número, bairro, CEP, município, IBGE, UF)
 
-### 2. Executor HTTP com mTLS + OAuth (`src/lib/renave.functions.ts`)
-- `getRenaveToken(workspaceId)` — obtém `access_token` no endpoint OAuth do cliente, com cache em `renave_config.oauth_token_cache` (expiração).
-- `renaveCall(workspaceId, endpointCode, { path, query, body })`:
-  1. Busca o endpoint em `renave_endpoints` e config do workspace.
-  2. Baixa o `.p12` do Storage + senha decifrada.
-  3. Monta `https.Agent({ pfx, passphrase })` e faz a requisição usando `undici` (nativo em Node).
-  4. Persiste request/response em `renave_http_logs` e atualiza `renave_operations`.
-- Runtime: server function (Node) — validar em runtime; se o worker Cloudflare não suportar `pfx`, colocamos o executor num handler dedicado e desabilitamos o botão com mensagem clara pedindo self-host/Node.
+UI: nova aba **"NF-e"** dentro de `app.renave.tsx` (ou aba própria em `app.settings.tsx`) para preencher esses campos + botão "Testar credencial" (chama `GET /v2/empresas` no Focus).
 
-### 3. Worker da fila
-- Server route pública `/api/public/hooks/drain-renave-queue` que:
-  - Puxa `renave_queue` com `status='pending' AND next_run_at <= now()`.
-  - Processa em lotes, com retry exponencial e limite de tentativas.
-  - Marca operação como `sucesso`/`falha` e atualiza status do veículo.
-- Job `pg_cron` a cada 30s chamando essa rota via `pg_net`.
+### 2. Backend de emissão
 
-### 4. Ligar os botões da UI (`app.renave.tsx`)
-- Ao registrar entrada/saída/consulta:
-  1. Cria `renave_operation` (`pendente`).
-  2. Enfileira em `renave_queue`.
-  3. Dispara execução imediata (chama o executor direto para feedback instantâneo).
-- Reprocessar operação com falha (botão "Reexecutar").
-- Ver detalhes de log HTTP por operação (drawer com request/response e status).
+**`src/lib/nfe.server.ts`** (server-only)
+- `focusRequest(env, token, path, init)` — wrapper `fetch` com base `https://api.focusnfe.com.br` (prod) ou `https://homologacao.focusnfe.com.br` (homolog).
+- `buildNfeEntradaPayload(config, veiculo, fornecedor, itemFiscal)` — monta JSON de NF-e de entrada (finalidade 1, natureza compra, CFOP entrada, item = veículo com chassi/renavam/valor).
+- `buildNfeSaidaPayload(config, veiculo, comprador, itemFiscal)` — NF-e de saída (CFOP saída, destinatário = comprador PF/PJ).
 
-### 5. Configuração por cliente (o que sobra pro admin)
-- Upload do `.p12` + senha.
-- URL base do SERPRO (default preenchido) + URL do OAuth token + `client_id`/`client_secret`.
-- CNPJ do estabelecimento, `idEstoque` padrão.
-- Toggle "modo homologação × produção".
+**`src/lib/nfe.functions.ts`** (server functions com `requireSupabaseAuth`)
+- `setNfeConfig({ workspaceId, ...campos })`
+- `testNfeConnection({ workspaceId })`
+- `emitNfeEntrada({ workspaceId, vehicleId, fornecedor, valor, ... })`:
+  1. Gera `ref` único (`entrada-{vehicleId}-{timestamp}`).
+  2. `POST /v2/nfe?ref=...` com payload.
+  3. Salva linha em `nfe_documents` (`status=processando`, `ref`, `direction=entrada`, `vehicle_id`).
+  4. Faz polling curto (até 3 tentativas com backoff) em `GET /v2/nfe/{ref}` — se autorizada, atualiza `chave`, `numero`, `serie`, `xml_url`, `pdf_url`, `status=autorizado`; senão fica `processando` e o worker retoma.
+- `emitNfeSaida(...)` — mesmo padrão.
+- `pollNfeStatus({ ref })` — reconsulta.
+
+**Webhook Focus NFe:** `src/routes/api/public/webhooks/focus-nfe.ts`
+- Focus envia POST com `ref` + status quando processa. Valida token por query (`?token=...` = `FOCUS_NFE_WEBHOOK_TOKEN`) e atualiza `nfe_documents`. Quando `status='autorizado'` e a nota é de **entrada** vinculada a um veículo, enfileira automaticamente a operação RENAVE de entrada (`registrar_entrada`) na `renave_queue` com a chave.
+
+### 3. Tabelas novas
+
+- `nfe_config` (1:1 por workspace) + GRANTs + RLS (`has_workspace_role(_, _, ARRAY['owner','admin'])`).
+- `nfe_documents`: `id`, `workspace_id`, `vehicle_id`, `direction` (`entrada`/`saida`), `ref`, `focus_status`, `chave` (44 dígitos), `numero`, `serie`, `xml_url`, `pdf_url`, `error_message`, `payload_request` jsonb, `payload_response` jsonb, timestamps. Índices por `workspace_id`, `vehicle_id`, `chave`.
+- `renave_vehicles`: adicionar `nfe_entrada_chave`, `nfe_saida_chave` (FK lógica pra `nfe_documents.chave`) — a chave é o que o RENAVE consome.
+
+### 4. Integração com RENAVE v2 (grupo Estabelecimento)
+
+O Swagger indicado (`renave-ws/v2/api-docs?group=Estabelecimento`) exige chave da NF-e nos endpoints de entrada/saída. Ajustes:
+- Atualizar seed `renave_seed_endpoints` para os endpoints v2 do grupo Estabelecimento (registrar entrada, registrar saída, consultar entrada, consultar saída, cancelar, consulta ATPV/CRLVe, download termos/PDFs).
+- Base URL padrão: `https://renave.estaleiro.serpro.gov.br/renave-ws/v2` (homolog vira `homologacao.estaleiro.serpro.gov.br` — campo em `renave_config`).
+- `executeRenaveEndpoint` para endpoint `registrar_entrada_v2` passa a exigir `nfe_entrada_chave` do veículo no `body`. Se ausente, tenta emitir NF-e antes (auto-emit opcional por config) ou falha com mensagem clara.
+
+### 5. UI (`app.renave.tsx`)
+
+- Aba **NF-e**: configuração do Focus NFe + tabela de documentos emitidos com status, botões "Ver XML" / "Ver PDF" / "Reemitir".
+- Estoque → ação **"Registrar entrada"** vira wizard 2 passos:
+  1. Emite NF-e de entrada (form com fornecedor, valor, CFOP override).
+  2. Ao ficar `autorizado`, botão "Enviar ao RENAVE" chama `executeRenaveEndpoint('registrar_entrada_v2')` com a chave.
+- Ação **"Registrar saída"**: mesmo fluxo com dados do comprador.
+- Drawer do veículo mostra as duas chaves (entrada/saída) + links XML/PDF.
+
+### 6. Secrets
+
+- `FOCUS_NFE_WEBHOOK_TOKEN` (gerado, entra na URL do webhook que você cadastra no painel do Focus NFe: `https://<seu-dominio>/api/public/webhooks/focus-nfe?token=...`).
+- Token do Focus **não** vira secret — vai cifrado em `nfe_config` por workspace (multi-tenant).
 
 ## Detalhes técnicos
 
-- Cloudflare Workers/`workerd` tem suporte limitado a `tls`/`pfx`. Se falhar em produção, exponho um endpoint interno em Node (mesma stack, forçando runtime Node) ou instruo a rodar o executor num serviço externo (n8n) chamando `renaveCall` via HTTP interno. Isso será validado no primeiro request e reportado com mensagem clara na UI.
-- `pgsodium` é a preferência para senha do `.p12`; se não estiver disponível no projeto, uso cifra AES-GCM com chave em `SUPABASE_SERVICE_ROLE_KEY`-derivada (persistida em coluna `bytea`).
-- Todos os `createServerFn` protegidos usam `requireSupabaseAuth` + checagem `has_workspace_role(_, _, ARRAY['owner','admin'])` antes de operar.
-- Rota `/api/public/hooks/drain-renave-queue` autentica por header `x-renave-cron-secret` (nova secret) para evitar disparo externo.
+- Focus NFe usa Basic Auth com token como usuário; senha vazia. `Authorization: Basic base64(token:)`.
+- Homologação: XML/PDF são de teste, sem valor fiscal — perfeito pra validar o fluxo antes de produção.
+- Retry: `nfe_documents.focus_status='processando'` é reconsultado pelo webhook (push) e por um botão manual "Atualizar status"; não precisa de cron dedicado.
+- Cadastro de destinatário/fornecedor: se PF, usar `cpf`; se PJ, `cnpj` + `inscricao_estadual`. Guardar em campo jsonb no `nfe_documents.payload_request` pra rastreio.
+- Item da NF-e (veículo): NCM `8703` (automóveis), unidade `UN`, quantidade 1, `chassi` e `renavam` em `informacoes_adicionais_item` (RENAVE lê essa amarração pela chave da NF-e).
 
 ## Fora do escopo agora
 
-- Front específico para cada tipo de operação (ex.: wizard de entrada com validação de NF). Botões usarão formulário genérico + JSON template do endpoint.
-- Webhook de callback do SERPRO (a API é síncrona nos endpoints atuais).
-- Emissão de PDFs adicionais além dos que a API retorna.
+- NFC-e / NFS-e.
+- Cancelamento/carta de correção via UI (dá pra chamar Focus manual; adicionamos depois se precisar).
+- Cálculo tributário complexo (ICMS ST, IPI, PIS/COFINS variável) — usa alíquotas padrão configuráveis; ajuste fino fica pro contador.
+- Impressão DANFE customizada — usamos o PDF do Focus.
 
 ## Entregáveis
 
-1. Migration: bucket `renave-certs`, coluna `cert_path`/`cert_password_enc` em `renave_config`, coluna `oauth_token_cache` (jsonb), grants, políticas.
-2. `src/lib/renave.server.ts` (helpers: fetch mTLS, decrypt, storage).
-3. `src/lib/renave.functions.ts` (`getRenaveToken`, `renaveCall`, `enqueueRenaveOperation`, `retryRenaveOperation`).
-4. `src/routes/api/public/hooks/drain-renave-queue.ts` + `pg_cron` a cada 30s.
-5. Atualização em `app.renave.tsx`: upload de certificado, ações que executam de verdade, drawer de logs, botão "Reexecutar".
-6. Secret nova: `RENAVE_CRON_SECRET`.
+1. Migration: `nfe_config`, `nfe_documents`, colunas em `renave_vehicles`, GRANTs/RLS, seed dos endpoints v2 Estabelecimento.
+2. `src/lib/nfe.server.ts` + `src/lib/nfe.functions.ts`.
+3. `src/routes/api/public/webhooks/focus-nfe.ts` (com validação de token e auto-enqueue RENAVE).
+4. Atualização em `renave.server.ts` / `renave.functions.ts` para consumir chave da NF-e nos endpoints v2.
+5. UI: aba NF-e + wizard de entrada/saída em `app.renave.tsx`.
+6. Secret `FOCUS_NFE_WEBHOOK_TOKEN`.
 
 ## Riscos
 
-- **Runtime sem mTLS:** primeiro request pode falhar; se acontecer, retorno com plano B (executor externo) no mesmo dia.
-- **Homologação SERPRO:** cada cliente precisa ter `.p12` válido e conta habilitada — sem isso, nada roda. Isso é config, não código.
-- **Rate limit SERPRO:** a fila cobre isso com backoff.
+- **Homologação Focus NFe:** você precisa ter uma empresa cadastrada em homologação no painel do Focus com o mesmo CNPJ configurado. Sem isso, `POST /v2/nfe` retorna 404.
+- **RENAVE v2 x v1:** o seed atual pode estar em v1; a troca para v2 pode quebrar endpoints já cadastrados — vou renomear/migrar preservando `renave_operations` antigas.
+- **Certificado A1 no Focus:** o Focus assina com o certificado que **você sobe no painel dele**, não o `.p12` do RENAVE. São dois certificados distintos (podem ser o mesmo A1, mas cadastrados em lugares diferentes).
