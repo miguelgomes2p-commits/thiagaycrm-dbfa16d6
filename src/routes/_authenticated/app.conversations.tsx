@@ -31,6 +31,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
+import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
   component: ConversationsPage,
@@ -1313,7 +1314,18 @@ function ConversationsPage() {
                         </a>
                       )}
                       {m.content && !(mediaType === "document" && m.content?.startsWith("📎")) && (
-                        <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                        <>
+                          <LinkifiedText text={m.content} />
+                          {(() => {
+                            const firstUrl = extractFirstUrl(m.content);
+                            return firstUrl ? (
+                              <LinkPreview
+                                url={firstUrl}
+                                tone={m.direction === "outbound" ? "out" : "in"}
+                              />
+                            ) : null;
+                          })()}
+                        </>
                       )}
                       <div className="mt-1 text-[10px] opacity-70 flex items-center justify-end gap-1">
                         <span>{new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
