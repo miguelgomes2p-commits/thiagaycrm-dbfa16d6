@@ -86,7 +86,7 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
       if (alreadyExists) {
         // Tenta reaproveitar a instância existente: reconecta + reconfigura webhook.
         try {
-          await evolutionSetWebhook(baseUrl, data.apiKey, data.instanceName, webhookUrl).catch(() => undefined);
+          await evolutionSetWebhook(baseUrl, data.apiKey, data.instanceName, webhookUrl, verifyToken).catch(() => undefined);
           const r = await evolutionConnect(baseUrl, data.apiKey, data.instanceName);
           const qr = r.base64 ?? null;
           await context.supabase
