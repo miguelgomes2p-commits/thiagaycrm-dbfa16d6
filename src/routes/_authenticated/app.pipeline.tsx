@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, DollarSign, User as UserIcon, Flame, Clock, Info, Zap } from "lucide-react";
+import { Plus, DollarSign, User as UserIcon, Flame, Clock, Info, Zap, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -131,6 +131,17 @@ function PipelinePage() {
     qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
     qc.invalidateQueries({ queryKey: ["dashboard", ws.id] });
     setOpen(false);
+  }
+
+  async function deleteLead(leadId: string) {
+    if (!ws) return;
+    if (!confirm("Excluir este lead permanentemente? Esta ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("leads").delete().eq("id", leadId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Lead excluído");
+    setInfoLead(null);
+    qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
+    qc.invalidateQueries({ queryKey: ["dashboard", ws.id] });
   }
 
   return (
@@ -312,6 +323,16 @@ function PipelinePage() {
                   <p className="text-xs whitespace-pre-wrap text-muted-foreground">{infoLead.notes}</p>
                 </div>
               )}
+              <div className="pt-3 border-t border-border flex justify-end">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteLead(infoLead.id)}
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" /> Excluir lead
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
