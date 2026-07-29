@@ -229,6 +229,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
             (inst.pushName as string | undefined) ??
             null;
           if (ownerJid || profileName) {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
             await supabaseAdmin
               .from("whatsapp_numbers")
               .update({ wa_owner_jid: ownerJid, wa_profile_name: profileName })
