@@ -213,8 +213,9 @@ export const executeRenaveEndpoint = createServerFn({ method: "POST" })
         ok,
         operationId: op.id as string,
         status: result.status,
-        body: JSON.parse(JSON.stringify(result.body ?? null)) as unknown,
+        body: JSON.stringify(result.body ?? null),
       };
+
 
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
