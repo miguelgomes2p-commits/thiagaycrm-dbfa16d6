@@ -745,3 +745,402 @@ function TestConnectionButton({ workspaceId }: { workspaceId: string }) {
   );
 }
 
+/* ----------------------- NF-e ----------------------- */
+type NfeConfigRow = {
+  environment: "homologacao" | "producao" | null;
+  cnpj_emitente: string | null;
+  ie_emitente: string | null;
+  regime_tributario: number | null;
+  serie_padrao: number | null;
+  cfop_entrada_padrao: string | null;
+  cfop_saida_padrao: string | null;
+  natureza_operacao_entrada: string | null;
+  natureza_operacao_saida: string | null;
+  emit_logradouro: string | null;
+  emit_numero: string | null;
+  emit_bairro: string | null;
+  emit_cep: string | null;
+  emit_municipio: string | null;
+  emit_ibge: string | null;
+  emit_uf: string | null;
+  emit_razao_social: string | null;
+  emit_nome_fantasia: string | null;
+  emit_telefone: string | null;
+  is_active: boolean | null;
+  has_token_homolog?: boolean;
+  has_token_prod?: boolean;
+};
+
+function NfeTab({ workspaceId }: { workspaceId: string }) {
+  const qc = useQueryClient();
+  const saveFn = useServerFn(setNfeConfig);
+  const testFn = useServerFn(testNfeConnection);
+
+  const { data: cfg } = useQuery({
+    queryKey: ["nfe-config", workspaceId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("nfe_config" as never)
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .maybeSingle();
+      return (data ?? null) as NfeConfigRow | null;
+    },
+  });
+
+  const { data: docs } = useQuery({
+    queryKey: ["nfe-docs", workspaceId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("nfe_documents" as never)
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return (data ?? []) as Array<{
+        id: string;
+        ref: string | null;
+        direction: string;
+        environment: string;
+        focus_status: string | null;
+        chave: string | null;
+        numero: string | null;
+        serie: string | null;
+        xml_url: string | null;
+        pdf_url: string | null;
+        error_message: string | null;
+        created_at: string;
+      }>;
+    },
+  });
+
+  const [form, setForm] = useState<Record<string, string>>({});
+  const val = (k: string) => form[k] ?? (cfg?.[k as keyof NfeConfigRow] as string | number | null)?.toString() ?? "";
+  const setVal = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const [tokenH, setTokenH] = useState("");
+  const [tokenP, setTokenP] = useState("");
+  const [env, setEnv] = useState<"homologacao" | "producao">(cfg?.environment ?? "homologacao");
+  const [active, setActive] = useState<boolean>(cfg?.is_active ?? true);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await saveFn({
+        data: {
+          workspaceId,
+          environment: env,
+          isActive: active,
+          tokenHomolog: tokenH || undefined,
+          tokenProd: tokenP || undefined,
+          cnpjEmitente: val("cnpj_emitente"),
+          ieEmitente: val("ie_emitente"),
+          regimeTributario: Number(val("regime_tributario") || 1),
+          seriePadrao: Number(val("serie_padrao") || 1),
+          cfopEntradaPadrao: val("cfop_entrada_padrao") || "1102",
+          cfopSaidaPadrao: val("cfop_saida_padrao") || "5102",
+          naturezaOperacaoEntrada: val("natureza_operacao_entrada") || "Compra para comercialização",
+          naturezaOperacaoSaida: val("natureza_operacao_saida") || "Venda de mercadoria",
+          emitLogradouro: val("emit_logradouro"),
+          emitNumero: val("emit_numero"),
+          emitBairro: val("emit_bairro"),
+          emitCep: val("emit_cep"),
+          emitMunicipio: val("emit_municipio"),
+          emitIbge: val("emit_ibge"),
+          emitUf: val("emit_uf"),
+          emitRazaoSocial: val("emit_razao_social"),
+          emitNomeFantasia: val("emit_nome_fantasia"),
+          emitTelefone: val("emit_telefone"),
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Config NF-e salva");
+      setTokenH("");
+      setTokenP("");
+      qc.invalidateQueries({ queryKey: ["nfe-config", workspaceId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const test = useMutation({
+    mutationFn: async () => testFn({ data: { workspaceId } }),
+    onSuccess: (r) => {
+      if (r.ok) toast.success(`Focus NFe respondeu ${r.status}`);
+      else toast.error(`Falhou (${r.status}): ${r.preview}`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-6">
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <Receipt className="h-5 w-5" /> Emissor de NF-e (Focus NFe)
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Emissão automática de NF-e modelo 55 (entrada/saída) integrada ao RENAVE.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={env} onValueChange={(v) => setEnv(v as "homologacao" | "producao")}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="homologacao">Homologação</SelectItem>
+                <SelectItem value="producao">Produção</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant={active ? "default" : "outline"} onClick={() => setActive(!active)}>
+              {active ? "Ativo" : "Inativo"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label>Token Focus (homologação)</Label><Input type="password" value={tokenH} onChange={(e) => setTokenH(e.target.value)} placeholder={cfg ? "•••••••• (deixe vazio p/ manter)" : ""} /></div>
+          <div><Label>Token Focus (produção)</Label><Input type="password" value={tokenP} onChange={(e) => setTokenP(e.target.value)} placeholder={cfg ? "•••••••• (deixe vazio p/ manter)" : ""} /></div>
+          <div><Label>CNPJ emitente</Label><Input value={val("cnpj_emitente")} onChange={setVal("cnpj_emitente")} /></div>
+          <div><Label>IE emitente</Label><Input value={val("ie_emitente")} onChange={setVal("ie_emitente")} /></div>
+          <div><Label>Razão social</Label><Input value={val("emit_razao_social")} onChange={setVal("emit_razao_social")} /></div>
+          <div><Label>Nome fantasia</Label><Input value={val("emit_nome_fantasia")} onChange={setVal("emit_nome_fantasia")} /></div>
+          <div><Label>Regime tributário (1=SN, 2=SN excesso, 3=Normal)</Label><Input type="number" value={val("regime_tributario")} onChange={setVal("regime_tributario")} /></div>
+          <div><Label>Série padrão</Label><Input type="number" value={val("serie_padrao")} onChange={setVal("serie_padrao")} /></div>
+          <div><Label>CFOP entrada</Label><Input value={val("cfop_entrada_padrao")} onChange={setVal("cfop_entrada_padrao")} placeholder="1102" /></div>
+          <div><Label>CFOP saída</Label><Input value={val("cfop_saida_padrao")} onChange={setVal("cfop_saida_padrao")} placeholder="5102" /></div>
+          <div className="col-span-2"><Label>Natureza da operação (entrada)</Label><Input value={val("natureza_operacao_entrada")} onChange={setVal("natureza_operacao_entrada")} /></div>
+          <div className="col-span-2"><Label>Natureza da operação (saída)</Label><Input value={val("natureza_operacao_saida")} onChange={setVal("natureza_operacao_saida")} /></div>
+          <div className="col-span-2"><Label>Logradouro</Label><Input value={val("emit_logradouro")} onChange={setVal("emit_logradouro")} /></div>
+          <div><Label>Número</Label><Input value={val("emit_numero")} onChange={setVal("emit_numero")} /></div>
+          <div><Label>Bairro</Label><Input value={val("emit_bairro")} onChange={setVal("emit_bairro")} /></div>
+          <div><Label>CEP</Label><Input value={val("emit_cep")} onChange={setVal("emit_cep")} /></div>
+          <div><Label>Município</Label><Input value={val("emit_municipio")} onChange={setVal("emit_municipio")} /></div>
+          <div><Label>Cód. IBGE município</Label><Input value={val("emit_ibge")} onChange={setVal("emit_ibge")} /></div>
+          <div><Label>UF</Label><Input value={val("emit_uf")} onChange={setVal("emit_uf")} maxLength={2} /></div>
+          <div><Label>Telefone</Label><Input value={val("emit_telefone")} onChange={setVal("emit_telefone")} /></div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={() => save.mutate()} disabled={save.isPending} className="gradient-brand text-primary-foreground border-0">
+            {save.isPending ? "Salvando…" : "Salvar"}
+          </Button>
+          <Button variant="outline" onClick={() => test.mutate()} disabled={test.isPending}>
+            <ShieldCheck className="h-4 w-4 mr-1" />
+            {test.isPending ? "Testando…" : "Testar conexão"}
+          </Button>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Webhook do Focus (opcional, recomendado): configure no painel do Focus para{" "}
+          <code>{typeof window !== "undefined" ? window.location.origin : ""}/api/public/webhooks/focus-nfe</code>{" "}
+          com header <code>x-focus-token</code> = valor da secret <code>FOCUS_NFE_WEBHOOK_TOKEN</code>.
+        </p>
+      </Card>
+
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Notas emitidas</h3>
+        <EmitNfeDialog workspaceId={workspaceId} />
+      </div>
+
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="text-left p-3">Data</th>
+                <th className="text-left p-3">Ref</th>
+                <th className="text-left p-3">Direção</th>
+                <th className="text-left p-3">Ambiente</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Nº</th>
+                <th className="text-left p-3">Chave</th>
+                <th className="text-left p-3">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(docs ?? []).map((d) => (
+                <tr key={d.id} className="border-t border-border">
+                  <td className="p-3 text-xs">{new Date(d.created_at).toLocaleString("pt-BR")}</td>
+                  <td className="p-3 font-mono text-xs">{d.ref}</td>
+                  <td className="p-3">{d.direction}</td>
+                  <td className="p-3">{d.environment}</td>
+                  <td className="p-3"><Badge variant={d.focus_status === "autorizado" ? "default" : "outline"}>{d.focus_status ?? "—"}</Badge></td>
+                  <td className="p-3">{d.numero ?? "—"}</td>
+                  <td className="p-3 font-mono text-[10px]">{d.chave ?? (d.error_message ? <span className="text-red-500">{d.error_message.slice(0, 60)}</span> : "—")}</td>
+                  <td className="p-3 flex gap-2">
+                    <NfePollButton docId={d.id} workspaceId={workspaceId} />
+                    {d.pdf_url && <a className="text-primary underline text-xs" href={d.pdf_url} target="_blank" rel="noreferrer">DANFE</a>}
+                    {d.xml_url && <a className="text-primary underline text-xs" href={d.xml_url} target="_blank" rel="noreferrer">XML</a>}
+                  </td>
+                </tr>
+              ))}
+              {(!docs || docs.length === 0) && (
+                <tr><td colSpan={8} className="p-8 text-center text-muted-foreground text-sm">Nenhuma nota emitida</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function NfePollButton({ docId, workspaceId }: { docId: string; workspaceId: string }) {
+  const qc = useQueryClient();
+  const fn = useServerFn(pollNfeStatus);
+  const m = useMutation({
+    mutationFn: async () => fn({ data: { docId } }),
+    onSuccess: (r) => {
+      toast.success(`Status: ${r.status}`);
+      qc.invalidateQueries({ queryKey: ["nfe-docs", workspaceId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <Button size="sm" variant="ghost" onClick={() => m.mutate()} disabled={m.isPending}>
+      <RefreshCw className={`h-3 w-3 ${m.isPending ? "animate-spin" : ""}`} />
+    </Button>
+  );
+}
+
+function EmitNfeDialog({ workspaceId }: { workspaceId: string }) {
+  const qc = useQueryClient();
+  const fn = useServerFn(emitNfe);
+  const [open, setOpen] = useState(false);
+  const [vehicleId, setVehicleId] = useState<string>("");
+  const [direction, setDirection] = useState<"entrada" | "saida">("entrada");
+  const [valor, setValor] = useState<string>("");
+  const [c, setC] = useState({
+    tipo: "PJ" as "PF" | "PJ",
+    nome: "", cpf: "", cnpj: "", ie: "ISENTO", email: "", telefone: "",
+    logradouro: "", numero: "", bairro: "", cep: "", municipio: "", ibge: "", uf: "",
+  });
+
+  const { data: vehicles } = useQuery({
+    queryKey: ["renave-vehicles-picker", workspaceId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("renave_vehicles")
+        .select("id, placa, chassi, marca, modelo")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      return data ?? [];
+    },
+    enabled: open,
+  });
+
+  const emit = useMutation({
+    mutationFn: async () => {
+      const contraparte = c.tipo === "PF"
+        ? { ...c, cnpj: undefined, ie: undefined }
+        : { ...c, cpf: undefined };
+      return fn({
+        data: {
+          workspaceId,
+          vehicleId,
+          direction,
+          valor: Number(valor),
+          contraparte,
+        },
+      });
+    },
+    onSuccess: (r) => {
+      toast.success(`Emissão ${r.status}${r.chave ? ` — chave ${r.chave.slice(0, 8)}…` : ""}`);
+      qc.invalidateQueries({ queryKey: ["nfe-docs", workspaceId] });
+      qc.invalidateQueries({ queryKey: ["renave-vehicles", workspaceId] });
+      setOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const setF = (k: keyof typeof c) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setC({ ...c, [k]: e.target.value });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="gradient-brand text-primary-foreground border-0">
+          <FileText className="h-4 w-4 mr-1" /> Emitir NF-e
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Emitir NF-e</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Direção</Label>
+            <Select value={direction} onValueChange={(v) => setDirection(v as "entrada" | "saida")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="entrada">Entrada (compra)</SelectItem>
+                <SelectItem value="saida">Saída (venda)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Valor total (R$)</Label>
+            <Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
+          </div>
+          <div className="col-span-2">
+            <Label>Veículo</Label>
+            <Select value={vehicleId} onValueChange={setVehicleId}>
+              <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+              <SelectContent>
+                {(vehicles ?? []).map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {[v.placa, v.chassi, v.marca, v.modelo].filter(Boolean).join(" • ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="col-span-2 border-t border-border pt-3 mt-2">
+            <p className="text-sm font-medium mb-2">
+              {direction === "entrada" ? "Fornecedor (destinatário no XML de entrada)" : "Cliente"}
+            </p>
+          </div>
+          <div>
+            <Label>Tipo</Label>
+            <Select value={c.tipo} onValueChange={(v) => setC({ ...c, tipo: v as "PF" | "PJ" })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PJ">Pessoa Jurídica</SelectItem>
+                <SelectItem value="PF">Pessoa Física</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label>Nome / Razão social</Label><Input value={c.nome} onChange={setF("nome")} /></div>
+          {c.tipo === "PJ" ? (
+            <>
+              <div><Label>CNPJ</Label><Input value={c.cnpj} onChange={setF("cnpj")} /></div>
+              <div><Label>IE</Label><Input value={c.ie} onChange={setF("ie")} /></div>
+            </>
+          ) : (
+            <div><Label>CPF</Label><Input value={c.cpf} onChange={setF("cpf")} /></div>
+          )}
+          <div><Label>Email</Label><Input value={c.email} onChange={setF("email")} /></div>
+          <div><Label>Telefone</Label><Input value={c.telefone} onChange={setF("telefone")} /></div>
+          <div className="col-span-2"><Label>Logradouro</Label><Input value={c.logradouro} onChange={setF("logradouro")} /></div>
+          <div><Label>Número</Label><Input value={c.numero} onChange={setF("numero")} /></div>
+          <div><Label>Bairro</Label><Input value={c.bairro} onChange={setF("bairro")} /></div>
+          <div><Label>CEP</Label><Input value={c.cep} onChange={setF("cep")} /></div>
+          <div><Label>Município</Label><Input value={c.municipio} onChange={setF("municipio")} /></div>
+          <div><Label>Cód. IBGE</Label><Input value={c.ibge} onChange={setF("ibge")} /></div>
+          <div><Label>UF</Label><Input value={c.uf} onChange={setF("uf")} maxLength={2} /></div>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => emit.mutate()}
+            disabled={!vehicleId || !valor || !c.nome || emit.isPending}
+            className="gradient-brand text-primary-foreground border-0"
+          >
+            {emit.isPending ? "Emitindo…" : "Emitir agora"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
