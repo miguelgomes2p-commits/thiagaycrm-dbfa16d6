@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
 import { setRenaveCredentials, testRenaveConnection, retryRenaveOperation } from "@/lib/renave.functions";
+import { setNfeConfig, testNfeConnection, emitNfe, pollNfeStatus } from "@/lib/nfe.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,7 @@ import { toast } from "sonner";
 import {
   Car, Plus, Package, ArrowDownToLine, ArrowUpFromLine, FileText,
   Settings2, PlugZap, History, RefreshCw, ShieldCheck, AlertTriangle, Upload,
+  Receipt,
 } from "lucide-react";
 
 
@@ -53,9 +55,10 @@ function RenavePage() {
         <div className="text-sm text-muted-foreground">Carregando workspace…</div>
       ) : (
         <Tabs defaultValue="dashboard" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5 max-w-3xl">
+          <TabsList className="grid w-full grid-cols-6 max-w-4xl">
             <TabsTrigger value="dashboard"><Package className="h-4 w-4 mr-1" />Dashboard</TabsTrigger>
             <TabsTrigger value="vehicles"><Car className="h-4 w-4 mr-1" />Estoque</TabsTrigger>
+            <TabsTrigger value="nfe"><Receipt className="h-4 w-4 mr-1" />NF-e</TabsTrigger>
             <TabsTrigger value="operations"><History className="h-4 w-4 mr-1" />Operações</TabsTrigger>
             <TabsTrigger value="endpoints"><PlugZap className="h-4 w-4 mr-1" />Endpoints</TabsTrigger>
             <TabsTrigger value="settings"><Settings2 className="h-4 w-4 mr-1" />Config</TabsTrigger>
@@ -63,6 +66,7 @@ function RenavePage() {
 
           <TabsContent value="dashboard"><DashboardTab workspaceId={workspaceId} /></TabsContent>
           <TabsContent value="vehicles"><VehiclesTab workspaceId={workspaceId} /></TabsContent>
+          <TabsContent value="nfe"><NfeTab workspaceId={workspaceId} /></TabsContent>
           <TabsContent value="operations"><OperationsTab workspaceId={workspaceId} /></TabsContent>
           <TabsContent value="endpoints"><EndpointsTab workspaceId={workspaceId} /></TabsContent>
           <TabsContent value="settings"><SettingsTab workspaceId={workspaceId} /></TabsContent>

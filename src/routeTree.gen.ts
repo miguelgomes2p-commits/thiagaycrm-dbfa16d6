@@ -27,6 +27,7 @@ import { Route as AuthenticatedAppConversationsRouteImport } from './routes/_aut
 import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenticated/app.contacts'
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app.admin'
+import { Route as ApiPublicWebhooksFocusNfeRouteImport } from './routes/api/public/webhooks/focus-nfe'
 import { Route as ApiPublicWebhooksEvolutionRouteImport } from './routes/api/public/webhooks/evolution'
 import { Route as ApiPublicHooksRunRecurringAutomationsRouteImport } from './routes/api/public/hooks/run-recurring-automations'
 import { Route as ApiPublicHooksDrainWebhookQueueRouteImport } from './routes/api/public/hooks/drain-webhook-queue'
@@ -128,6 +129,12 @@ const AuthenticatedAppAdminRoute = AuthenticatedAppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const ApiPublicWebhooksFocusNfeRoute =
+  ApiPublicWebhooksFocusNfeRouteImport.update({
+    id: '/api/public/webhooks/focus-nfe',
+    path: '/api/public/webhooks/focus-nfe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksEvolutionRoute =
   ApiPublicWebhooksEvolutionRouteImport.update({
     id: '/api/public/webhooks/evolution',
@@ -187,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
   '/api/public/hooks/run-recurring-automations': typeof ApiPublicHooksRunRecurringAutomationsRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
+  '/api/public/webhooks/focus-nfe': typeof ApiPublicWebhooksFocusNfeRoute
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
@@ -211,6 +219,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
   '/api/public/hooks/run-recurring-automations': typeof ApiPublicHooksRunRecurringAutomationsRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
+  '/api/public/webhooks/focus-nfe': typeof ApiPublicWebhooksFocusNfeRoute
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
@@ -238,6 +247,7 @@ export interface FileRoutesById {
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
   '/api/public/hooks/run-recurring-automations': typeof ApiPublicHooksRunRecurringAutomationsRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
+  '/api/public/webhooks/focus-nfe': typeof ApiPublicWebhooksFocusNfeRoute
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/drain-webhook-queue'
     | '/api/public/hooks/run-recurring-automations'
     | '/api/public/webhooks/evolution'
+    | '/api/public/webhooks/focus-nfe'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
   fileRoutesByTo: FileRoutesByTo
@@ -289,6 +300,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/drain-webhook-queue'
     | '/api/public/hooks/run-recurring-automations'
     | '/api/public/webhooks/evolution'
+    | '/api/public/webhooks/focus-nfe'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
   id:
@@ -315,6 +327,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/drain-webhook-queue'
     | '/api/public/hooks/run-recurring-automations'
     | '/api/public/webhooks/evolution'
+    | '/api/public/webhooks/focus-nfe'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
   fileRoutesById: FileRoutesById
@@ -329,6 +342,7 @@ export interface RootRouteChildren {
   ApiPublicHooksDrainWebhookQueueRoute: typeof ApiPublicHooksDrainWebhookQueueRoute
   ApiPublicHooksRunRecurringAutomationsRoute: typeof ApiPublicHooksRunRecurringAutomationsRoute
   ApiPublicWebhooksEvolutionRoute: typeof ApiPublicWebhooksEvolutionRouteWithChildren
+  ApiPublicWebhooksFocusNfeRoute: typeof ApiPublicWebhooksFocusNfeRoute
   ApiPublicWebhooksWhatsappNumberIdRoute: typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
 
@@ -460,6 +474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAdminRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/api/public/webhooks/focus-nfe': {
+      id: '/api/public/webhooks/focus-nfe'
+      path: '/api/public/webhooks/focus-nfe'
+      fullPath: '/api/public/webhooks/focus-nfe'
+      preLoaderRoute: typeof ApiPublicWebhooksFocusNfeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/evolution': {
       id: '/api/public/webhooks/evolution'
       path: '/api/public/webhooks/evolution'
@@ -575,6 +596,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksRunRecurringAutomationsRoute:
     ApiPublicHooksRunRecurringAutomationsRoute,
   ApiPublicWebhooksEvolutionRoute: ApiPublicWebhooksEvolutionRouteWithChildren,
+  ApiPublicWebhooksFocusNfeRoute: ApiPublicWebhooksFocusNfeRoute,
   ApiPublicWebhooksWhatsappNumberIdRoute:
     ApiPublicWebhooksWhatsappNumberIdRoute,
 }
