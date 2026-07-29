@@ -28,6 +28,7 @@ import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app.admin'
 import { Route as ApiPublicWebhooksEvolutionRouteImport } from './routes/api/public/webhooks/evolution'
+import { Route as ApiPublicHooksRunRecurringAutomationsRouteImport } from './routes/api/public/hooks/run-recurring-automations'
 import { Route as ApiPublicHooksDrainWebhookQueueRouteImport } from './routes/api/public/hooks/drain-webhook-queue'
 import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
 import { Route as ApiPublicWebhooksEvolutionNumberIdRouteImport } from './routes/api/public/webhooks/evolution.$numberId'
@@ -132,6 +133,12 @@ const ApiPublicWebhooksEvolutionRoute =
     path: '/api/public/webhooks/evolution',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRunRecurringAutomationsRoute =
+  ApiPublicHooksRunRecurringAutomationsRouteImport.update({
+    id: '/api/public/hooks/run-recurring-automations',
+    path: '/api/public/hooks/run-recurring-automations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDrainWebhookQueueRoute =
   ApiPublicHooksDrainWebhookQueueRouteImport.update({
     id: '/api/public/hooks/drain-webhook-queue',
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
+  '/api/public/hooks/run-recurring-automations': typeof ApiPublicHooksRunRecurringAutomationsRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
@@ -192,6 +200,7 @@ export interface FileRoutesByTo {
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
+  '/api/public/hooks/run-recurring-automations': typeof ApiPublicHooksRunRecurringAutomationsRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
@@ -217,6 +226,7 @@ export interface FileRoutesById {
   '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
+  '/api/public/hooks/run-recurring-automations': typeof ApiPublicHooksRunRecurringAutomationsRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/api/public/health'
     | '/app/'
     | '/api/public/hooks/drain-webhook-queue'
+    | '/api/public/hooks/run-recurring-automations'
     | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/public/health'
     | '/app'
     | '/api/public/hooks/drain-webhook-queue'
+    | '/api/public/hooks/run-recurring-automations'
     | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
@@ -288,6 +300,7 @@ export interface FileRouteTypes {
     | '/api/public/health'
     | '/_authenticated/app/'
     | '/api/public/hooks/drain-webhook-queue'
+    | '/api/public/hooks/run-recurring-automations'
     | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
@@ -300,6 +313,7 @@ export interface RootRouteChildren {
   ApiAiChatRoute: typeof ApiAiChatRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicHooksDrainWebhookQueueRoute: typeof ApiPublicHooksDrainWebhookQueueRoute
+  ApiPublicHooksRunRecurringAutomationsRoute: typeof ApiPublicHooksRunRecurringAutomationsRoute
   ApiPublicWebhooksEvolutionRoute: typeof ApiPublicWebhooksEvolutionRouteWithChildren
   ApiPublicWebhooksWhatsappNumberIdRoute: typeof ApiPublicWebhooksWhatsappNumberIdRoute
 }
@@ -439,6 +453,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksEvolutionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/run-recurring-automations': {
+      id: '/api/public/hooks/run-recurring-automations'
+      path: '/api/public/hooks/run-recurring-automations'
+      fullPath: '/api/public/hooks/run-recurring-automations'
+      preLoaderRoute: typeof ApiPublicHooksRunRecurringAutomationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/drain-webhook-queue': {
       id: '/api/public/hooks/drain-webhook-queue'
       path: '/api/public/hooks/drain-webhook-queue'
@@ -529,6 +550,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAiChatRoute: ApiAiChatRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicHooksDrainWebhookQueueRoute: ApiPublicHooksDrainWebhookQueueRoute,
+  ApiPublicHooksRunRecurringAutomationsRoute:
+    ApiPublicHooksRunRecurringAutomationsRoute,
   ApiPublicWebhooksEvolutionRoute: ApiPublicWebhooksEvolutionRouteWithChildren,
   ApiPublicWebhooksWhatsappNumberIdRoute:
     ApiPublicWebhooksWhatsappNumberIdRoute,

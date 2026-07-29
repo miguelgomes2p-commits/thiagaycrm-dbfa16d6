@@ -8,7 +8,9 @@ export const listStageAutomations = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("stage_automations")
-      .select("id, stage_id, workspace_id, name, action_type, message, delay_seconds, active, created_at")
+      .select(
+        "id, stage_id, workspace_id, name, action_type, message, delay_seconds, active, trigger_type, interval_seconds, max_runs, created_at",
+      )
       .eq("stage_id", data.stageId)
       .order("created_at");
     if (error) throw new Error(error.message);
@@ -27,6 +29,14 @@ export const upsertStageAutomation = createServerFn({ method: "POST" })
       message: z.string().min(1).max(4096),
       delaySeconds: z.number().int().min(0).max(86400 * 7).default(0),
       active: z.boolean().default(true),
+      triggerType: z.enum(["stage_enter", "recurring"]).default("stage_enter"),
+      intervalSeconds: z.number().int().min(60).max(86400 * 60).optional().nullable(),
+      maxRuns: z.number().int().min(1).max(100).optional().nullable(),
+    }).superRefine((v, ctx) => {
+      if (v.triggerType === "recurring") {
+        if (!v.intervalSeconds) ctx.addIssue({ code: "custom", message: "Intervalo obrigatório para follow-up recorrente", path: ["intervalSeconds"] });
+        if (!v.maxRuns) ctx.addIssue({ code: "custom", message: "Limite de envios obrigatório", path: ["maxRuns"] });
+      }
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -38,6 +48,9 @@ export const upsertStageAutomation = createServerFn({ method: "POST" })
       message: data.message,
       delay_seconds: data.delaySeconds,
       active: data.active,
+      trigger_type: data.triggerType,
+      interval_seconds: data.triggerType === "recurring" ? data.intervalSeconds! : null,
+      max_runs: data.triggerType === "recurring" ? data.maxRuns! : null,
     };
     if (data.id) {
       const { data: row, error } = await context.supabase
@@ -67,13 +80,6 @@ export const deleteStageAutomation = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-function renderTemplate(tpl: string, vars: Record<string, string | number | null | undefined>) {
-  return tpl.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key) => {
-    const v = vars[key];
-    return v === null || v === undefined ? "" : String(v);
-  });
-}
-
 export const runStageAutomations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -82,107 +88,50 @@ export const runStageAutomations = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: automations, error: aerr } = await context.supabase
       .from("stage_automations")
-      .select("id, workspace_id, action_type, message, delay_seconds, active")
+      .select("id, workspace_id, action_type, message, active, trigger_type, interval_seconds, max_runs")
       .eq("stage_id", data.stageId)
       .eq("active", true);
     if (aerr) throw new Error(aerr.message);
-    if (!automations || automations.length === 0) return { ran: 0, skipped: 0 };
-
-    const { data: lead, error: lerr } = await context.supabase
-      .from("leads")
-      .select("id, title, value, contact_id, workspace_id, owner_id")
-      .eq("id", data.leadId)
-      .single();
-    if (lerr || !lead) throw new Error("Lead não encontrado");
-    if (!lead.contact_id) return { ran: 0, skipped: automations.length, reason: "no_contact" };
+    if (!automations || automations.length === 0) return { ran: 0, skipped: 0, scheduled: 0 };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: contact } = await supabaseAdmin
-      .from("contacts")
-      .select("id, name, phone")
-      .eq("id", lead.contact_id)
-      .single();
-    if (!contact?.phone) return { ran: 0, skipped: automations.length, reason: "no_phone" };
-
-    // Business rule: automations are always sent from the workspace's AI number
-    // (the single WhatsApp number that has n8n active). Fallback: none.
-    const { data: aiNumbers } = await supabaseAdmin
-      .from("whatsapp_numbers")
-      .select("id, workspace_id")
-      .eq("workspace_id", lead.workspace_id)
-      .eq("is_active", true)
-      .not("n8n_webhook_url", "is", null)
-      .order("created_at", { ascending: true })
-      .limit(1);
-    const aiNumber = aiNumbers?.[0];
-    if (!aiNumber) {
-      return { ran: 0, skipped: automations.length, reason: "no_ai_number" };
-    }
-
-    // Normalize wa_contact_wa_id from phone (digits only, no +).
-    const waId = String(contact.phone).replace(/\D+/g, "");
-    if (!waId) return { ran: 0, skipped: automations.length, reason: "invalid_phone" };
-
-    // Find or create the conversation on the AI number for this contact.
-    let convId: string | null = null;
-    const { data: existingConv } = await supabaseAdmin
-      .from("conversations")
-      .select("id")
-      .eq("workspace_id", lead.workspace_id)
-      .eq("whatsapp_number_id", aiNumber.id)
-      .eq("wa_contact_wa_id", waId)
-      .maybeSingle();
-    if (existingConv) {
-      convId = existingConv.id;
-    } else {
-      const { data: createdConv, error: convErr } = await supabaseAdmin
-        .from("conversations")
-        .insert({
-          workspace_id: lead.workspace_id,
-          contact_id: contact.id,
-          channel: "whatsapp",
-          status: "open",
-          whatsapp_number_id: aiNumber.id,
-          wa_contact_wa_id: waId,
-        })
-        .select("id")
-        .single();
-      if (convErr || !createdConv) {
-        return { ran: 0, skipped: automations.length, reason: "conversation_create_failed" };
-      }
-      convId = createdConv.id;
-    }
-
-    const { sendWhatsappMessageInternal } = await import("@/lib/automations.server");
+    const { dispatchStageAutomation } = await import("@/lib/automations.server");
 
     let ran = 0;
     let skipped = 0;
-    const vars = {
-      "contact.name": contact.name ?? "",
-      "contact.phone": contact.phone ?? "",
-      "lead.title": lead.title ?? "",
-      "lead.value": lead.value ? Number(lead.value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "",
-    };
+    let scheduled = 0;
 
     for (const a of automations) {
-      if (a.action_type !== "send_whatsapp" || !a.message) { skipped++; continue; }
-      const body = renderTemplate(a.message, vars);
-      if (!body.trim()) { skipped++; continue; }
-      try {
-        // Note: delay_seconds is not honored in this MVP (fires immediately).
-        await sendWhatsappMessageInternal({
-          conversationId: convId!,
-          body,
-          senderUserId: context.userId,
-        });
-        ran++;
-      } catch (e) {
-        console.error("[stage-automation] failed", a.id, (e as Error).message);
-        skipped++;
+      if (a.trigger_type === "recurring") {
+        // Enqueue a run; do not fire immediately — first send happens after interval.
+        const nextAt = new Date(Date.now() + (a.interval_seconds ?? 3600) * 1000).toISOString();
+        const { error: upErr } = await supabaseAdmin
+          .from("stage_automation_runs")
+          .upsert(
+            {
+              workspace_id: a.workspace_id,
+              automation_id: a.id,
+              lead_id: data.leadId,
+              stage_id: data.stageId,
+              runs_count: 0,
+              next_run_at: nextAt,
+              status: "active",
+              last_error: null,
+            },
+            { onConflict: "automation_id,lead_id" },
+          );
+        if (upErr) { skipped++; continue; }
+        scheduled++;
+        continue;
       }
+      // stage_enter — dispatch immediately
+      const res = await dispatchStageAutomation({
+        automationId: a.id,
+        leadId: data.leadId,
+        senderUserId: context.userId,
+      });
+      if (res.ok) ran++; else skipped++;
     }
 
-    return { ran, skipped };
+    return { ran, skipped, scheduled };
   });
-
