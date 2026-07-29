@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
+import { setRenaveCredentials, testRenaveConnection, retryRenaveOperation } from "@/lib/renave.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +21,9 @@ import {
 import { toast } from "sonner";
 import {
   Car, Plus, Package, ArrowDownToLine, ArrowUpFromLine, FileText,
-  Settings2, PlugZap, History, RefreshCw, ShieldCheck, AlertTriangle,
+  Settings2, PlugZap, History, RefreshCw, ShieldCheck, AlertTriangle, Upload,
 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/app/renave")({
   component: RenavePage,
@@ -286,6 +289,8 @@ function QuickOpButton({ workspaceId, vehicleId, type, label, icon: Icon }: {
 
 /* ----------------------- OPERAÇÕES ----------------------- */
 function OperationsTab({ workspaceId }: { workspaceId: string }) {
+  const qc = useQueryClient();
+  const retryFn = useServerFn(retryRenaveOperation);
   const { data } = useQuery({
     queryKey: ["renave-operations", workspaceId],
     queryFn: async () => {
@@ -299,6 +304,15 @@ function OperationsTab({ workspaceId }: { workspaceId: string }) {
     },
   });
 
+  const retry = useMutation({
+    mutationFn: async (id: string) => retryFn({ data: { operationId: id } }),
+    onSuccess: () => {
+      toast.success("Reenfileirada");
+      qc.invalidateQueries({ queryKey: ["renave-operations", workspaceId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
@@ -310,6 +324,7 @@ function OperationsTab({ workspaceId }: { workspaceId: string }) {
               <th className="text-left p-3">Endpoint</th>
               <th className="text-left p-3">Status</th>
               <th className="text-left p-3">Erro</th>
+              <th className="text-left p-3">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -320,10 +335,18 @@ function OperationsTab({ workspaceId }: { workspaceId: string }) {
                 <td className="p-3 font-mono text-xs">{o.endpoint_code ?? "—"}</td>
                 <td className="p-3"><OpStatus status={o.status} /></td>
                 <td className="p-3 text-xs text-red-400 truncate max-w-xs">{o.error_message ?? "—"}</td>
+                <td className="p-3">
+                  {o.status === "falha" && o.endpoint_code && (
+                    <Button size="sm" variant="outline" disabled={retry.isPending}
+                      onClick={() => retry.mutate(o.id)}>
+                      <RefreshCw className="h-3 w-3 mr-1" />Reprocessar
+                    </Button>
+                  )}
+                </td>
               </tr>
             ))}
             {(!data || data.length === 0) && (
-              <tr><td colSpan={5} className="p-8 text-center text-muted-foreground text-sm">Nenhuma operação registrada</td></tr>
+              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground text-sm">Nenhuma operação registrada</td></tr>
             )}
           </tbody>
         </table>
@@ -331,6 +354,7 @@ function OperationsTab({ workspaceId }: { workspaceId: string }) {
     </Card>
   );
 }
+
 function OpStatus({ status }: { status: string }) {
   const map: Record<string, string> = {
     pendente: "bg-amber-500/20 text-amber-300",
@@ -568,29 +592,19 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
         </div>
       </Card>
 
-      <Card className="p-4 space-y-3 md:col-span-2">
+      <Card className="p-4 space-y-4 md:col-span-2">
         <div className="flex items-center gap-2">
           <PlugZap className="h-4 w-4 text-primary" />
-          <h3 className="font-medium">Segredos (armazenados via Lovable Secrets)</h3>
+          <h3 className="font-medium">Certificado & Credenciais OAuth (cifradas no servidor)</h3>
         </div>
         <p className="text-xs text-muted-foreground">
-          Guarde os valores sensíveis (Consumer Secret, certificado .p12 em base64 e a senha) como secrets do
-          backend. Aqui você só informa o <b>nome</b> do secret que o servidor deve ler.
+          O certificado <b>.p12</b> é enviado para um bucket privado; senha e client_secret são cifrados
+          (AES-256-GCM) no banco. Nada disso volta para o navegador.
         </p>
-        <div className="grid md:grid-cols-3 gap-3">
-          <div>
-            <Label>Nome do secret — Consumer Secret</Label>
-            <Input value={(merged.consumer_secret_ref as string) ?? ""} onChange={(e) => set("consumer_secret_ref", e.target.value)} placeholder="RENAVE_CONSUMER_SECRET" />
-          </div>
-          <div>
-            <Label>Nome do secret — Certificado (.p12 base64)</Label>
-            <Input value={(merged.certificate_ref as string) ?? ""} onChange={(e) => set("certificate_ref", e.target.value)} placeholder="RENAVE_CERT_P12_B64" />
-          </div>
-          <div>
-            <Label>Nome do secret — Senha do certificado</Label>
-            <Input value={(merged.certificate_password_ref as string) ?? ""} onChange={(e) => set("certificate_password_ref", e.target.value)} placeholder="RENAVE_CERT_PASSWORD" />
-          </div>
-        </div>
+
+        <CertUploadRow workspaceId={workspaceId} currentPath={(merged.cert_storage_path as string) ?? null} />
+        <CredentialsRow workspaceId={workspaceId} />
+
         <div className="flex items-center gap-3 pt-2">
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -603,7 +617,8 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
         </div>
       </Card>
 
-      <div className="md:col-span-2 flex justify-end">
+      <div className="md:col-span-2 flex justify-end gap-2">
+        <TestConnectionButton workspaceId={workspaceId} />
         <Button onClick={() => save.mutate()} disabled={save.isPending} className="gradient-brand text-primary-foreground border-0">
           <FileText className="h-4 w-4 mr-1" />{save.isPending ? "Salvando…" : "Salvar configuração"}
         </Button>
@@ -611,3 +626,118 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
     </div>
   );
 }
+
+/* ----------------------- CERT UPLOAD ----------------------- */
+function CertUploadRow({ workspaceId, currentPath }: { workspaceId: string; currentPath: string | null }) {
+  const qc = useQueryClient();
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async () => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const path = `${workspaceId}/${Date.now()}-${file.name}`;
+      const { error: upErr } = await supabase.storage.from("renave-certs")
+        .upload(path, file, { contentType: "application/x-pkcs12", upsert: false });
+      if (upErr) throw upErr;
+      const { error: cfgErr } = await supabase.from("renave_config")
+        .update({ cert_storage_path: path })
+        .eq("workspace_id", workspaceId);
+      if (cfgErr) throw cfgErr;
+      toast.success("Certificado enviado");
+      setFile(null);
+      qc.invalidateQueries({ queryKey: ["renave-config", workspaceId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha no upload");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="grid md:grid-cols-2 gap-3 items-end">
+      <div>
+        <Label>Certificado .p12</Label>
+        <Input type="file" accept=".p12,.pfx"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        {currentPath && (
+          <p className="text-xs text-muted-foreground mt-1 truncate">Atual: {currentPath}</p>
+        )}
+      </div>
+      <div>
+        <Button type="button" onClick={handleUpload} disabled={!file || uploading} variant="outline">
+          <Upload className="h-4 w-4 mr-1" />{uploading ? "Enviando…" : "Enviar certificado"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------- CREDENCIAIS ----------------------- */
+function CredentialsRow({ workspaceId }: { workspaceId: string }) {
+  const setCreds = useServerFn(setRenaveCredentials);
+  const [certPassword, setCertPassword] = useState("");
+  const [oauthClientId, setOauthClientId] = useState("");
+  const [oauthClientSecret, setOauthClientSecret] = useState("");
+
+  const m = useMutation({
+    mutationFn: async () =>
+      setCreds({
+        data: {
+          workspaceId,
+          certPassword: certPassword || undefined,
+          oauthClientId: oauthClientId || undefined,
+          oauthClientSecret: oauthClientSecret || undefined,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Credenciais atualizadas");
+      setCertPassword(""); setOauthClientSecret("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="grid md:grid-cols-3 gap-3 items-end">
+      <div>
+        <Label>Senha do .p12</Label>
+        <Input type="password" value={certPassword}
+          onChange={(e) => setCertPassword(e.target.value)} placeholder="••••••" />
+      </div>
+      <div>
+        <Label>OAuth Client ID</Label>
+        <Input value={oauthClientId} onChange={(e) => setOauthClientId(e.target.value)} />
+      </div>
+      <div>
+        <Label>OAuth Client Secret</Label>
+        <Input type="password" value={oauthClientSecret}
+          onChange={(e) => setOauthClientSecret(e.target.value)} />
+      </div>
+      <div className="md:col-span-3 flex justify-end">
+        <Button type="button" onClick={() => m.mutate()} disabled={m.isPending} variant="outline">
+          {m.isPending ? "Salvando…" : "Salvar credenciais"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------- TESTAR CONEXÃO ----------------------- */
+function TestConnectionButton({ workspaceId }: { workspaceId: string }) {
+  const testFn = useServerFn(testRenaveConnection);
+  const m = useMutation({
+    mutationFn: async () => testFn({ data: { workspaceId } }),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(`OAuth OK — token ${res.preview}`);
+      else toast.error(`Falha: ${res.error}`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <Button type="button" onClick={() => m.mutate()} disabled={m.isPending} variant="outline">
+      <ShieldCheck className="h-4 w-4 mr-1" />{m.isPending ? "Testando…" : "Testar conexão"}
+    </Button>
+  );
+}
+
