@@ -1215,6 +1215,66 @@ export type Database = {
           },
         ]
       }
+      stage_automation_runs: {
+        Row: {
+          automation_id: string
+          created_at: string
+          id: string
+          last_error: string | null
+          last_run_at: string | null
+          lead_id: string
+          next_run_at: string
+          runs_count: number
+          stage_id: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          lead_id: string
+          next_run_at: string
+          runs_count?: number
+          stage_id: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          lead_id?: string
+          next_run_at?: string
+          runs_count?: number
+          stage_id?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_automation_runs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "stage_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_automation_runs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stage_automations: {
         Row: {
           action_type: string
@@ -1223,9 +1283,12 @@ export type Database = {
           created_by: string | null
           delay_seconds: number
           id: string
+          interval_seconds: number | null
+          max_runs: number | null
           message: string | null
           name: string
           stage_id: string
+          trigger_type: string
           updated_at: string
           workspace_id: string
         }
@@ -1236,9 +1299,12 @@ export type Database = {
           created_by?: string | null
           delay_seconds?: number
           id?: string
+          interval_seconds?: number | null
+          max_runs?: number | null
           message?: string | null
           name?: string
           stage_id: string
+          trigger_type?: string
           updated_at?: string
           workspace_id: string
         }
@@ -1249,9 +1315,12 @@ export type Database = {
           created_by?: string | null
           delay_seconds?: number
           id?: string
+          interval_seconds?: number | null
+          max_runs?: number | null
           message?: string | null
           name?: string
           stage_id?: string
+          trigger_type?: string
           updated_at?: string
           workspace_id?: string
         }
