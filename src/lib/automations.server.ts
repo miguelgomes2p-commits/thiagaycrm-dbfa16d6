@@ -1,11 +1,19 @@
-// Server-only helper: send a WhatsApp text message as if it were a user-authored
-// outbound message, but from an automation context (no auth middleware).
+// Server-only helpers for stage automations: send a WhatsApp text as an
+// automation (no auth middleware) and dispatch a full automation for a lead
+// (used by both stage_enter runs and the recurring cron).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+function renderTemplate(tpl: string, vars: Record<string, string | number | null | undefined>) {
+  return tpl.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key) => {
+    const v = vars[key];
+    return v === null || v === undefined ? "" : String(v);
+  });
+}
 
 export async function sendWhatsappMessageInternal(params: {
   conversationId: string;
   body: string;
-  senderUserId: string;
+  senderUserId: string | null;
 }) {
   const { conversationId, body, senderUserId } = params;
 
@@ -85,4 +93,100 @@ export async function sendWhatsappMessageInternal(params: {
       .eq("id", pendingMsg.id);
     throw new Error(msg);
   }
+}
+
+// Full dispatch: resolve AI number + conversation + variables, render message
+// and send. Returns { ok } or throws with a reason. Shared by stage_enter and
+// recurring cron.
+export async function dispatchStageAutomation(params: {
+  automationId: string;
+  leadId: string;
+  senderUserId?: string | null;
+}): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const { automationId, leadId } = params;
+
+  const { data: automation, error: aerr } = await supabaseAdmin
+    .from("stage_automations")
+    .select("id, workspace_id, action_type, message, active")
+    .eq("id", automationId)
+    .single();
+  if (aerr || !automation) return { ok: false, reason: "automation_not_found" };
+  if (!automation.active) return { ok: false, reason: "inactive" };
+  if (automation.action_type !== "send_whatsapp" || !automation.message) {
+    return { ok: false, reason: "unsupported_action" };
+  }
+
+  const { data: lead, error: lerr } = await supabaseAdmin
+    .from("leads")
+    .select("id, title, value, contact_id, workspace_id, owner_id")
+    .eq("id", leadId)
+    .single();
+  if (lerr || !lead) return { ok: false, reason: "lead_not_found" };
+  if (!lead.contact_id) return { ok: false, reason: "no_contact" };
+
+  const { data: contact } = await supabaseAdmin
+    .from("contacts")
+    .select("id, name, phone")
+    .eq("id", lead.contact_id)
+    .single();
+  if (!contact?.phone) return { ok: false, reason: "no_phone" };
+
+  const { data: aiNumbers } = await supabaseAdmin
+    .from("whatsapp_numbers")
+    .select("id, workspace_id")
+    .eq("workspace_id", lead.workspace_id)
+    .eq("is_active", true)
+    .not("n8n_webhook_url", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  const aiNumber = aiNumbers?.[0];
+  if (!aiNumber) return { ok: false, reason: "no_ai_number" };
+
+  const waId = String(contact.phone).replace(/\D+/g, "");
+  if (!waId) return { ok: false, reason: "invalid_phone" };
+
+  let convId: string | null = null;
+  const { data: existingConv } = await supabaseAdmin
+    .from("conversations")
+    .select("id")
+    .eq("workspace_id", lead.workspace_id)
+    .eq("whatsapp_number_id", aiNumber.id)
+    .eq("wa_contact_wa_id", waId)
+    .maybeSingle();
+  if (existingConv) {
+    convId = existingConv.id;
+  } else {
+    const { data: createdConv, error: convErr } = await supabaseAdmin
+      .from("conversations")
+      .insert({
+        workspace_id: lead.workspace_id,
+        contact_id: contact.id,
+        channel: "whatsapp",
+        status: "open",
+        whatsapp_number_id: aiNumber.id,
+        wa_contact_wa_id: waId,
+      })
+      .select("id")
+      .single();
+    if (convErr || !createdConv) return { ok: false, reason: "conversation_create_failed" };
+    convId = createdConv.id;
+  }
+
+  const vars = {
+    "contact.name": contact.name ?? "",
+    "contact.phone": contact.phone ?? "",
+    "lead.title": lead.title ?? "",
+    "lead.value": lead.value
+      ? Number(lead.value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+      : "",
+  };
+  const body = renderTemplate(automation.message, vars);
+  if (!body.trim()) return { ok: false, reason: "empty_body" };
+
+  await sendWhatsappMessageInternal({
+    conversationId: convId!,
+    body,
+    senderUserId: params.senderUserId ?? lead.owner_id ?? null,
+  });
+  return { ok: true };
 }
