@@ -31,6 +31,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
+import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
   component: ConversationsPage,
