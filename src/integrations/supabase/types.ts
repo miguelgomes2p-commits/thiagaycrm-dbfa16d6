@@ -819,6 +819,8 @@ export type Database = {
       renave_config: {
         Row: {
           base_url: string
+          cert_password_enc: string | null
+          cert_storage_path: string | null
           certificate_password_ref: string | null
           certificate_ref: string | null
           cnpj: string | null
@@ -826,15 +828,21 @@ export type Database = {
           consumer_secret_ref: string | null
           created_at: string
           environment: string
+          estabelecimento_id_padrao: string | null
           extra: Json
           id: string
           is_active: boolean
+          oauth_client_id: string | null
+          oauth_client_secret_enc: string | null
+          oauth_token_cache: Json
           oauth_token_url: string | null
           updated_at: string
           workspace_id: string
         }
         Insert: {
           base_url?: string
+          cert_password_enc?: string | null
+          cert_storage_path?: string | null
           certificate_password_ref?: string | null
           certificate_ref?: string | null
           cnpj?: string | null
@@ -842,15 +850,21 @@ export type Database = {
           consumer_secret_ref?: string | null
           created_at?: string
           environment?: string
+          estabelecimento_id_padrao?: string | null
           extra?: Json
           id?: string
           is_active?: boolean
+          oauth_client_id?: string | null
+          oauth_client_secret_enc?: string | null
+          oauth_token_cache?: Json
           oauth_token_url?: string | null
           updated_at?: string
           workspace_id: string
         }
         Update: {
           base_url?: string
+          cert_password_enc?: string | null
+          cert_storage_path?: string | null
           certificate_password_ref?: string | null
           certificate_ref?: string | null
           cnpj?: string | null
@@ -858,9 +872,13 @@ export type Database = {
           consumer_secret_ref?: string | null
           created_at?: string
           environment?: string
+          estabelecimento_id_padrao?: string | null
           extra?: Json
           id?: string
           is_active?: boolean
+          oauth_client_id?: string | null
+          oauth_client_secret_enc?: string | null
+          oauth_token_cache?: Json
           oauth_token_url?: string | null
           updated_at?: string
           workspace_id?: string
