@@ -597,6 +597,185 @@ export type Database = {
           },
         ]
       }
+      nfe_config: {
+        Row: {
+          cfop_entrada_padrao: string
+          cfop_saida_padrao: string
+          cnpj_emitente: string | null
+          created_at: string
+          emit_bairro: string | null
+          emit_cep: string | null
+          emit_ibge: string | null
+          emit_logradouro: string | null
+          emit_municipio: string | null
+          emit_nome_fantasia: string | null
+          emit_numero: string | null
+          emit_razao_social: string | null
+          emit_telefone: string | null
+          emit_uf: string | null
+          environment: string
+          id: string
+          ie_emitente: string | null
+          is_active: boolean
+          natureza_operacao_entrada: string
+          natureza_operacao_saida: string
+          provider: string
+          regime_tributario: number | null
+          serie_padrao: number
+          token_homolog_enc: string | null
+          token_prod_enc: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          cfop_entrada_padrao?: string
+          cfop_saida_padrao?: string
+          cnpj_emitente?: string | null
+          created_at?: string
+          emit_bairro?: string | null
+          emit_cep?: string | null
+          emit_ibge?: string | null
+          emit_logradouro?: string | null
+          emit_municipio?: string | null
+          emit_nome_fantasia?: string | null
+          emit_numero?: string | null
+          emit_razao_social?: string | null
+          emit_telefone?: string | null
+          emit_uf?: string | null
+          environment?: string
+          id?: string
+          ie_emitente?: string | null
+          is_active?: boolean
+          natureza_operacao_entrada?: string
+          natureza_operacao_saida?: string
+          provider?: string
+          regime_tributario?: number | null
+          serie_padrao?: number
+          token_homolog_enc?: string | null
+          token_prod_enc?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          cfop_entrada_padrao?: string
+          cfop_saida_padrao?: string
+          cnpj_emitente?: string | null
+          created_at?: string
+          emit_bairro?: string | null
+          emit_cep?: string | null
+          emit_ibge?: string | null
+          emit_logradouro?: string | null
+          emit_municipio?: string | null
+          emit_nome_fantasia?: string | null
+          emit_numero?: string | null
+          emit_razao_social?: string | null
+          emit_telefone?: string | null
+          emit_uf?: string | null
+          environment?: string
+          id?: string
+          ie_emitente?: string | null
+          is_active?: boolean
+          natureza_operacao_entrada?: string
+          natureza_operacao_saida?: string
+          provider?: string
+          regime_tributario?: number | null
+          serie_padrao?: number
+          token_homolog_enc?: string | null
+          token_prod_enc?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfe_config_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nfe_documents: {
+        Row: {
+          chave: string | null
+          created_at: string
+          created_by: string | null
+          danfe_url: string | null
+          direction: string
+          environment: string
+          error_message: string | null
+          focus_status: string
+          id: string
+          numero: string | null
+          payload_request: Json | null
+          payload_response: Json | null
+          pdf_url: string | null
+          ref: string
+          serie: string | null
+          updated_at: string
+          vehicle_id: string | null
+          workspace_id: string
+          xml_url: string | null
+        }
+        Insert: {
+          chave?: string | null
+          created_at?: string
+          created_by?: string | null
+          danfe_url?: string | null
+          direction: string
+          environment: string
+          error_message?: string | null
+          focus_status?: string
+          id?: string
+          numero?: string | null
+          payload_request?: Json | null
+          payload_response?: Json | null
+          pdf_url?: string | null
+          ref: string
+          serie?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          workspace_id: string
+          xml_url?: string | null
+        }
+        Update: {
+          chave?: string | null
+          created_at?: string
+          created_by?: string | null
+          danfe_url?: string | null
+          direction?: string
+          environment?: string
+          error_message?: string | null
+          focus_status?: string
+          id?: string
+          numero?: string | null
+          payload_request?: Json | null
+          payload_response?: Json | null
+          pdf_url?: string | null
+          ref?: string
+          serie?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          workspace_id?: string
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfe_documents_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "renave_vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfe_documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_stages: {
         Row: {
           allowed_roles: Database["public"]["Enums"]["app_role"][]
@@ -1160,6 +1339,8 @@ export type Database = {
           marca: string | null
           metadata: Json
           modelo: string | null
+          nfe_entrada_chave: string | null
+          nfe_saida_chave: string | null
           observacoes: string | null
           placa: string | null
           renavam: string | null
@@ -1187,6 +1368,8 @@ export type Database = {
           marca?: string | null
           metadata?: Json
           modelo?: string | null
+          nfe_entrada_chave?: string | null
+          nfe_saida_chave?: string | null
           observacoes?: string | null
           placa?: string | null
           renavam?: string | null
@@ -1214,6 +1397,8 @@ export type Database = {
           marca?: string | null
           metadata?: Json
           modelo?: string | null
+          nfe_entrada_chave?: string | null
+          nfe_saida_chave?: string | null
           observacoes?: string | null
           placa?: string | null
           renavam?: string | null
