@@ -117,6 +117,7 @@ export const executeRenaveEndpoint = createServerFn({ method: "POST" })
     // 4) cria operação
     const { data: op, error: opErr } = await supabaseAdmin
       .from("renave_operations")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .insert({
         workspace_id: data.workspaceId,
         vehicle_id: data.vehicleId ?? null,
@@ -126,13 +127,14 @@ export const executeRenaveEndpoint = createServerFn({ method: "POST" })
         request_payload: {
           pathParams: data.pathParams,
           queryParams: data.queryParams,
-          body: data.body ?? null,
+          body: (data.body ?? null) as unknown,
         },
         created_by: context.userId,
-      })
+      } as any)
       .select("id")
       .single();
     if (opErr) throw new Error(opErr.message);
+
 
     try {
       // 5) OAuth token (cache em renave_config.oauth_token_cache)
