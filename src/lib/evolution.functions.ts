@@ -246,7 +246,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
             error: fetchErr,
           });
         }
-        await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl).catch((webhookError) =>
+        await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl, num.webhook_verify_token).catch((webhookError) =>
           logEvolutionError({
             workspaceId: num.workspace_id,
             whatsappNumberId: data.id,
