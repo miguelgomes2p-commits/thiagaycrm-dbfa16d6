@@ -165,11 +165,13 @@ function ConversationsPage() {
       // O restante permanece no banco (retido por 45 dias via pg_cron) mas não polui a UI.
       const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       try {
+        // Aceita conversas com last_message_at recente OU sem mensagem (criadas há
+        // menos de 30 dias). Assim recém-criadas sem histórico ainda aparecem.
         const { data, error } = await supabase.from("conversations")
         .select("*, contacts:contact_id(name, type, avatar_url, phone)")
         .eq("workspace_id", ws!.id)
         .not("whatsapp_number_id", "is", null)
-        .gte("last_message_at", since30d)
+        .or(`last_message_at.gte.${since30d},and(last_message_at.is.null,created_at.gte.${since30d})`)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(200)
         .abortSignal(timed.signal);
@@ -219,10 +221,10 @@ function ConversationsPage() {
       const timed = withTimeoutSignal(signal, 12_000);
       const startedAt = performance.now();
       try {
-        // Só carregamos mensagens dos últimos 30 dias. O histórico continua
-        // no banco (removido após 45 dias por rotina server-side) mas fora da UI.
-        const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).gte("created_at", since30d).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
+        // Retenção server-side (pg_cron purge_old_messages_daily) já cuida da
+        // janela de 45 dias — não aplicamos filtro extra aqui pra não esconder
+        // convs cujo histórico está entre 30 e 45 dias.
+        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
 
         console.info(JSON.stringify({ scope: "frontend_messages", event: "loaded", conversation_id: conversationId, rows: data?.length ?? 0, duration_ms: Math.round(performance.now() - startedAt) }));
         if (error) throw error;
