@@ -1483,6 +1483,8 @@ export type Database = {
           provider_api_key: string | null
           provider_base_url: string | null
           updated_at: string
+          wa_owner_jid: string | null
+          wa_profile_name: string | null
           waba_id: string | null
           webhook_verify_token: string
           workspace_id: string
@@ -1510,6 +1512,8 @@ export type Database = {
           provider_api_key?: string | null
           provider_base_url?: string | null
           updated_at?: string
+          wa_owner_jid?: string | null
+          wa_profile_name?: string | null
           waba_id?: string | null
           webhook_verify_token?: string
           workspace_id: string
@@ -1537,6 +1541,8 @@ export type Database = {
           provider_api_key?: string | null
           provider_base_url?: string | null
           updated_at?: string
+          wa_owner_jid?: string | null
+          wa_profile_name?: string | null
           waba_id?: string | null
           webhook_verify_token?: string
           workspace_id?: string
