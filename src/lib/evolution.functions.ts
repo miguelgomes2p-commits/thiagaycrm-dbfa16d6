@@ -226,7 +226,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
         if (!lastActivityMs || now - lastActivityMs > 60_000) {
           try {
             const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
-            const sinceSec = Math.floor((now - 7 * 24 * 60 * 60 * 1000) / 1000);
+            const sinceSec = Math.floor((now - 3 * 24 * 60 * 60 * 1000) / 1000);
             const payload = await evolutionFindMessages(num.provider_base_url, num.provider_api_key, num.instance_name, 50, sinceSec);
             await processEvolutionPayload(data.id, { event: "MESSAGES_SET", data: payload }, { touchWebhook: true, source: "statusWarmSync" });
           } catch (syncError) {
