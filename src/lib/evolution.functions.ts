@@ -178,7 +178,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
       .from("whatsapp_numbers")
-      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name, last_webhook_at, created_at")
+      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name, last_webhook_at, created_at, webhook_verify_token")
       .eq("id", data.id)
       .single();
     if (error || !num) throw new Error("Número não encontrado");
