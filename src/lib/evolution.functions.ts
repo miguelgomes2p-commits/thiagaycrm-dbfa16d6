@@ -43,20 +43,19 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
         connection_status: "connecting",
         default_owner_id: context.userId,
       })
-      .select("id, webhook_verify_token")
+      .select("id")
       .single();
     if (error) throw new Error(error.message);
 
     const webhookUrl = `${data.webhookOrigin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${inserted.id}`;
-    const verifyToken = inserted.webhook_verify_token;
 
     const { evolutionCreateInstance, evolutionConnect, evolutionSetWebhook } = await import("@/lib/evolution.server");
 
     // 2) Cria a instância na Evolution. Se já existir (403/409), tenta reaproveitar
     //    conectando na instância existente e ajustando o webhook.
     try {
-      const created = await evolutionCreateInstance(baseUrl, data.apiKey, data.instanceName, webhookUrl, verifyToken);
-      await evolutionSetWebhook(baseUrl, data.apiKey, data.instanceName, webhookUrl, verifyToken).catch((webhookError) =>
+      const created = await evolutionCreateInstance(baseUrl, data.apiKey, data.instanceName, webhookUrl);
+      await evolutionSetWebhook(baseUrl, data.apiKey, data.instanceName, webhookUrl).catch((webhookError) =>
         logEvolutionError({
           workspaceId: data.workspaceId,
           whatsappNumberId: inserted.id,
@@ -86,7 +85,7 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
       if (alreadyExists) {
         // Tenta reaproveitar a instância existente: reconecta + reconfigura webhook.
         try {
-          await evolutionSetWebhook(baseUrl, data.apiKey, data.instanceName, webhookUrl, verifyToken).catch(() => undefined);
+          await evolutionSetWebhook(baseUrl, data.apiKey, data.instanceName, webhookUrl).catch(() => undefined);
           const r = await evolutionConnect(baseUrl, data.apiKey, data.instanceName);
           const qr = r.base64 ?? null;
           await context.supabase
@@ -178,7 +177,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
       .from("whatsapp_numbers")
-      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name, last_webhook_at, created_at, webhook_verify_token")
+      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name, last_webhook_at, created_at")
       .eq("id", data.id)
       .single();
     if (error || !num) throw new Error("Número não encontrado");
@@ -246,7 +245,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
             error: fetchErr,
           });
         }
-        await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl, num.webhook_verify_token).catch((webhookError) =>
+        await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl).catch((webhookError) =>
           logEvolutionError({
             workspaceId: num.workspace_id,
             whatsappNumberId: data.id,
@@ -299,7 +298,7 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: num, error } = await context.supabase
       .from("whatsapp_numbers")
-      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name, webhook_verify_token")
+      .select("workspace_id, provider, provider_base_url, provider_api_key, instance_name")
       .eq("id", data.id)
       .single();
     if (error || !num) throw new Error("Número não encontrado");
@@ -309,7 +308,7 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
     const webhookUrl = `${data.webhookOrigin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${data.id}`;
     try {
       const { evolutionSetWebhook } = await import("@/lib/evolution.server");
-      await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl, num.webhook_verify_token);
+      await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl);
       return { ok: true, webhookUrl };
     } catch (e) {
       await logEvolutionError({
@@ -404,7 +403,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: numbers, error } = await supabaseAdmin
       .from("whatsapp_numbers")
-      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at, created_at, updated_at, webhook_verify_token")
+      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at, created_at, updated_at")
       .eq("workspace_id", data.workspaceId)
       .eq("provider", "evolution")
       .eq("is_active", true)
@@ -447,7 +446,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
           if (state === "open") {
             await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: "connected" }).eq("id", num.id);
             const webhookUrl = `https://thiagaycrm.lovable.app/api/public/webhooks/evolution/${num.id}`;
-            await evolutionSetWebhook(num.provider_base_url!, num.provider_api_key!, num.instance_name!, webhookUrl, num.webhook_verify_token).catch((webhookError) =>
+            await evolutionSetWebhook(num.provider_base_url!, num.provider_api_key!, num.instance_name!, webhookUrl).catch((webhookError) =>
               logEvolutionError({
                 workspaceId: data.workspaceId,
                 whatsappNumberId: num.id,

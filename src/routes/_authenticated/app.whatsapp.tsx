@@ -475,21 +475,6 @@ function WhatsappPage() {
                   </div>
                 )}
 
-                {isEvo && (
-                  <div className="grid gap-3">
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <CopyField label="Webhook URL" value={webhookUrl} />
-                      <CopyField label="x-webhook-token" value={n.webhook_verify_token ?? "Disponível apenas para admins"} mono />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      A partir de agora todos os webhooks precisam do header <code className="font-mono">x-webhook-token</code>.
-                      O botão <strong>Sincronizar webhook</strong> já reconfigura esse header automaticamente na Evolution API.
-                      Se você configura o webhook manualmente no painel da Evolution, adicione o header acima em <em>Webhook → Headers</em> (ou envie o valor como query string <code className="font-mono">?token=…</code>).
-                      Requisições sem o token correto são rejeitadas com 401.
-                    </p>
-                  </div>
-                )}
-
                 <N8nForwardingForm
                   id={n.id}
                   initialUrl={n.n8n_webhook_url ?? ""}

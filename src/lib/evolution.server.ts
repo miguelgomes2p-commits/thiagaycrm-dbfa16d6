@@ -150,10 +150,7 @@ export function evolutionCreateInstance(
   apiKey: string,
   instanceName: string,
   webhookUrl: string,
-  verifyToken?: string | null,
 ) {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (verifyToken) headers["x-webhook-token"] = verifyToken;
   return req<EvolutionInstanceCreate>(baseUrl, apiKey, "/instance/create", {
     method: "POST",
     body: JSON.stringify({
@@ -163,7 +160,6 @@ export function evolutionCreateInstance(
       webhook: {
         enabled: true,
         url: webhookUrl,
-        headers,
         byEvents: false,
         webhook_by_events: false,
         base64: false,
@@ -279,17 +275,13 @@ export function evolutionSetWebhook(
   apiKey: string,
   instanceName: string,
   webhookUrl: string,
-  verifyToken?: string | null,
 ) {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (verifyToken) headers["x-webhook-token"] = verifyToken;
   return req<Json>(baseUrl, apiKey, `/webhook/set/${encodeURIComponent(instanceName)}`, {
     method: "POST",
     body: JSON.stringify({
       webhook: {
         enabled: true,
         url: webhookUrl,
-        headers,
         byEvents: false,
         webhook_by_events: false,
         base64: false,
