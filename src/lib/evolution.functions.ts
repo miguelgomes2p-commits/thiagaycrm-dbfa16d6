@@ -43,19 +43,20 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
         connection_status: "connecting",
         default_owner_id: context.userId,
       })
-      .select("id")
+      .select("id, webhook_verify_token")
       .single();
     if (error) throw new Error(error.message);
 
     const webhookUrl = `${data.webhookOrigin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${inserted.id}`;
+    const verifyToken = inserted.webhook_verify_token;
 
     const { evolutionCreateInstance, evolutionConnect, evolutionSetWebhook } = await import("@/lib/evolution.server");
 
     // 2) Cria a instância na Evolution. Se já existir (403/409), tenta reaproveitar
     //    conectando na instância existente e ajustando o webhook.
     try {
-      const created = await evolutionCreateInstance(baseUrl, data.apiKey, data.instanceName, webhookUrl);
-      await evolutionSetWebhook(baseUrl, data.apiKey, data.instanceName, webhookUrl).catch((webhookError) =>
+      const created = await evolutionCreateInstance(baseUrl, data.apiKey, data.instanceName, webhookUrl, verifyToken);
+      await evolutionSetWebhook(baseUrl, data.apiKey, data.instanceName, webhookUrl, verifyToken).catch((webhookError) =>
         logEvolutionError({
           workspaceId: data.workspaceId,
           whatsappNumberId: inserted.id,
