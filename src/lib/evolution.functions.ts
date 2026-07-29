@@ -309,7 +309,7 @@ export const syncEvolutionMessages = createServerFn({ method: "POST" })
     try {
       const { evolutionFindMessages } = await import("@/lib/evolution.server");
       const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
-      const sevenDaysAgoSec = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+      const sevenDaysAgoSec = Math.floor((Date.now() - 3 * 24 * 60 * 60 * 1000) / 1000);
       const limit = Math.min(data.limit ?? 100, 100);
       const MAX_PAGES = 8; // até 800 mensagens em uma sincronização
       const aggregated: {
