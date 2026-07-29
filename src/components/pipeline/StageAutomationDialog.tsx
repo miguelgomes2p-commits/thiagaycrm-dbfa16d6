@@ -74,8 +74,9 @@ export function StageAutomationDialog({
   });
 
   const upsertM = useMutation({
-    mutationFn: (input: Partial<Automation>) =>
-      upsertFn({
+    mutationFn: (input: Partial<Automation>) => {
+      const triggerType = input.trigger_type ?? "stage_enter";
+      return upsertFn({
         data: {
           id: input.id ?? undefined,
           workspaceId,
@@ -85,8 +86,12 @@ export function StageAutomationDialog({
           message: input.message || "",
           delaySeconds: input.delay_seconds ?? 0,
           active: input.active ?? true,
+          triggerType,
+          intervalSeconds: triggerType === "recurring" ? input.interval_seconds ?? null : null,
+          maxRuns: triggerType === "recurring" ? input.max_runs ?? null : null,
         },
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["stage-automations", stageId] });
       setEditing(null);
