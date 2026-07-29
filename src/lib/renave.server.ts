@@ -119,9 +119,10 @@ export async function renaveHttpRequest(opts: {
       /* mantém como texto */
     }
     const headersObj: Record<string, string> = {};
-    res.headers.forEach((v, k) => {
+    res.headers.forEach((v: string, k: string) => {
       headersObj[k] = v;
     });
+
     return {
       status: res.status,
       headers: headersObj,
