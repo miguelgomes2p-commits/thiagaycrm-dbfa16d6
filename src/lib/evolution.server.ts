@@ -188,6 +188,11 @@ export function evolutionConnectionState(baseUrl: string, apiKey: string, instan
   );
 }
 
+export function evolutionFetchInstance(baseUrl: string, apiKey: string, instanceName: string) {
+  const path = `/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`;
+  return req<unknown>(baseUrl, apiKey, path, { method: "GET" });
+}
+
 export function evolutionLogout(baseUrl: string, apiKey: string, instanceName: string) {
   return req<Json>(baseUrl, apiKey, `/instance/logout/${encodeURIComponent(instanceName)}`, {
     method: "DELETE",
