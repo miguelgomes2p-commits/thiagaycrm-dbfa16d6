@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
+import { setRenaveCredentials, testRenaveConnection, retryRenaveOperation } from "@/lib/renave.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +21,9 @@ import {
 import { toast } from "sonner";
 import {
   Car, Plus, Package, ArrowDownToLine, ArrowUpFromLine, FileText,
-  Settings2, PlugZap, History, RefreshCw, ShieldCheck, AlertTriangle,
+  Settings2, PlugZap, History, RefreshCw, ShieldCheck, AlertTriangle, Upload,
 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/app/renave")({
   component: RenavePage,
