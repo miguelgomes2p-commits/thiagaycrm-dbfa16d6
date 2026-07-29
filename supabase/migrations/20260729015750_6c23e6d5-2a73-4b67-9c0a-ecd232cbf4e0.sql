@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.renave_seed_endpoints(UUID) TO authenticated;
