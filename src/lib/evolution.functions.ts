@@ -447,7 +447,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
           if (state === "open") {
             await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: "connected" }).eq("id", num.id);
             const webhookUrl = `https://thiagaycrm.lovable.app/api/public/webhooks/evolution/${num.id}`;
-            await evolutionSetWebhook(num.provider_base_url!, num.provider_api_key!, num.instance_name!, webhookUrl).catch((webhookError) =>
+            await evolutionSetWebhook(num.provider_base_url!, num.provider_api_key!, num.instance_name!, webhookUrl, num.webhook_verify_token).catch((webhookError) =>
               logEvolutionError({
                 workspaceId: data.workspaceId,
                 whatsappNumberId: num.id,
