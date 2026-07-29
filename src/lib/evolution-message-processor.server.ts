@@ -404,7 +404,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     for (const r of existingRows ?? []) if (r.wa_message_id) existingIds.add(r.wa_message_id);
   }
 
-  const HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+  const HISTORY_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
   const cutoffSec = Math.floor((Date.now() - HISTORY_WINDOW_MS) / 1000);
   const isHistorySync = event === "messages.set" || source === "manualSync" || source === "workspaceAutoSync";
 
