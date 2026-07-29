@@ -404,7 +404,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: numbers, error } = await supabaseAdmin
       .from("whatsapp_numbers")
-      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at, created_at, updated_at")
+      .select("id, workspace_id, provider, provider_base_url, provider_api_key, instance_name, connection_status, last_webhook_at, created_at, updated_at, webhook_verify_token")
       .eq("workspace_id", data.workspaceId)
       .eq("provider", "evolution")
       .eq("is_active", true)
