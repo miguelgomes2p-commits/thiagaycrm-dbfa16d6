@@ -145,8 +145,9 @@ function Hero() {
     target: ref,
     offset: ["start start", "end start"],
   });
-  const mockY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 160]);
-  const gridY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 64]);
+  const smooth = useSpring(scrollYProgress, { stiffness: 120, damping: 26, mass: 0.4 });
+  const mockY = useTransform(smooth, [0, 1], [0, reduce ? 0 : 120]);
+  const gridY = useTransform(smooth, [0, 1], [0, reduce ? 0 : 48]);
 
   const container = {
     hidden: {},
@@ -164,16 +165,17 @@ function Hero() {
         aria-hidden
         style={{
           y: gridY,
+          rotate: -2,
           backgroundImage:
             "linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)",
           backgroundSize: "56px 56px",
-          transform: "rotate(-2deg)",
           maskImage: "radial-gradient(70% 60% at 50% 35%, #000 0%, transparent 100%)",
           WebkitMaskImage: "radial-gradient(70% 60% at 50% 35%, #000 0%, transparent 100%)",
           opacity: 0.5,
         }}
-        className="pointer-events-none absolute -inset-x-24 -top-24 h-[140%]"
+        className="pointer-events-none absolute -inset-x-24 -top-24 h-[140%] will-change-transform"
       />
+
 
       <motion.div
         variants={container}
