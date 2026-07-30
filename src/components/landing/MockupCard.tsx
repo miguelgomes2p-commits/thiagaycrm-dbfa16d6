@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDown, CheckCircle2 } from "lucide-react";
 
 export function ChatBubble() {
@@ -73,24 +73,35 @@ export function HeroMockup() {
 /** One of the 3 scrollytelling states */
 export function StageCard({ stage }: { stage: 0 | 1 | 2 }) {
   return (
-    <motion.div
-      key={stage}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
+    <div
       className="rounded-lg border border-border bg-card p-4"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <ChatBubble />
-      {stage > 0 && (
-        <>
-          <div className="flex justify-center py-3">
-            <ArrowDown className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <LeadCard sold={stage === 2} />
-        </>
-      )}
-    </motion.div>
+      <AnimatePresence initial={false}>
+        {stage > 0 && (
+          <motion.div
+            key="lead"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="flex justify-center py-3">
+              <ArrowDown className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <motion.div
+              key={stage === 2 ? "sold" : "open"}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <LeadCard sold={stage === 2} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
