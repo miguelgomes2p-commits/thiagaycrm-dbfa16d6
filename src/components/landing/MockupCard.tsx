@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDown, CheckCircle2 } from "lucide-react";
 
 export function ChatBubble() {
