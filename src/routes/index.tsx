@@ -225,9 +225,33 @@ function Hero() {
   );
 }
 
-function HowItWorks() {
-  const reduce = useReducedMotion();
-  const isDesktop = useIsDesktop();
+function HowItWorksStacked() {
+  return (
+    <section id="como-funciona" className="mx-auto max-w-7xl px-6 py-20 border-t border-border">
+      <h2 className="text-2xl md:text-3xl font-medium tracking-tight">Como funciona</h2>
+      <div className="mt-10 space-y-10">
+        {STEPS.map((s, i) => (
+          <motion.div
+            key={s.title}
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="text-xs text-muted-foreground">Etapa {i + 1}</div>
+            <h3 className="mt-1 font-medium">{s.title}</h3>
+            <p className="mt-1.5 text-sm text-muted-foreground">{s.desc}</p>
+            <div className="mt-4">
+              <StageCard stage={i as 0 | 1 | 2} />
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function HowItWorksSticky() {
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -235,48 +259,19 @@ function HowItWorks() {
   });
   const [stage, setStage] = useState<0 | 1 | 2>(0);
 
-  useEffect(() => {
-    return scrollYProgress.on("change", (v) => {
-      setStage(v < 0.34 ? 0 : v < 0.67 ? 1 : 2);
-    });
-  }, [scrollYProgress]);
-
-  const interactive = isDesktop && !reduce;
-
-  if (!interactive) {
-    return (
-      <section id="como-funciona" className="mx-auto max-w-7xl px-6 py-20 border-t border-border">
-        <h2 className="text-2xl md:text-3xl font-medium tracking-tight">Como funciona</h2>
-        <div className="mt-10 space-y-10">
-          {STEPS.map((s, i) => (
-            <motion.div
-              key={s.title}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.4 }}
-            >
-              <div className="text-xs text-muted-foreground">Etapa {i + 1}</div>
-              <h3 className="mt-1 font-medium">{s.title}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground">{s.desc}</p>
-              <div className="mt-4">
-                <StageCard stage={i as 0 | 1 | 2} />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-    );
-  }
+  useMotionValueEvent(scrollYProgress, "change", (v) => {
+    const next: 0 | 1 | 2 = v < 0.36 ? 0 : v < 0.7 ? 1 : 2;
+    setStage((prev) => (prev === next ? prev : next));
+  });
 
   return (
     <section
       id="como-funciona"
       ref={ref}
       className="relative border-t border-border"
-      style={{ height: "260vh" }}
+      style={{ height: "300vh" }}
     >
-      <div className="sticky top-0 h-screen flex items-center">
+      <div className="sticky top-0 h-screen flex items-center overflow-hidden">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 md:grid-cols-2 md:items-center">
           <div>
             <h2 className="text-2xl md:text-3xl font-medium tracking-tight">Como funciona</h2>
@@ -284,9 +279,12 @@ function HowItWorks() {
               {STEPS.map((s, i) => (
                 <motion.div
                   key={s.title}
-                  animate={{ opacity: stage === i ? 1 : 0.35 }}
-                  transition={{ duration: 0.25 }}
-                  className="border-l-2 pl-4"
+                  animate={{
+                    opacity: stage === i ? 1 : 0.35,
+                    x: stage === i ? 0 : -4,
+                  }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="border-l-2 pl-4 transition-colors duration-300"
                   style={{ borderColor: stage === i ? "var(--primary)" : "var(--border)" }}
                 >
                   <h3 className="font-medium">{s.title}</h3>
@@ -303,6 +301,17 @@ function HowItWorks() {
     </section>
   );
 }
+
+function HowItWorks() {
+  const reduce = useReducedMotion();
+  const isDesktop = useIsDesktop();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || !isDesktop || reduce) return <HowItWorksStacked />;
+  return <HowItWorksSticky />;
+}
+
 
 function Features() {
   const reduce = useReducedMotion();
