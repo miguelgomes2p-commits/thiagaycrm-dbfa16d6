@@ -342,7 +342,8 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     return stats;
   }
 
-  if (event === "messages.update" || event === "message.update" || event === "send.message") {
+  const isSendEvent = event === "send.message";
+  if (event === "messages.update" || event === "message.update" || isSendEvent) {
     const updates = extractStatusUpdates(payload);
     for (const u of updates) {
       if (!u.id || !u.status) continue;
@@ -364,8 +365,12 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         await supabaseAdmin.from("whatsapp_numbers").update({ last_webhook_at: new Date().toISOString() }).eq("id", num.id);
       }
     }
-    stats.durationMs = Date.now() - startedAt;
-    return stats;
+    // send.message carrega a mensagem completa enviada via API (n8n/automações):
+    // seguimos para a ingestão normal para que ela apareça no chat do CRM.
+    if (!isSendEvent) {
+      stats.durationMs = Date.now() - startedAt;
+      return stats;
+    }
   }
 
   const msgs = extractMessageRows(payload);
