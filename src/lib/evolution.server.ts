@@ -11,6 +11,8 @@ const WEBHOOK_EVENTS = [
   "QRCODE_UPDATED",
   "MESSAGES_UPSERT",
   "MESSAGES_UPDATE",
+  // Mensagens enviadas via API (ex.: automações no n8n) chegam neste evento.
+  "SEND_MESSAGE",
 ];
 
 export class EvolutionError extends Error {
