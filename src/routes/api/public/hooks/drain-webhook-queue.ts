@@ -40,50 +40,9 @@ async function runLimited<T>(items: T[], limit: number, worker: (item: T) => Pro
   await Promise.all(runners);
 }
 
-async function forwardToN8n(
-  supabaseAdmin: Awaited<ReturnType<typeof getAdmin>>,
-  numberId: string,
-  rawBody: string | null,
-  payload: unknown,
-) {
-  const { data: wa } = await supabaseAdmin
-    .from("whatsapp_numbers")
-    .select("n8n_webhook_url, n8n_webhook_auth_header, workspace_id")
-    .eq("id", numberId)
-    .maybeSingle();
-  const url = wa?.n8n_webhook_url?.trim();
-  if (!url || !wa) return;
+// O encaminhamento ao n8n deixou de ser "fire and forget": cada evento vira uma
+// linha idempotente em `n8n_deliveries`, entregue com retry pelo drenador próprio.
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const auth = wa.n8n_webhook_auth_header?.trim();
-  if (auth) headers["Authorization"] = auth;
-
-  const body = rawBody ?? JSON.stringify(payload);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-  try {
-    const res = await fetch(url, { method: "POST", headers, body, signal: controller.signal });
-    if (!res.ok) {
-      await supabaseAdmin.from("evolution_error_logs").insert({
-        workspace_id: wa.workspace_id,
-        whatsapp_number_id: numberId,
-        operation: "n8n_forward",
-        error_message: `N8N respondeu ${res.status}`,
-        response_body: null,
-      });
-    }
-  } catch (err) {
-    await supabaseAdmin.from("evolution_error_logs").insert({
-      workspace_id: wa.workspace_id,
-      whatsapp_number_id: numberId,
-      operation: "n8n_forward",
-      error_message: err instanceof Error ? err.message : "N8N forward failed",
-      response_body: null,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
 async function getAdmin() {
   const mod = await import("@/integrations/supabase/client.server");
