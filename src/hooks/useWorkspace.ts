@@ -24,7 +24,11 @@ export function useMyWorkspaces() {
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? [])
-        .map((r) => r.workspaces ? { workspace_mode: "individual" as WorkspaceMode, ...(r.workspaces as unknown as Omit<WorkspaceWithRole, "role">), role: r.role } : null)
+        .map((r) => {
+          if (!r.workspaces) return null;
+          const w = r.workspaces as unknown as Omit<WorkspaceWithRole, "role" | "workspace_mode"> & { workspace_mode?: WorkspaceMode | null };
+          return { ...w, workspace_mode: w.workspace_mode ?? "individual", role: r.role };
+        })
         .filter(Boolean) as WorkspaceWithRole[];
     },
   });
