@@ -490,9 +490,158 @@ function WhatsappPage() {
         </div>
       </section>
 
+      </section>
+
+      {ws?.id && <N8nHealthPanel workspaceId={ws.id} />}
+
     </div>
   );
 }
+
+type N8nDeliveryRow = {
+  id: string;
+  wa_message_id: string;
+  trace_id: string | null;
+  phone: string | null;
+  event_name: string | null;
+  status: string;
+  attempts: number;
+  http_status: number | null;
+  last_error: string | null;
+  duration_ms: number | null;
+  next_retry_at: string | null;
+  delivered_at: string | null;
+  created_at: string;
+};
+
+const N8N_STATUS_LABEL: Record<string, string> = {
+  delivered: "Entregue",
+  pending: "Na fila",
+  retry: "Retentando",
+  processing: "Enviando",
+  dead_letter: "Falhou",
+};
+
+function N8nHealthPanel({ workspaceId }: { workspaceId: string }) {
+  const [status, setStatus] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const getHealth = useServerFn(getN8nHealth);
+  const retry = useServerFn(retryN8nDelivery);
+  const qc = useQueryClient();
+
+  const { data, isFetching } = useQuery({
+    queryKey: ["n8n-health", workspaceId, status, search],
+    queryFn: () => getHealth({ data: { workspaceId, status, search } }),
+    refetchInterval: 15_000,
+  });
+
+  const retryM = useMutation({
+    mutationFn: (vars: { deliveryId?: string; allDeadLetters?: boolean }) =>
+      retry({ data: { workspaceId, ...vars } }),
+    onSuccess: (r) => {
+      toast.success(`${r.requeued} entrega(s) reenfileirada(s) — ${r.delivered} entregue(s) agora`);
+      qc.invalidateQueries({ queryKey: ["n8n-health"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const summary = data?.summary;
+  const rows = (data?.rows ?? []) as N8nDeliveryRow[];
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Activity className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Saúde das entregas ao n8n</h2>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-auto"
+          onClick={() => retryM.mutate({ allDeadLetters: true })}
+          disabled={retryM.isPending}
+        >
+          <RefreshCw className={cn("h-4 w-4 mr-1", retryM.isPending && "animate-spin")} />
+          Reprocessar falhas
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {(["delivered", "pending", "retry", "processing", "dead_letter"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setStatus(status === k ? "all" : k)}
+            className={cn(
+              "rounded-lg border p-3 text-left transition-colors",
+              status === k ? "border-primary bg-primary/5" : "hover:bg-muted/50",
+            )}
+          >
+            <div className="text-xs text-muted-foreground">{N8N_STATUS_LABEL[k]}</div>
+            <div className={cn("text-xl font-semibold", k === "dead_letter" && (summary?.[k] ?? 0) > 0 && "text-destructive")}>
+              {summary?.[k] ?? 0}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder="Buscar por telefone, ID da mensagem ou trace_id"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-md"
+        />
+        {isFetching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+      </div>
+
+      <div className="rounded-lg border divide-y">
+        {rows.length === 0 && (
+          <div className="p-6 text-sm text-muted-foreground text-center">
+            Nenhuma entrega registrada nas últimas horas.
+          </div>
+        )}
+        {rows.map((row) => (
+          <div key={row.id} className="p-3 text-xs space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={cn(
+                  "px-2 py-0.5 rounded-full text-[11px] font-medium",
+                  row.status === "delivered" && "bg-primary/10 text-primary",
+                  row.status === "dead_letter" && "bg-destructive/10 text-destructive",
+                  (row.status === "retry" || row.status === "pending" || row.status === "processing") && "bg-muted text-muted-foreground",
+                )}
+              >
+                {N8N_STATUS_LABEL[row.status] ?? row.status}
+              </span>
+              <span className="font-medium">{row.phone ?? "—"}</span>
+              <span className="text-muted-foreground">{row.event_name ?? "evento"}</span>
+              <span className="text-muted-foreground">tentativas: {row.attempts}</span>
+              {row.http_status != null && <span className="text-muted-foreground">HTTP {row.http_status}</span>}
+              {row.duration_ms != null && <span className="text-muted-foreground">{row.duration_ms}ms</span>}
+              <span className="ml-auto text-muted-foreground">
+                {new Date(row.created_at).toLocaleString("pt-BR")}
+              </span>
+              {row.status !== "delivered" && (
+                <Button size="sm" variant="ghost" onClick={() => retryM.mutate({ deliveryId: row.id })} disabled={retryM.isPending}>
+                  Reenviar
+                </Button>
+              )}
+            </div>
+            <div className="font-mono text-[11px] text-muted-foreground break-all">
+              msg: {row.wa_message_id} {row.trace_id ? `· trace: ${row.trace_id}` : ""}
+            </div>
+            {row.last_error && (
+              <div className="font-mono text-[11px] text-destructive break-words">{row.last_error}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 
 function CopyField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
