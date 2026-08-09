@@ -32,7 +32,7 @@ function newChallenge() {
 }
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search) => ({
+  validateSearch: (search: { invite?: unknown }): { invite?: string } => ({
     invite: typeof search.invite === "string" ? search.invite : undefined,
   }),
   component: AuthPage,
