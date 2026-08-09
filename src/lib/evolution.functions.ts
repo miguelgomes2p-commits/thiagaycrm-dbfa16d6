@@ -29,6 +29,34 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const baseUrl = data.baseUrl.replace(/\/+$/, "");
 
+    // Modo do workspace define o escopo da conexão:
+    // individual -> conexão do próprio membro; shared -> conexão única do workspace (admin).
+    const { data: wsRow } = await context.supabase
+      .from("workspaces")
+      .select("workspace_mode")
+      .eq("id", data.workspaceId)
+      .maybeSingle();
+    const isShared = (wsRow as { workspace_mode?: string } | null)?.workspace_mode === "shared";
+
+    if (isShared) {
+      const { data: member } = await context.supabase
+        .from("workspace_members")
+        .select("role")
+        .eq("workspace_id", data.workspaceId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (!member || (member.role !== "owner" && member.role !== "admin")) {
+        throw new Error("Neste workspace o WhatsApp é compartilhado — apenas owner/admin pode conectar.");
+      }
+      const { count } = await context.supabase
+        .from("whatsapp_numbers")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", data.workspaceId);
+      if ((count ?? 0) > 0) {
+        throw new Error("Workspace compartilhado permite apenas uma conexão de WhatsApp.");
+      }
+    }
+
     // 1) Cria o registro local primeiro para termos o ID (usado no webhook)
     const { data: inserted, error } = await context.supabase
       .from("whatsapp_numbers")
@@ -41,7 +69,8 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
         provider_api_key: data.apiKey,
         instance_name: data.instanceName,
         connection_status: "connecting",
-        default_owner_id: context.userId,
+        connection_scope: isShared ? "workspace" : "agent",
+        default_owner_id: isShared ? null : context.userId,
       })
       .select("id")
       .single();
