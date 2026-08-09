@@ -204,8 +204,11 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
           if (batch.length < Math.max(20, Math.floor(BATCH_SIZE / 2))) break;
         }
 
-        logDrain("finish", { request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, duration_ms: Date.now() - startedAt });
-        return Response.json({ ok: true, request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, duration_ms: Date.now() - startedAt }, { headers: corsHeaders });
+        // FASE C: entrega ao n8n o que acabou de ser enfileirado (baixa latência).
+        const n8n = await drainN8nDeliveries(50);
+
+        logDrain("finish", { request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, n8n_delivered: n8n.delivered, n8n_failed: n8n.failed, duration_ms: Date.now() - startedAt });
+        return Response.json({ ok: true, request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, n8n, duration_ms: Date.now() - startedAt }, { headers: corsHeaders });
       },
     },
   },
