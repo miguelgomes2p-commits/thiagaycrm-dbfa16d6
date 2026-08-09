@@ -95,6 +95,7 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
           .lt("locked_at", staleCutoff);
 
         const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
+        const { enqueueN8nDelivery, drainN8nDeliveries } = await import("@/lib/n8n-delivery.server");
 
         let totalProcessed = 0;
         let totalOk = 0;
