@@ -40,50 +40,9 @@ async function runLimited<T>(items: T[], limit: number, worker: (item: T) => Pro
   await Promise.all(runners);
 }
 
-async function forwardToN8n(
-  supabaseAdmin: Awaited<ReturnType<typeof getAdmin>>,
-  numberId: string,
-  rawBody: string | null,
-  payload: unknown,
-) {
-  const { data: wa } = await supabaseAdmin
-    .from("whatsapp_numbers")
-    .select("n8n_webhook_url, n8n_webhook_auth_header, workspace_id")
-    .eq("id", numberId)
-    .maybeSingle();
-  const url = wa?.n8n_webhook_url?.trim();
-  if (!url || !wa) return;
+// O encaminhamento ao n8n deixou de ser "fire and forget": cada evento vira uma
+// linha idempotente em `n8n_deliveries`, entregue com retry pelo drenador próprio.
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const auth = wa.n8n_webhook_auth_header?.trim();
-  if (auth) headers["Authorization"] = auth;
-
-  const body = rawBody ?? JSON.stringify(payload);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-  try {
-    const res = await fetch(url, { method: "POST", headers, body, signal: controller.signal });
-    if (!res.ok) {
-      await supabaseAdmin.from("evolution_error_logs").insert({
-        workspace_id: wa.workspace_id,
-        whatsapp_number_id: numberId,
-        operation: "n8n_forward",
-        error_message: `N8N respondeu ${res.status}`,
-        response_body: null,
-      });
-    }
-  } catch (err) {
-    await supabaseAdmin.from("evolution_error_logs").insert({
-      workspace_id: wa.workspace_id,
-      whatsapp_number_id: numberId,
-      operation: "n8n_forward",
-      error_message: err instanceof Error ? err.message : "N8N forward failed",
-      response_body: null,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
 async function getAdmin() {
   const mod = await import("@/integrations/supabase/client.server");
@@ -136,6 +95,7 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
           .lt("locked_at", staleCutoff);
 
         const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
+        const { enqueueN8nDelivery, drainN8nDeliveries } = await import("@/lib/n8n-delivery.server");
 
         let totalProcessed = 0;
         let totalOk = 0;
@@ -164,7 +124,15 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
               return;
             }
             try {
-              void forwardToN8n(supabaseAdmin, numberId, row.raw_body, row.payload);
+              const trace = (row.payload as { _crm_trace?: { trace_id?: string; request_id?: string } } | null)?._crm_trace;
+              // Registra a entrega ao n8n antes de processar (idempotente).
+              await enqueueN8nDelivery({
+                whatsappNumberId: numberId,
+                payload: row.payload,
+                traceId: trace?.trace_id ?? null,
+                requestId: trace?.request_id ?? requestId,
+                webhookEventId: row.id,
+              });
               await processEvolutionPayload(numberId, row.payload, { touchWebhook: true, source: "queue" });
               await supabaseAdmin
                 .from("webhook_events")
@@ -236,8 +204,11 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
           if (batch.length < Math.max(20, Math.floor(BATCH_SIZE / 2))) break;
         }
 
-        logDrain("finish", { request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, duration_ms: Date.now() - startedAt });
-        return Response.json({ ok: true, request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, duration_ms: Date.now() - startedAt }, { headers: corsHeaders });
+        // FASE C: entrega ao n8n o que acabou de ser enfileirado (baixa latência).
+        const n8n = await drainN8nDeliveries(50);
+
+        logDrain("finish", { request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, n8n_delivered: n8n.delivered, n8n_failed: n8n.failed, duration_ms: Date.now() - startedAt });
+        return Response.json({ ok: true, request_id: requestId, processed: totalProcessed, ok_count: totalOk, failed: totalFailed, n8n, duration_ms: Date.now() - startedAt }, { headers: corsHeaders });
       },
     },
   },

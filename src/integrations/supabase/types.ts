@@ -597,6 +597,96 @@ export type Database = {
           },
         ]
       }
+      n8n_deliveries: {
+        Row: {
+          attempts: number
+          created_at: string
+          delivered_at: string | null
+          duration_ms: number | null
+          event_name: string | null
+          http_status: number | null
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          locked_at: string | null
+          next_retry_at: string
+          payload: Json | null
+          phone: string | null
+          request_id: string | null
+          response_body: string | null
+          status: string
+          trace_id: string | null
+          updated_at: string
+          wa_message_id: string
+          webhook_event_id: number | null
+          whatsapp_number_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          duration_ms?: number | null
+          event_name?: string | null
+          http_status?: number | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          locked_at?: string | null
+          next_retry_at?: string
+          payload?: Json | null
+          phone?: string | null
+          request_id?: string | null
+          response_body?: string | null
+          status?: string
+          trace_id?: string | null
+          updated_at?: string
+          wa_message_id: string
+          webhook_event_id?: number | null
+          whatsapp_number_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          duration_ms?: number | null
+          event_name?: string | null
+          http_status?: number | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          locked_at?: string | null
+          next_retry_at?: string
+          payload?: Json | null
+          phone?: string | null
+          request_id?: string | null
+          response_body?: string | null
+          status?: string
+          trace_id?: string | null
+          updated_at?: string
+          wa_message_id?: string
+          webhook_event_id?: number | null
+          whatsapp_number_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "n8n_deliveries_whatsapp_number_id_fkey"
+            columns: ["whatsapp_number_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "n8n_deliveries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nfe_config: {
         Row: {
           cfop_entrada_padrao: string
@@ -1625,11 +1715,16 @@ export type Database = {
           id: number
           last_error: string | null
           locked_at: string | null
+          n8n_http_status: number | null
+          n8n_requested_at: string | null
+          n8n_status: string | null
           payload: Json
           processed_at: string | null
           raw_body: string | null
           source: string
           status: string
+          trace_id: string | null
+          wa_message_id: string | null
           whatsapp_number_id: string | null
         }
         Insert: {
@@ -1639,11 +1734,16 @@ export type Database = {
           id?: number
           last_error?: string | null
           locked_at?: string | null
+          n8n_http_status?: number | null
+          n8n_requested_at?: string | null
+          n8n_status?: string | null
           payload: Json
           processed_at?: string | null
           raw_body?: string | null
           source?: string
           status?: string
+          trace_id?: string | null
+          wa_message_id?: string | null
           whatsapp_number_id?: string | null
         }
         Update: {
@@ -1653,11 +1753,16 @@ export type Database = {
           id?: number
           last_error?: string | null
           locked_at?: string | null
+          n8n_http_status?: number | null
+          n8n_requested_at?: string | null
+          n8n_status?: string | null
           payload?: Json
           processed_at?: string | null
           raw_body?: string | null
           source?: string
           status?: string
+          trace_id?: string | null
+          wa_message_id?: string | null
           whatsapp_number_id?: string | null
         }
         Relationships: []
