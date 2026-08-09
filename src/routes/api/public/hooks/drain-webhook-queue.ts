@@ -123,7 +123,15 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
               return;
             }
             try {
-              void forwardToN8n(supabaseAdmin, numberId, row.raw_body, row.payload);
+              const trace = (row.payload as { _crm_trace?: { trace_id?: string; request_id?: string } } | null)?._crm_trace;
+              // Registra a entrega ao n8n antes de processar (idempotente).
+              await enqueueN8nDelivery({
+                whatsappNumberId: numberId,
+                payload: row.payload,
+                traceId: trace?.trace_id ?? null,
+                requestId: trace?.request_id ?? requestId,
+                webhookEventId: row.id,
+              });
               await processEvolutionPayload(numberId, row.payload, { touchWebhook: true, source: "queue" });
               await supabaseAdmin
                 .from("webhook_events")
