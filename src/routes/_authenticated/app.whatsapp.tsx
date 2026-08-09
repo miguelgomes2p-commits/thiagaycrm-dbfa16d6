@@ -490,8 +490,6 @@ function WhatsappPage() {
         </div>
       </section>
 
-      </section>
-
       {ws?.id && <N8nHealthPanel workspaceId={ws.id} />}
 
     </div>
