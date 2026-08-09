@@ -75,7 +75,11 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
           if (error) {
             // Fallback: se falhar ao enfileirar, processa síncrono pra não perder.
             const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
-            await processEvolutionPayload(numberId, withTrace(payload, traceId, requestId), { touchWebhook: true, source: "webhook-fallback" });
+            const { enqueueN8nDelivery } = await import("@/lib/n8n-delivery.server");
+            const traced = withTrace(payload, traceId, requestId);
+            // Caminho de fuga fechado: o n8n também é notificado nesse fallback.
+            await enqueueN8nDelivery({ whatsappNumberId: numberId, payload: traced, traceId, requestId });
+            await processEvolutionPayload(numberId, traced, { touchWebhook: true, source: "webhook-fallback" });
             logWebhook("sync_fallback", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, duration_ms: Date.now() - startedAt });
             return jsonResponse({ ok: true, request_id: requestId, trace_id: traceId, mode: "sync-fallback" });
           }
