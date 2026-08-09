@@ -288,6 +288,36 @@ export const removeMember = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const updateMemberQueueSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspaceId: string; userId: string; is_active?: boolean; accepts_new_leads?: boolean }) => d)
+  .handler(async ({ data, context }) => {
+    await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
+    const patch: Record<string, boolean> = {};
+    if (typeof data.is_active === "boolean") patch.is_active = data.is_active;
+    if (typeof data.accepts_new_leads === "boolean") patch.accepts_new_leads = data.accepts_new_leads;
+    if (Object.keys(patch).length === 0) return { ok: true as const };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("workspace_members")
+      .update(patch)
+      .eq("workspace_id", data.workspaceId).eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const transferConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { conversationId: string; toUserId: string; reason?: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("transfer_conversation", {
+      _conversation_id: data.conversationId,
+      _to_user: data.toUserId,
+      _reason: data.reason ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 // Bulk fix: rename contacts whose name matches a workspace member's full_name
 // (the bug where fromMe messages captured the WA owner's pushName).
 export const refreshContactNames = createServerFn({ method: "POST" })
