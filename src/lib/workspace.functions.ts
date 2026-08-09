@@ -293,7 +293,7 @@ export const updateMemberQueueSettings = createServerFn({ method: "POST" })
   .inputValidator((d: { workspaceId: string; userId: string; is_active?: boolean; accepts_new_leads?: boolean }) => d)
   .handler(async ({ data, context }) => {
     await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
-    const patch: Record<string, boolean> = {};
+    const patch: { is_active?: boolean; accepts_new_leads?: boolean } = {};
     if (typeof data.is_active === "boolean") patch.is_active = data.is_active;
     if (typeof data.accepts_new_leads === "boolean") patch.accepts_new_leads = data.accepts_new_leads;
     if (Object.keys(patch).length === 0) return { ok: true as const };
@@ -312,7 +312,7 @@ export const transferConversation = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("transfer_conversation", {
       _conversation_id: data.conversationId,
       _to_user: data.toUserId,
-      _reason: data.reason ?? null,
+      _reason: data.reason ?? undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
