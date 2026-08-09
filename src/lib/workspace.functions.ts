@@ -17,7 +17,7 @@ export const listWorkspaceMembers = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: members, error } = await context.supabase
       .from("workspace_members")
-      .select("user_id, role, created_at")
+      .select("user_id, role, created_at, is_active, accepts_new_leads")
       .eq("workspace_id", data.workspaceId);
     if (error) throw new Error(error.message);
     if (!members || members.length === 0) return [];
@@ -34,6 +34,8 @@ export const listWorkspaceMembers = createServerFn({ method: "GET" })
     }
     return members.map((m: any) => ({
       user_id: m.user_id, role: m.role, created_at: m.created_at,
+      is_active: m.is_active ?? true,
+      accepts_new_leads: m.accepts_new_leads ?? true,
       full_name: (profs ?? []).find((p: any) => p.id === m.user_id)?.full_name ?? null,
       email: emails.get(m.user_id) ?? null,
     }));
@@ -282,6 +284,36 @@ export const removeMember = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("workspace_members")
       .delete().eq("workspace_id", data.workspaceId).eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const updateMemberQueueSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspaceId: string; userId: string; is_active?: boolean; accepts_new_leads?: boolean }) => d)
+  .handler(async ({ data, context }) => {
+    await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
+    const patch: { is_active?: boolean; accepts_new_leads?: boolean } = {};
+    if (typeof data.is_active === "boolean") patch.is_active = data.is_active;
+    if (typeof data.accepts_new_leads === "boolean") patch.accepts_new_leads = data.accepts_new_leads;
+    if (Object.keys(patch).length === 0) return { ok: true as const };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("workspace_members")
+      .update(patch)
+      .eq("workspace_id", data.workspaceId).eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const transferConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { conversationId: string; toUserId: string; reason?: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("transfer_conversation", {
+      _conversation_id: data.conversationId,
+      _to_user: data.toUserId,
+      _reason: data.reason ?? undefined,
+    });
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });

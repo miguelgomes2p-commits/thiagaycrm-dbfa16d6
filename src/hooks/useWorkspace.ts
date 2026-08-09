@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export type WorkspaceMode = "individual" | "shared";
+
 export type WorkspaceWithRole = {
   id: string;
   name: string;
@@ -9,6 +11,7 @@ export type WorkspaceWithRole = {
   role: string;
   feature_renave: boolean;
   feature_ai: boolean;
+  workspace_mode: WorkspaceMode;
 };
 
 export function useMyWorkspaces() {
@@ -17,11 +20,15 @@ export function useMyWorkspaces() {
     queryFn: async (): Promise<WorkspaceWithRole[]> => {
       const { data, error } = await supabase
         .from("workspace_members")
-        .select("role, workspaces:workspace_id(id, name, slug, logo_url, feature_renave, feature_ai)")
+        .select("role, workspaces:workspace_id(id, name, slug, logo_url, feature_renave, feature_ai, workspace_mode)")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? [])
-        .map((r) => r.workspaces ? { ...(r.workspaces as unknown as Omit<WorkspaceWithRole, "role">), role: r.role } : null)
+        .map((r) => {
+          if (!r.workspaces) return null;
+          const w = r.workspaces as unknown as Omit<WorkspaceWithRole, "role" | "workspace_mode"> & { workspace_mode?: WorkspaceMode | null };
+          return { ...w, workspace_mode: w.workspace_mode ?? "individual", role: r.role };
+        })
         .filter(Boolean) as WorkspaceWithRole[];
     },
   });

@@ -170,6 +170,54 @@ export type Database = {
           },
         ]
       }
+      conversation_assignments: {
+        Row: {
+          assigned_by: string | null
+          conversation_id: string
+          created_at: string
+          from_user_id: string | null
+          id: string
+          reason: string | null
+          to_user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          conversation_id: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          reason?: string | null
+          to_user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          conversation_id?: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          reason?: string | null
+          to_user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_assignments_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_assignments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_labels: {
         Row: {
           assigned_at: string
@@ -1773,6 +1821,7 @@ export type Database = {
           app_id: string | null
           auto_reply_enabled: boolean
           auto_reply_prompt: string | null
+          connection_scope: string
           connection_status: Database["public"]["Enums"]["wa_connection_status"]
           created_at: string
           default_owner_id: string | null
@@ -1802,6 +1851,7 @@ export type Database = {
           app_id?: string | null
           auto_reply_enabled?: boolean
           auto_reply_prompt?: string | null
+          connection_scope?: string
           connection_status?: Database["public"]["Enums"]["wa_connection_status"]
           created_at?: string
           default_owner_id?: string | null
@@ -1831,6 +1881,7 @@ export type Database = {
           app_id?: string | null
           auto_reply_enabled?: boolean
           auto_reply_prompt?: string | null
+          connection_scope?: string
           connection_status?: Database["public"]["Enums"]["wa_connection_status"]
           created_at?: string
           default_owner_id?: string | null
@@ -1974,22 +2025,28 @@ export type Database = {
       }
       workspace_members: {
         Row: {
+          accepts_new_leads: boolean
           created_at: string
           id: string
+          is_active: boolean
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
           workspace_id: string
         }
         Insert: {
+          accepts_new_leads?: boolean
           created_at?: string
           id?: string
+          is_active?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
           workspace_id: string
         }
         Update: {
+          accepts_new_leads?: boolean
           created_at?: string
           id?: string
+          is_active?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
           workspace_id?: string
@@ -2016,6 +2073,7 @@ export type Database = {
           name: string
           slug: string
           updated_at: string
+          workspace_mode: Database["public"]["Enums"]["workspace_mode"]
         }
         Insert: {
           created_at?: string
@@ -2028,6 +2086,7 @@ export type Database = {
           name: string
           slug: string
           updated_at?: string
+          workspace_mode?: Database["public"]["Enums"]["workspace_mode"]
         }
         Update: {
           created_at?: string
@@ -2040,6 +2099,7 @@ export type Database = {
           name?: string
           slug?: string
           updated_at?: string
+          workspace_mode?: Database["public"]["Enums"]["workspace_mode"]
         }
         Relationships: []
       }
@@ -2055,6 +2115,10 @@ export type Database = {
       }
       create_workspace_with_defaults: {
         Args: { _name: string; _slug: string; _user_id: string }
+        Returns: string
+      }
+      create_workspace_with_mode: {
+        Args: { _mode?: string; _name: string; _slug: string; _user_id: string }
         Returns: string
       }
       ensure_whatsapp_number_label: {
@@ -2081,6 +2145,18 @@ export type Database = {
       renave_seed_endpoints: {
         Args: { _workspace_id: string }
         Returns: number
+      }
+      set_workspace_mode: {
+        Args: { _mode: string; _workspace_id: string }
+        Returns: string
+      }
+      transfer_conversation: {
+        Args: { _conversation_id: string; _reason?: string; _to_user: string }
+        Returns: string
+      }
+      workspace_mode_of: {
+        Args: { _workspace_id: string }
+        Returns: Database["public"]["Enums"]["workspace_mode"]
       }
     }
     Enums: {
@@ -2111,6 +2187,7 @@ export type Database = {
       wa_delivery_status: "pending" | "sent" | "delivered" | "read" | "failed"
       wa_provider: "cloud_api" | "evolution" | "zapi"
       wa_template_status: "pending" | "approved" | "rejected" | "paused"
+      workspace_mode: "individual" | "shared"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2267,6 +2344,7 @@ export const Constants = {
       wa_delivery_status: ["pending", "sent", "delivered", "read", "failed"],
       wa_provider: ["cloud_api", "evolution", "zapi"],
       wa_template_status: ["pending", "approved", "rejected", "paused"],
+      workspace_mode: ["individual", "shared"],
     },
   },
 } as const

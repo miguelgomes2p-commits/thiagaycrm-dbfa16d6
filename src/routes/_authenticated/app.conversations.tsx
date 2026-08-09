@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
 import { useServerFn } from "@tanstack/react-start";
+import { transferConversation } from "@/lib/workspace.functions";
 import {
   sendWhatsappMessage,
   sendWhatsappAttachment,
@@ -115,6 +116,15 @@ function ConversationsPage() {
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
   const repairAudio = useServerFn(repairWhatsappAudioMedia);
+  const transferConv = useServerFn(transferConversation);
+  const transferM = useMutation({
+    mutationFn: (p: { conversationId: string; toUserId: string }) => transferConv({ data: p }),
+    onSuccess: () => {
+      toast.success("Conversa transferida");
+      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
 
   const { data: allLabels } = useLabels(ws?.id);
@@ -1217,6 +1227,21 @@ function ConversationsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {isAdmin && (
+                  <Select
+                    value={(active as { assigned_to?: string | null }).assigned_to ?? ""}
+                    onValueChange={(v) => transferM.mutate({ conversationId: active.id, toUserId: v })}
+                  >
+                    <SelectTrigger className="h-8 w-44 text-xs" title="Transferir conversa">
+                      <SelectValue placeholder="Transferir para…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from(membersQ.data?.entries() ?? []).map(([id, m]) => (
+                        <SelectItem key={id} value={id} className="text-xs">{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <Button
                   size="sm"
                   variant={leadPaneOpen ? "outline" : "ghost"}

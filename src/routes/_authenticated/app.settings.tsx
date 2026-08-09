@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { listWorkspaceMembers, inviteMemberByEmail, listWorkspaceInvitations, updateMemberRole, removeMember } from "@/lib/workspace.functions";
+import { listWorkspaceMembers, inviteMemberByEmail, listWorkspaceInvitations, updateMemberRole, removeMember, updateMemberQueueSettings } from "@/lib/workspace.functions";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
   component: SettingsPage,
@@ -35,6 +36,7 @@ function SettingsPage() {
   const listInvitesFn = useServerFn(listWorkspaceInvitations);
   const updFn = useServerFn(updateMemberRole);
   const rmFn = useServerFn(removeMember);
+  const queueFn = useServerFn(updateMemberQueueSettings);
 
   const membersQ = useQuery({
     enabled: !!ws?.id,
@@ -43,6 +45,7 @@ function SettingsPage() {
   });
 
   const canManage = ws?.role === "owner" || ws?.role === "admin";
+  const isShared = ws?.workspace_mode === "shared";
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("agent");
   const [lastInviteLink, setLastInviteLink] = useState("");
@@ -84,6 +87,16 @@ function SettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const queueM = useMutation({
+    mutationFn: (p: { userId: string; accepts_new_leads?: boolean; is_active?: boolean }) =>
+      queueFn({ data: { workspaceId: ws!.id, ...p } }),
+    onSuccess: () => {
+      toast.success("Fila atualizada");
+      qc.invalidateQueries({ queryKey: ["ws-members-full"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const rmM = useMutation({
     mutationFn: (userId: string) => rmFn({ data: { workspaceId: ws!.id, userId } }),
     onSuccess: () => {
@@ -109,6 +122,12 @@ function SettingsPage() {
           <div><dt className="text-muted-foreground">Nome</dt><dd className="font-medium">{ws?.name ?? "—"}</dd></div>
           <div><dt className="text-muted-foreground">Slug</dt><dd className="font-mono text-xs">{ws?.slug ?? "—"}</dd></div>
           <div><dt className="text-muted-foreground">Seu papel</dt><dd className="font-medium capitalize">{ws?.role ?? "—"}</dd></div>
+          <div className="sm:col-span-3">
+            <dt className="text-muted-foreground">Modo de atendimento</dt>
+            <dd className="font-medium">
+              {isShared ? "Compartilhado — WhatsApp único com distribuição automática" : "Individual — cada vendedor com seu próprio WhatsApp"}
+            </dd>
+          </div>
         </dl>
       </section>
 
@@ -183,6 +202,15 @@ function SettingsPage() {
                   <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary capitalize inline-flex items-center gap-1">
                     <Shield className="h-3 w-3" />{m.role}
                   </span>
+                )}
+                {canManage && isShared && m.role !== "owner" && m.role !== "admin" && (
+                  <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Switch
+                      checked={m.accepts_new_leads !== false}
+                      onCheckedChange={(v) => queueM.mutate({ userId: m.user_id, accepts_new_leads: v })}
+                    />
+                    Recebe leads
+                  </label>
                 )}
                 {canManage && m.role !== "owner" && (
                   <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
