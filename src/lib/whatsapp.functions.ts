@@ -15,15 +15,22 @@ export const listWhatsappNumbers = createServerFn({ method: "POST" })
     if (!member) throw new Error("Workspace não encontrado");
 
     const isAdmin = member.role === "owner" || member.role === "admin";
+    const { data: wsRow } = await context.supabase
+      .from("workspaces")
+      .select("workspace_mode")
+      .eq("id", data.workspaceId)
+      .maybeSingle();
+    const isShared = (wsRow as { workspace_mode?: string } | null)?.workspace_mode === "shared";
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let query = supabaseAdmin
       .from("whatsapp_numbers")
       .select(
-        "id, label, display_number, phone_number_id, waba_id, is_active, webhook_verify_token, auto_reply_enabled, last_webhook_at, created_at, provider, instance_name, connection_status, last_qr_at, default_owner_id, n8n_webhook_url, n8n_webhook_auth_header, wa_profile_name, wa_owner_jid",
+        "id, label, display_number, phone_number_id, waba_id, is_active, webhook_verify_token, auto_reply_enabled, last_webhook_at, created_at, provider, instance_name, connection_status, last_qr_at, default_owner_id, n8n_webhook_url, n8n_webhook_auth_header, wa_profile_name, wa_owner_jid, connection_scope",
       )
       .eq("workspace_id", data.workspaceId)
       .order("created_at");
-    if (!isAdmin) query = query.eq("default_owner_id", context.userId);
+    // Em workspaces compartilhados todos os membros enxergam a conexão única.
+    if (!isAdmin && !isShared) query = query.eq("default_owner_id", context.userId);
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
     return (rows ?? []).map((row) => ({
