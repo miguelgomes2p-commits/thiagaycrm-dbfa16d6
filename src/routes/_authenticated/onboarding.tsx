@@ -19,6 +19,7 @@ function slugify(s: string) {
 
 function Onboarding() {
   const [name, setName] = useState("");
+  const [mode, setMode] = useState<"individual" | "shared">("individual");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -30,7 +31,12 @@ function Onboarding() {
     const { data: u } = await supabase.auth.getSession();
     if (!u.session?.user) { setLoading(false); toast.error("Sessão expirada"); return; }
     const slug = slugify(name) + "-" + Math.random().toString(36).slice(2, 6);
-    const { error } = await supabase.rpc("create_workspace_with_defaults", { _name: name.trim(), _slug: slug, _user_id: u.session!.user.id });
+    const { error } = await supabase.rpc("create_workspace_with_mode", {
+      _name: name.trim(),
+      _slug: slug,
+      _user_id: u.session!.user.id,
+      _mode: mode,
+    });
     if (error) { setLoading(false); toast.error(error.message); return; }
     // Force refetch of workspaces BEFORE navigating, otherwise AppShell reads
     // the stale empty cache and bounces back to /onboarding.
@@ -40,6 +46,19 @@ function Onboarding() {
     toast.success("Empresa criada!");
     navigate({ to: "/app" });
   }
+
+  const modes = [
+    {
+      value: "individual" as const,
+      title: "Individual / multi-WhatsApp",
+      desc: "Cada vendedor conecta o próprio número e atende apenas os seus contatos.",
+    },
+    {
+      value: "shared" as const,
+      title: "Compartilhado / WhatsApp único",
+      desc: "Um número da empresa distribui os contatos automaticamente entre os vendedores.",
+    },
+  ];
 
   return (
     <div className="min-h-screen grid place-items-center bg-background p-6">
@@ -55,6 +74,25 @@ function Onboarding() {
           <div>
             <Label htmlFor="name">Nome da empresa</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Lupus Assessoria" required autoFocus />
+          </div>
+          <div className="space-y-2">
+            <Label>Modo de atendimento</Label>
+            {modes.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setMode(m.value)}
+                className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                  mode === m.value ? "border-primary bg-primary/10" : "border-border hover:bg-surface/50"
+                }`}
+              >
+                <div className="text-sm font-medium">{m.title}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{m.desc}</div>
+              </button>
+            ))}
+            <p className="text-[11px] text-muted-foreground">
+              Você poderá trocar depois apenas enquanto o workspace ainda não tiver conversas, leads ou WhatsApp conectado.
+            </p>
           </div>
           <Button type="submit" disabled={loading || !name.trim()} className="w-full gradient-brand text-primary-foreground border-0 h-11">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Criar workspace"}
