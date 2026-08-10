@@ -1221,7 +1221,7 @@ function ConversationsPage() {
               </Avatar>
 
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate flex items-center gap-1.5">
+                <div className="text-sm font-medium truncate flex items-center gap-1.5 min-w-0">
                   <span className="truncate">{(active.contacts as { name?: string } | null)?.name?.trim() || "Anônimo"}</span>
                   {(active as { contact_id?: string | null }).contact_id && (
                     <button
@@ -1234,18 +1234,18 @@ function ConversationsPage() {
                     </button>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <span>{active.channel} · {active.status}</span>
+                <div className="text-xs text-muted-foreground flex items-center gap-1.5 min-w-0 truncate">
+                  <span className="truncate">{active.channel} · {active.status}</span>
                   {(() => {
                     const aid = (active as { assigned_to?: string | null }).assigned_to ?? null;
                     const ag = aid ? membersQ.data?.get(aid) : null;
-                    if (ag) return <span className="text-primary/90">· Atendendo: <b className="text-foreground">{ag.name}</b></span>;
-                    if (!aid) return <span className="text-amber-400/80">· na fila</span>;
+                    if (ag) return <span className="text-primary/90 truncate">· Atendendo: <b className="text-foreground">{ag.name}</b></span>;
+                    if (!aid) return <span className="text-amber-500/90 shrink-0">· na fila</span>;
                     return null;
                   })()}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 {isAdmin && (
                   <Select
                     value={(active as { assigned_to?: string | null }).assigned_to ?? "__queue__"}
@@ -1254,8 +1254,8 @@ function ConversationsPage() {
                       else transferM.mutate({ conversationId: active.id, toUserId: v });
                     }}
                   >
-                    <SelectTrigger className="h-8 w-44 text-xs" title="Transferir conversa">
-                      <SelectValue placeholder="Transferir para…" />
+                    <SelectTrigger className="h-8 w-[104px] md:w-44 text-xs [&>span]:truncate" title="Transferir conversa">
+                      <SelectValue placeholder="Transferir…" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__queue__" className="text-xs">Fila (sem responsável)</SelectItem>
@@ -1268,27 +1268,29 @@ function ConversationsPage() {
                 <Button
                   size="sm"
                   variant={leadPaneOpen ? "outline" : "ghost"}
-                  className="h-8 gap-1.5"
+                  className="h-8 w-8 p-0 md:w-auto md:px-3 md:gap-1.5"
                   onClick={() => setLeadPaneOpen((v) => !v)}
                   title={leadPaneOpen ? "Fechar anotações" : "Abrir anotações"}
                 >
                   {leadPaneOpen ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
-                  Lead
+                  <span className="hidden md:inline">Lead</span>
                 </Button>
                 <LabelPicker
                   labels={labels ?? []}
                   activeIds={activeLabelIds}
                   onToggle={toggleActiveLabel}
                   trigger={
-                    <Button size="sm" variant="ghost" className="h-8 gap-1.5">
-                      <Tag className="h-3.5 w-3.5" /> Etiquetas
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 md:w-auto md:px-3 md:gap-1.5 relative">
+                      <Tag className="h-3.5 w-3.5" />
+                      <span className="hidden md:inline">Etiquetas</span>
                       {activeLabelIds.length > 0 && (
-                        <span className="text-[10px] bg-primary/20 text-primary rounded-full px-1.5 min-w-[18px]">{activeLabelIds.length}</span>
+                        <span className="text-[10px] bg-primary text-primary-foreground md:bg-primary/20 md:text-primary rounded-full px-1 md:px-1.5 min-w-[16px] md:min-w-[18px] absolute -top-1 -right-1 md:static leading-tight">{activeLabelIds.length}</span>
                       )}
                     </Button>
                   }
                 />
               </div>
+
             </div>
 
             {activeLabelIds.length > 0 && (
