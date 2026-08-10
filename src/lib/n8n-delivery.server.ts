@@ -11,12 +11,22 @@ const MAX_ATTEMPTS = 5;
 const BACKOFF_SECONDS = [0, 5, 20, 60, 300];
 const LOCK_TIMEOUT_MS = 60_000;
 
+export type CrmContext = {
+  conversation_id: string | null;
+  workspace_id: string | null;
+  workspace_mode: string | null;
+};
+
 export type EnqueueParams = {
   whatsappNumberId: string;
   payload: unknown;
   traceId?: string | null;
   requestId?: string | null;
   webhookEventId?: number | null;
+  /** Contexto interno do CRM adicionado ao body enviado ao n8n (aditivo). */
+  crmContext?: CrmContext | null;
+  /** Nome da instância Evolution, apenas para log de diagnóstico. */
+  instanceName?: string | null;
 };
 
 function logN8n(event: string, data: Record<string, unknown>) {
