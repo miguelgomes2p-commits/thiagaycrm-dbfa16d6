@@ -21,11 +21,14 @@ function useDashboard(workspaceId: string | undefined) {
     enabled: !!workspaceId,
     queryKey: ["dashboard", workspaceId],
     queryFn: async () => {
-      const [leads, contacts, convs] = await Promise.all([
+      const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const [leads, contacts, convs, msgs] = await Promise.all([
         supabase.from("leads").select("id, value, stage_id, source, created_at, won_at, lost_at, pipeline_stages:stage_id(type, name)").eq("workspace_id", workspaceId!),
         supabase.from("contacts").select("id").eq("workspace_id", workspaceId!),
         supabase.from("conversations").select("id, status, channel").eq("workspace_id", workspaceId!),
+        supabase.from("messages").select("conversation_id, direction, created_at").eq("workspace_id", workspaceId!).gte("created_at", since30).order("created_at", { ascending: true }).limit(5000),
       ]);
+
       const l = leads.data ?? [];
       const won = l.filter((r) => (r.pipeline_stages as { type?: string } | null)?.type === "won");
       const lost = l.filter((r) => (r.pipeline_stages as { type?: string } | null)?.type === "lost");
