@@ -48,7 +48,50 @@ function PipelinePage() {
   const [open, setOpen] = useState(false);
   const [infoLead, setInfoLead] = useState<Lead | null>(null);
   const [automationStage, setAutomationStage] = useState<Stage | null>(null);
+  const [newFields, setNewFields] = useState<LeadFields>({});
+  const [editForm, setEditForm] = useState<null | {
+    title: string; value: string; source: string; priority: string;
+    stage_id: string; notes: string; custom_fields: LeadFields;
+  }>(null);
   const runAutomationsFn = useServerFn(runStageAutomations);
+
+  function startEdit(l: Lead) {
+    setEditForm({
+      title: l.title,
+      value: String(l.value ?? ""),
+      source: l.source ?? "",
+      priority: l.priority,
+      stage_id: l.stage_id,
+      notes: l.notes ?? "",
+      custom_fields: (l.custom_fields ?? {}) as LeadFields,
+    });
+  }
+
+  async function saveEdit() {
+    if (!infoLead || !editForm || !ws) return;
+    const stage = pipelineQ.data?.stages.find((s) => s.id === editForm.stage_id);
+    const patch: Record<string, unknown> = {
+      title: editForm.title.trim() || infoLead.title,
+      value: editForm.value === "" ? null : Number(editForm.value),
+      source: editForm.source.trim() || null,
+      priority: editForm.priority,
+      stage_id: editForm.stage_id,
+      notes: editForm.notes.trim() || null,
+      custom_fields: Object.fromEntries(Object.entries(editForm.custom_fields).filter(([, v]) => v)),
+      last_interaction_at: new Date().toISOString(),
+    };
+    if (stage?.type === "won") patch.won_at = new Date().toISOString();
+    if (stage?.type === "lost") patch.lost_at = new Date().toISOString();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase.from("leads").update(patch as any).eq("id", infoLead.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Lead atualizado");
+    setEditForm(null);
+    setInfoLead(null);
+    qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
+    qc.invalidateQueries({ queryKey: ["dashboard", ws.id] });
+  }
+
 
   function notAllowed() {
     toast.info("Sem permissão", {
