@@ -289,7 +289,8 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
           num.provider_api_key,
           num.instance_name,
           conv.wa_contact_wa_id,
-          data.body,
+          outgoingBody,
+
         );
         waId = resp.key?.id ?? null;
       } else {
