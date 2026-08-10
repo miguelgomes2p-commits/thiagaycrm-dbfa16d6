@@ -1242,13 +1242,17 @@ function ConversationsPage() {
               <div className="flex items-center gap-1">
                 {isAdmin && (
                   <Select
-                    value={(active as { assigned_to?: string | null }).assigned_to ?? ""}
-                    onValueChange={(v) => transferM.mutate({ conversationId: active.id, toUserId: v })}
+                    value={(active as { assigned_to?: string | null }).assigned_to ?? "__queue__"}
+                    onValueChange={(v) => {
+                      if (v === "__queue__") unassignM.mutate({ conversationId: active.id });
+                      else transferM.mutate({ conversationId: active.id, toUserId: v });
+                    }}
                   >
                     <SelectTrigger className="h-8 w-44 text-xs" title="Transferir conversa">
                       <SelectValue placeholder="Transferir para…" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__queue__" className="text-xs">Fila (sem responsável)</SelectItem>
                       {Array.from(membersQ.data?.entries() ?? []).map(([id, m]) => (
                         <SelectItem key={id} value={id} className="text-xs">{m.name}</SelectItem>
                       ))}
