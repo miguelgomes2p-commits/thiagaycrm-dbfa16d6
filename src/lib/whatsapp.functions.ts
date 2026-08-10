@@ -239,7 +239,17 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
     conv.wa_contact_wa_id = waContactId;
 
+    // Assinatura visível para o cliente no WhatsApp (o CRM guarda o texto puro).
+    const { data: senderProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const senderName = (senderProfile?.full_name ?? "").trim();
+    const outgoingBody = senderName ? `*${senderName}*\n${data.body}` : data.body;
+
     const nowIso = new Date().toISOString();
+
     const { data: pendingMsg, error: pendingErr } = await context.supabase
       .from("messages")
       .insert({
@@ -267,7 +277,7 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
           throw new Error("Credenciais Cloud API ausentes neste número.");
         }
         const { sendWaText } = await import("@/lib/whatsapp.server");
-        const resp = await sendWaText(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, data.body);
+        const resp = await sendWaText(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, outgoingBody);
         waId = resp.messages?.[0]?.id ?? null;
       } else if (num.provider === "evolution") {
         if (!num.provider_base_url || !num.provider_api_key || !num.instance_name) {
@@ -279,7 +289,8 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
           num.provider_api_key,
           num.instance_name,
           conv.wa_contact_wa_id,
-          data.body,
+          outgoingBody,
+
         );
         waId = resp.key?.id ?? null;
       } else {
@@ -370,6 +381,18 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
       .single();
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
 
+    // Assinatura do atendente na legenda enviada ao cliente.
+    const { data: senderProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const senderName = (senderProfile?.full_name ?? "").trim();
+    const outgoingCaption = senderName
+      ? `*${senderName}*${data.caption ? `\n${data.caption}` : ""}`
+      : (data.caption ?? undefined);
+
+
     const cleanBase64 = data.base64.includes(",") ? data.base64.split(",").pop()! : data.base64;
     const bytes = Uint8Array.from(atob(cleanBase64), (c) => c.charCodeAt(0));
     if (bytes.byteLength > 16 * 1024 * 1024) throw new Error("Arquivo muito grande. Use até 16 MB.");
@@ -421,7 +444,7 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
       if (num.provider === "cloud_api") {
         if (!num.phone_number_id || !num.access_token) throw new Error("Credenciais Cloud API ausentes neste número.");
         const { sendWaMedia } = await import("@/lib/whatsapp.server");
-        const resp = await sendWaMedia(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, bytes, data.mimeType, safeName, data.caption ?? undefined);
+        const resp = await sendWaMedia(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, bytes, data.mimeType, safeName, outgoingCaption);
         waId = resp.messages?.[0]?.id ?? null;
       } else if (num.provider === "evolution") {
         if (!num.provider_base_url || !num.provider_api_key || !num.instance_name) throw new Error("Configuração da instância Evolution ausente.");
@@ -443,7 +466,7 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
               cleanBase64,
               data.mimeType,
               safeName,
-              data.caption ?? undefined,
+              outgoingCaption,
             );
         waId = resp.key?.id ?? null;
       } else {
