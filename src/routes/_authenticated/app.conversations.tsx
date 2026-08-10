@@ -35,6 +35,8 @@ import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
+  validateSearch: (search: Record<string, unknown>): { c?: string } =>
+    typeof search["c"] === "string" ? { c: search["c"] } : {},
   component: ConversationsPage,
 });
 

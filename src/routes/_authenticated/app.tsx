@@ -5,8 +5,9 @@ import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, Bell, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
+  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
 } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -230,7 +231,7 @@ function AppShell() {
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">
-            <Button size="icon" variant="ghost" className="h-9 w-9"><Bell className="h-4 w-4" /></Button>
+            <NotificationBell userId={authUser?.id} />
             <div className="relative group">
               <Avatar className="h-8 w-8 cursor-pointer">
                 <AvatarFallback className="bg-primary/20 text-primary text-xs">{initials}</AvatarFallback>
