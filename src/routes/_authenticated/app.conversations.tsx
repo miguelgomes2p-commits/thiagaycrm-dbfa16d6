@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
 import { useServerFn } from "@tanstack/react-start";
-import { transferConversation } from "@/lib/workspace.functions";
+import { transferConversation, unassignConversation } from "@/lib/workspace.functions";
 import {
   sendWhatsappMessage,
   sendWhatsappAttachment,
@@ -121,6 +121,16 @@ function ConversationsPage() {
     mutationFn: (p: { conversationId: string; toUserId: string }) => transferConv({ data: p }),
     onSuccess: () => {
       toast.success("Conversa transferida");
+      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const unassignConv = useServerFn(unassignConversation);
+  const unassignM = useMutation({
+    mutationFn: (p: { conversationId: string }) => unassignConv({ data: p }),
+    onSuccess: () => {
+      toast.success("Conversa devolvida para a fila");
       qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -1232,13 +1242,17 @@ function ConversationsPage() {
               <div className="flex items-center gap-1">
                 {isAdmin && (
                   <Select
-                    value={(active as { assigned_to?: string | null }).assigned_to ?? ""}
-                    onValueChange={(v) => transferM.mutate({ conversationId: active.id, toUserId: v })}
+                    value={(active as { assigned_to?: string | null }).assigned_to ?? "__queue__"}
+                    onValueChange={(v) => {
+                      if (v === "__queue__") unassignM.mutate({ conversationId: active.id });
+                      else transferM.mutate({ conversationId: active.id, toUserId: v });
+                    }}
                   >
                     <SelectTrigger className="h-8 w-44 text-xs" title="Transferir conversa">
                       <SelectValue placeholder="Transferir para…" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__queue__" className="text-xs">Fila (sem responsável)</SelectItem>
                       {Array.from(membersQ.data?.entries() ?? []).map(([id, m]) => (
                         <SelectItem key={id} value={id} className="text-xs">{m.name}</SelectItem>
                       ))}
