@@ -126,6 +126,7 @@ function ConversationsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const unassignConv = useServerFn(unassignConversation);
   const unassignM = useMutation({
     mutationFn: (p: { conversationId: string }) => unassignConv({ data: p }),
     onSuccess: () => {
