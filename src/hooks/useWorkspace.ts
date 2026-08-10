@@ -18,9 +18,13 @@ export function useMyWorkspaces() {
   return useQuery({
     queryKey: ["my-workspaces"],
     queryFn: async (): Promise<WorkspaceWithRole[]> => {
+      const { data: s } = await supabase.auth.getSession();
+      const uid = s.session?.user?.id;
+      if (!uid) return [];
       const { data, error } = await supabase
         .from("workspace_members")
         .select("role, workspaces:workspace_id(id, name, slug, logo_url, feature_renave, feature_ai, workspace_mode)")
+        .eq("user_id", uid)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? [])
@@ -33,6 +37,7 @@ export function useMyWorkspaces() {
     },
   });
 }
+
 
 export function useCurrentProfile() {
   return useQuery({
