@@ -240,12 +240,8 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
     conv.wa_contact_wa_id = waContactId;
 
     // Assinatura visível para o cliente no WhatsApp (o CRM guarda o texto puro).
-    const { data: senderProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("full_name")
-      .eq("id", context.userId)
-      .maybeSingle();
-    const senderName = (senderProfile?.full_name ?? "").trim();
+    const { resolveSenderName } = await import("@/lib/sender-name.server");
+    const senderName = await resolveSenderName(supabaseAdmin, context.userId);
     const outgoingBody = senderName ? `*${senderName}*\n${data.body}` : data.body;
 
     const nowIso = new Date().toISOString();
