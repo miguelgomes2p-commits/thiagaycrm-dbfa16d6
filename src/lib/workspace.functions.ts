@@ -335,7 +335,7 @@ export const unassignConversation = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("conversations")
-      .update({ assigned_to: null, assignment_status: "queued" })
+      .update({ assigned_to: null, assignment_status: "unassigned" })
       .eq("id", conv.id);
     if (error) throw new Error(error.message);
 
