@@ -372,12 +372,12 @@ function PipelinePage() {
         </div>
       </div>
 
-      <Dialog open={!!infoLead} onOpenChange={(o) => !o && setInfoLead(null)}>
+      <Dialog open={!!infoLead} onOpenChange={(o) => { if (!o) { setInfoLead(null); setEditForm(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{infoLead?.title}</DialogTitle>
           </DialogHeader>
-          {infoLead && (
+          {infoLead && !editForm && (
             <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
                 <InfoRow label="Valor" value={Number(infoLead.value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
@@ -404,7 +404,10 @@ function PipelinePage() {
                   <p className="text-xs whitespace-pre-wrap text-muted-foreground">{infoLead.notes}</p>
                 </div>
               )}
-              <div className="pt-3 border-t border-border flex justify-end">
+              <div className="pt-3 border-t border-border flex justify-between">
+                <Button type="button" variant="outline" size="sm" onClick={() => startEdit(infoLead)}>
+                  <Pencil className="h-4 w-4 mr-1.5" /> Editar
+                </Button>
                 <Button
                   type="button"
                   variant="destructive"
@@ -412,6 +415,57 @@ function PipelinePage() {
                   onClick={() => deleteLead(infoLead.id)}
                 >
                   <Trash2 className="h-4 w-4 mr-1.5" /> Excluir lead
+                </Button>
+              </div>
+            </div>
+          )}
+          {infoLead && editForm && (
+            <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto pr-1">
+              <div><Label>Título</Label>
+                <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Valor (R$)</Label>
+                  <Input type="number" step="0.01" value={editForm.value}
+                    onChange={(e) => setEditForm({ ...editForm, value: e.target.value })} />
+                </div>
+                <div><Label>Origem</Label>
+                  <Input value={editForm.source} onChange={(e) => setEditForm({ ...editForm, source: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Etapa</Label>
+                  <Select value={editForm.stage_id} onValueChange={(v) => setEditForm({ ...editForm, stage_id: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {pipelineQ.data?.stages.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Prioridade</Label>
+                  <Select value={editForm.priority} onValueChange={(v) => setEditForm({ ...editForm, priority: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Baixa</SelectItem>
+                      <SelectItem value="medium">Média</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                      <SelectItem value="urgent">Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-border">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
+                <LeadQualifyFields value={editForm.custom_fields}
+                  onChange={(v) => setEditForm({ ...editForm, custom_fields: v })} />
+              </div>
+              <div><Label>Anotações</Label>
+                <Textarea rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+              </div>
+              <div className="pt-3 border-t border-border flex justify-end gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditForm(null)}>Cancelar</Button>
+                <Button type="button" size="sm" className="gradient-brand text-primary-foreground border-0" onClick={saveEdit}>
+                  Salvar
                 </Button>
               </div>
             </div>
