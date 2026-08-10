@@ -242,7 +242,6 @@ function PipelinePage() {
                     >
                       <Zap className="h-3.5 w-3.5" />
                     </button>
-                    )}
                   </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
