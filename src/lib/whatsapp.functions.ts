@@ -381,6 +381,18 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
       .single();
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
 
+    // Assinatura do atendente na legenda enviada ao cliente.
+    const { data: senderProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const senderName = (senderProfile?.full_name ?? "").trim();
+    const outgoingCaption = senderName
+      ? `*${senderName}*${data.caption ? `\n${data.caption}` : ""}`
+      : (data.caption ?? undefined);
+
+
     const cleanBase64 = data.base64.includes(",") ? data.base64.split(",").pop()! : data.base64;
     const bytes = Uint8Array.from(atob(cleanBase64), (c) => c.charCodeAt(0));
     if (bytes.byteLength > 16 * 1024 * 1024) throw new Error("Arquivo muito grande. Use até 16 MB.");
