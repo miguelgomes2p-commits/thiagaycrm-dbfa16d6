@@ -466,7 +466,7 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
               cleanBase64,
               data.mimeType,
               safeName,
-              data.caption ?? undefined,
+              outgoingCaption,
             );
         waId = resp.key?.id ?? null;
       } else {
