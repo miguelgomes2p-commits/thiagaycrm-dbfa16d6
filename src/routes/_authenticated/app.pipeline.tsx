@@ -229,15 +229,19 @@ function PipelinePage() {
                     <span className="text-xs text-muted-foreground">
                       {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
                     </span>
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setAutomationStage(stage)}
-                        className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                        title="Configurar gatilhos"
-                      >
-                        <Zap className="h-3.5 w-3.5" />
-                      </button>
+                    <button
+                      type="button"
+                      onClick={() => (isAdmin ? setAutomationStage(stage) : notAllowed())}
+                      className={cn(
+                        "p-1 rounded transition-colors",
+                        isAdmin
+                          ? "hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                          : "text-muted-foreground/40 hover:bg-muted",
+                      )}
+                      title={isAdmin ? "Configurar gatilhos" : "Somente administradores"}
+                    >
+                      <Zap className="h-3.5 w-3.5" />
+                    </button>
                     )}
                   </div>
                 </div>
