@@ -13,7 +13,7 @@ function assertSuperAdmin(claims: Record<string, unknown> | undefined) {
 export const listAllUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    assertSuperAdmin(context.claims as Record<string, unknown>);
+    assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
     if (error) throw new Error(error.message);
@@ -30,7 +30,7 @@ export const deleteUserById = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { userId: string }) => data)
   .handler(async ({ data, context }) => {
-    assertSuperAdmin(context.claims as Record<string, unknown>);
+    assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
     if (data.userId === context.userId) {
       throw new Error("Você não pode excluir a própria conta por aqui.");
     }
@@ -43,7 +43,7 @@ export const deleteUserById = createServerFn({ method: "POST" })
 export const listAllWorkspaces = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    assertSuperAdmin(context.claims as Record<string, unknown>);
+    assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: workspaces, error } = await supabaseAdmin
       .from("workspaces")
@@ -70,7 +70,7 @@ export const updateWorkspaceFeatures = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { workspaceId: string; feature_renave?: boolean; feature_ai?: boolean }) => data)
   .handler(async ({ data, context }) => {
-    assertSuperAdmin(context.claims as Record<string, unknown>);
+    assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
     const patch: { feature_renave?: boolean; feature_ai?: boolean } = {};
     if (typeof data.feature_renave === "boolean") patch.feature_renave = data.feature_renave;
     if (typeof data.feature_ai === "boolean") patch.feature_ai = data.feature_ai;
@@ -85,7 +85,7 @@ export const deleteWorkspaceById = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { workspaceId: string }) => data)
   .handler(async ({ data, context }) => {
-    assertSuperAdmin(context.claims as Record<string, unknown>);
+    assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("workspaces").delete().eq("id", data.workspaceId);
     if (error) throw new Error(error.message);
