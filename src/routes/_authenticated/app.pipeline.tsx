@@ -48,6 +48,13 @@ function PipelinePage() {
   const [automationStage, setAutomationStage] = useState<Stage | null>(null);
   const runAutomationsFn = useServerFn(runStageAutomations);
 
+  function notAllowed() {
+    toast.info("Sem permissão", {
+      description: "Somente administradores do workspace podem personalizar etapas e criar automações.",
+    });
+  }
+
+
   const pipelineQ = useQuery({
     enabled: !!ws?.id,
     queryKey: ["pipeline", ws?.id],
