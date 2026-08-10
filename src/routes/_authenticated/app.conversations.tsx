@@ -126,6 +126,15 @@ function ConversationsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const unassignM = useMutation({
+    mutationFn: (p: { conversationId: string }) => unassignConv({ data: p }),
+    onSuccess: () => {
+      toast.success("Conversa devolvida para a fila");
+      qc.invalidateQueries({ queryKey: ["conversations", ws?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const { data: allLabels } = useLabels(ws?.id);
   const { data: convLabelMap } = useConversationLabels(ws?.id);
