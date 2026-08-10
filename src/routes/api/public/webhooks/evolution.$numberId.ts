@@ -77,9 +77,19 @@ export const Route = createFileRoute("/api/public/webhooks/evolution/$numberId")
             const { processEvolutionPayload } = await import("@/lib/evolution-message-processor.server");
             const { enqueueN8nDelivery } = await import("@/lib/n8n-delivery.server");
             const traced = withTrace(payload, traceId, requestId);
-            // Caminho de fuga fechado: o n8n também é notificado nesse fallback.
-            await enqueueN8nDelivery({ whatsappNumberId: numberId, payload: traced, traceId, requestId });
-            await processEvolutionPayload(numberId, traced, { touchWebhook: true, source: "webhook-fallback" });
+            // Conversation resolvida ANTES do n8n para popular crm_context.
+            const result = await processEvolutionPayload(numberId, traced, { touchWebhook: true, source: "webhook-fallback" });
+            await enqueueN8nDelivery({
+              whatsappNumberId: numberId,
+              payload: traced,
+              traceId,
+              requestId,
+              crmContext: {
+                conversation_id: result.conversationIds[0] ?? null,
+                workspace_id: result.workspaceId,
+                workspace_mode: result.workspaceMode,
+              },
+            });
             logWebhook("sync_fallback", { request_id: requestId, trace_id: traceId, whatsapp_number_id: numberId, duration_ms: Date.now() - startedAt });
             return jsonResponse({ ok: true, request_id: requestId, trace_id: traceId, mode: "sync-fallback" });
           }
