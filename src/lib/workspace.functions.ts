@@ -318,6 +318,39 @@ export const transferConversation = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const unassignConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { conversationId: string; reason?: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { data: conv, error: convError } = await context.supabase
+      .from("conversations")
+      .select("id, workspace_id, assigned_to")
+      .eq("id", data.conversationId)
+      .maybeSingle();
+    if (convError) throw new Error(convError.message);
+    if (!conv) throw new Error("Conversa não encontrada.");
+
+    await assertWorkspaceAdmin(context.supabase, conv.workspace_id, context.userId);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("conversations")
+      .update({ assigned_to: null, assignment_status: "queued" })
+      .eq("id", conv.id);
+    if (error) throw new Error(error.message);
+
+    await supabaseAdmin.from("conversation_assignments").insert({
+      workspace_id: conv.workspace_id,
+      conversation_id: conv.id,
+      from_user_id: conv.assigned_to ?? null,
+      to_user_id: null,
+      reason: data.reason ?? "Devolvida para a fila",
+      assigned_by: context.userId,
+    });
+
+    return { ok: true as const };
+  });
+
 // Bulk fix: rename contacts whose name matches a workspace member's full_name
 // (the bug where fromMe messages captured the WA owner's pushName).
 export const refreshContactNames = createServerFn({ method: "POST" })
