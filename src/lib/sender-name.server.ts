@@ -8,28 +8,28 @@ export async function resolveSenderName(
   admin: SupabaseClient<any, any, any>,
   userId: string | null | undefined,
 ): Promise<string> {
-  if (!userId) return "";
-  try {
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("full_name")
-      .eq("id", userId)
-      .maybeSingle();
-    const fromProfile = (profile?.full_name ?? "").trim();
-    if (fromProfile && !fromProfile.includes("@")) return fromProfile;
+  if (!userId) throw new Error("Não foi possível identificar o atendente desta sessão");
 
-    const { data: userRes } = await admin.auth.admin.getUserById(userId);
-    const meta = (userRes?.user?.user_metadata ?? {}) as Record<string, unknown>;
-    const metaName = String(meta["full_name"] ?? meta["name"] ?? "").trim();
-    if (metaName && !metaName.includes("@")) return metaName;
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  if (profileError) throw new Error(`Falha ao identificar atendente: ${profileError.message}`);
+  const fromProfile = (profile?.full_name ?? "").trim();
+  if (fromProfile && !fromProfile.includes("@")) return fromProfile;
 
-    const email = userRes?.user?.email ?? fromProfile;
-    if (email) {
-      const local = email.split("@")[0] ?? "";
-      return local.replace(/[._-]+/g, " ").trim();
-    }
-    return fromProfile;
-  } catch {
-    return "";
+  const { data: userRes, error: userError } = await admin.auth.admin.getUserById(userId);
+  if (userError) throw new Error(`Falha ao identificar atendente: ${userError.message}`);
+  const meta = (userRes?.user?.user_metadata ?? {}) as Record<string, unknown>;
+  const metaName = String(meta["full_name"] ?? meta["name"] ?? "").trim();
+  if (metaName && !metaName.includes("@")) return metaName;
+
+  const email = userRes?.user?.email ?? fromProfile;
+  if (email) {
+    const local = email.split("@")[0]?.replace(/[._-]+/g, " ").trim();
+    if (local) return local;
   }
+
+  throw new Error("Cadastre o nome do atendente antes de enviar mensagens");
 }
