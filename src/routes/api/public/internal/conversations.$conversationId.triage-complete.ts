@@ -65,8 +65,8 @@ export const Route = createFileRoute("/api/public/internal/conversations/$conver
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data, error } = await supabaseAdmin.rpc("complete_triage_and_assign", {
           _conversation_id: conversationId,
-          _ai_summary: aiSummary,
-          _idempotency_key: idempotencyKey,
+          _ai_summary: aiSummary ?? undefined,
+          _idempotency_key: idempotencyKey ?? undefined,
         });
 
         if (error) {
