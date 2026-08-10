@@ -155,7 +155,9 @@ function Dashboard() {
         <StatCard icon={XCircle} label="Perdidos" value={String(data?.lost ?? 0)} tone="danger" />
         <StatCard icon={DollarSign} label="Receita prevista" value={brl(data?.revenue_forecast ?? 0)} tone="brand" />
         <StatCard icon={Target} label="Conversão" value={`${(data?.conversion ?? 0).toFixed(1)}%`} tone="success" />
-        <StatCard icon={Clock} label="Ciclo médio" value="—" sub="Em breve" />
+        <StatCard icon={Clock} label="Resposta do lead" value={fmtDur(data?.leadResponseMs ?? null)} sub={`${data?.leadResponseCount ?? 0} respostas (30d)`} tone="default" />
+        <StatCard icon={Timer} label="Resposta do agente" value={fmtDur(data?.agentResponseMs ?? null)} sub={`${data?.agentResponseCount ?? 0} respostas (30d)`} tone="brand" />
+
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
