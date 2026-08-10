@@ -14,6 +14,10 @@ export type EvolutionProcessStats = {
   errors: number;
   durationMs: number;
   source: string;
+  /** IDs internos (UUID) das conversas resolvidas/criadas neste payload. */
+  conversationIds: string[];
+  workspaceId: string | null;
+  workspaceMode: string | null;
 };
 
 async function logProcessorIssue(params: {
@@ -308,7 +312,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
 
   const { data: wsRow } = await supabaseAdmin
     .from("workspaces")
-    .select("name")
+    .select("name, workspace_mode")
     .eq("id", num.workspace_id)
     .maybeSingle();
   const workspaceName = (wsRow?.name ?? "").trim().toLowerCase();
