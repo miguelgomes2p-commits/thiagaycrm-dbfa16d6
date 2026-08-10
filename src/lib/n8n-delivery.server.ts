@@ -93,6 +93,19 @@ export async function enqueueN8nDelivery(params: EnqueueParams): Promise<"skippe
     const key = findMessageKey(params.payload);
     const waMessageId = key?.id ?? `event:${params.webhookEventId ?? params.requestId ?? crypto.randomUUID()}`;
 
+    // ADITIVO: o payload original da Evolution é preservado; apenas acrescentamos
+    // `crm_context` com o UUID interno da conversation já resolvida pelo CRM.
+    const crmContext: CrmContext | null = params.crmContext
+      ? {
+          conversation_id: params.crmContext.conversation_id ?? null,
+          workspace_id: params.crmContext.workspace_id ?? wa.workspace_id,
+          workspace_mode: params.crmContext.workspace_mode ?? null,
+        }
+      : null;
+    const bodyPayload = crmContext && isObj(params.payload)
+      ? { ...(params.payload as Json), crm_context: crmContext }
+      : params.payload;
+
     const { error } = await supabaseAdmin.from("n8n_deliveries").insert({
       workspace_id: wa.workspace_id,
       whatsapp_number_id: wa.id,
@@ -102,7 +115,7 @@ export async function enqueueN8nDelivery(params: EnqueueParams): Promise<"skippe
       request_id: params.requestId ?? null,
       phone: phoneFromJid(key?.remoteJid),
       event_name: eventNameOf(params.payload),
-      payload: params.payload as never,
+      payload: bodyPayload as never,
       status: "pending",
     } as never);
 
@@ -113,6 +126,16 @@ export async function enqueueN8nDelivery(params: EnqueueParams): Promise<"skippe
       return "error";
     }
 
+    console.info(
+      JSON.stringify({
+        scope: "N8N_FORWARD",
+        workspace_id: crmContext?.workspace_id ?? wa.workspace_id,
+        workspace_mode: crmContext?.workspace_mode ?? null,
+        conversation_id: crmContext?.conversation_id ?? null,
+        instance: params.instanceName ?? null,
+        timestamp: new Date().toISOString(),
+      }),
+    );
     logN8n("queued", { whatsapp_number_id: wa.id, wa_message_id: waMessageId, trace_id: params.traceId ?? null });
     return "queued";
   } catch (err) {
