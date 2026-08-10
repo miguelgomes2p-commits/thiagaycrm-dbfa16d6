@@ -327,7 +327,10 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
   };
 
   const event = normalizeEvent(payload);
-  const stats: EvolutionProcessStats = { event, rowsSeen: 0, insertedMessages: 0, skippedDuplicates: 0, createdConversations: 0, errors: 0, durationMs: 0, source };
+  const stats: EvolutionProcessStats = { event, rowsSeen: 0, insertedMessages: 0, skippedDuplicates: 0, createdConversations: 0, errors: 0, durationMs: 0, source, conversationIds: [], workspaceId: num.workspace_id, workspaceMode: (wsRow?.workspace_mode as string | undefined) ?? null };
+  const trackConversation = (id: string) => {
+    if (id && !stats.conversationIds.includes(id)) stats.conversationIds.push(id);
+  };
 
   if (event === "connection.update") {
     const state: string = payload.data?.state ?? payload.data?.instance?.state ?? payload.instance?.state ?? "";
