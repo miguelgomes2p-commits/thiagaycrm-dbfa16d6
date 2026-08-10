@@ -221,7 +221,7 @@ function PipelinePage() {
             <DialogTrigger asChild>
               <Button className="gradient-brand text-primary-foreground border-0"><Plus className="h-4 w-4 mr-1" /> Novo lead</Button>
             </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Criar lead</DialogTitle></DialogHeader>
             <form onSubmit={createLead} className="space-y-4">
               <div><Label>Título *</Label><Input name="title" required placeholder="Ex: Website para clínica" /></div>
@@ -237,17 +237,33 @@ function PipelinePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Prioridade</Label>
-                <Select name="priority" defaultValue="medium">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baixa</SelectItem>
-                    <SelectItem value="medium">Média</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                    <SelectItem value="urgent">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Etapa</Label>
+                  <Select name="stage_id" defaultValue={pipelineQ.data?.stages[0]?.id}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {pipelineQ.data?.stages.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Prioridade</Label>
+                  <Select name="priority" defaultValue="medium">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Baixa</SelectItem>
+                      <SelectItem value="medium">Média</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                      <SelectItem value="urgent">Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              <div className="pt-2 border-t border-border">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
+                <LeadQualifyFields value={newFields} onChange={setNewFields} />
+              </div>
+              <div><Label>Anotações</Label><Textarea name="notes" rows={3} placeholder="Observações sobre o lead" /></div>
+
               <Button type="submit" className="w-full gradient-brand text-primary-foreground border-0">Criar</Button>
             </form>
           </DialogContent>
