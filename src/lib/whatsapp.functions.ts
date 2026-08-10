@@ -444,7 +444,7 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
       if (num.provider === "cloud_api") {
         if (!num.phone_number_id || !num.access_token) throw new Error("Credenciais Cloud API ausentes neste número.");
         const { sendWaMedia } = await import("@/lib/whatsapp.server");
-        const resp = await sendWaMedia(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, bytes, data.mimeType, safeName, data.caption ?? undefined);
+        const resp = await sendWaMedia(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, bytes, data.mimeType, safeName, outgoingCaption);
         waId = resp.messages?.[0]?.id ?? null;
       } else if (num.provider === "evolution") {
         if (!num.provider_base_url || !num.provider_api_key || !num.instance_name) throw new Error("Configuração da instância Evolution ausente.");
