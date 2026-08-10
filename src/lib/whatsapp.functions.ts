@@ -133,8 +133,24 @@ export const deleteWhatsappNumber = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
 
+    // Remove the conversation history tied to this number so dashboards/inbox
+    // don't keep counting interactions from a connection that no longer exists.
+    const { data: convs } = await supabaseAdmin
+      .from("conversations")
+      .select("id")
+      .eq("whatsapp_number_id", data.id);
+    const convIds = (convs ?? []).map((c) => c.id);
+    if (convIds.length > 0) {
+      await supabaseAdmin.from("messages").delete().in("conversation_id", convIds);
+      await supabaseAdmin.from("conversation_labels").delete().in("conversation_id", convIds);
+      await supabaseAdmin.from("conversation_assignments").delete().in("conversation_id", convIds);
+      await supabaseAdmin.from("queue_entries").delete().in("conversation_id", convIds);
+      await supabaseAdmin.from("conversations").delete().in("id", convIds);
+    }
+
     const { error } = await context.supabase.from("whatsapp_numbers").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+
 
     // Best-effort cleanup on Evolution (logout + delete). Never blocks the CRM delete.
     let evolutionCleanup: { attempted: boolean; ok: boolean; error?: string } = { attempted: false, ok: false };

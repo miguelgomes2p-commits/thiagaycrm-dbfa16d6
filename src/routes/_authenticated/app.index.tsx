@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
 import {
   TrendingUp, Users, MessageSquare, Trophy, XCircle, DollarSign,
-  Target, Clock, Sparkles
+  Target, Clock, Timer, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -21,11 +21,14 @@ function useDashboard(workspaceId: string | undefined) {
     enabled: !!workspaceId,
     queryKey: ["dashboard", workspaceId],
     queryFn: async () => {
-      const [leads, contacts, convs] = await Promise.all([
+      const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const [leads, contacts, convs, msgs] = await Promise.all([
         supabase.from("leads").select("id, value, stage_id, source, created_at, won_at, lost_at, pipeline_stages:stage_id(type, name)").eq("workspace_id", workspaceId!),
         supabase.from("contacts").select("id").eq("workspace_id", workspaceId!),
         supabase.from("conversations").select("id, status, channel").eq("workspace_id", workspaceId!),
+        supabase.from("messages").select("conversation_id, direction, created_at").eq("workspace_id", workspaceId!).gte("created_at", since30).order("created_at", { ascending: true }).limit(5000),
       ]);
+
       const l = leads.data ?? [];
       const won = l.filter((r) => (r.pipeline_stages as { type?: string } | null)?.type === "won");
       const lost = l.filter((r) => (r.pipeline_stages as { type?: string } | null)?.type === "lost");
@@ -59,6 +62,28 @@ function useDashboard(workspaceId: string | undefined) {
       (convs.data ?? []).forEach((c) => { chanMap[c.channel] = (chanMap[c.channel] ?? 0) + 1; });
       const byChannel = Object.entries(chanMap).map(([name, value]) => ({ name, value }));
 
+      // Response times (last 30 days): pair consecutive messages per conversation.
+      const byConv: Record<string, { direction: string; t: number }[]> = {};
+      (msgs.data ?? []).forEach((m) => {
+        if (m.direction !== "inbound" && m.direction !== "outbound") return;
+        (byConv[m.conversation_id] ??= []).push({ direction: m.direction, t: new Date(m.created_at).getTime() });
+      });
+      const leadDeltas: number[] = [];
+      const agentDeltas: number[] = [];
+      const MAX_GAP = 24 * 60 * 60 * 1000; // ignora pausas > 24h
+      Object.values(byConv).forEach((list) => {
+        list.sort((a, b) => a.t - b.t);
+        for (let i = 1; i < list.length; i++) {
+          const prev = list[i - 1]!; const cur = list[i]!;
+          if (prev.direction === cur.direction) continue;
+          const delta = cur.t - prev.t;
+          if (delta <= 0 || delta > MAX_GAP) continue;
+          if (cur.direction === "inbound") leadDeltas.push(delta);
+          else agentDeltas.push(delta);
+        }
+      });
+      const avg = (arr: number[]) => (arr.length ? arr.reduce((s, n) => s + n, 0) / arr.length : null);
+
       return {
         total: l.length,
         newToday,
@@ -72,9 +97,24 @@ function useDashboard(workspaceId: string | undefined) {
         bySource,
         months,
         byChannel,
+        leadResponseMs: avg(leadDeltas),
+        agentResponseMs: avg(agentDeltas),
+        leadResponseCount: leadDeltas.length,
+        agentResponseCount: agentDeltas.length,
       };
+
     },
   });
+}
+
+function fmtDur(ms: number | null) {
+  if (ms == null) return "—";
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}min`;
 }
 
 function StatCard({ icon: Icon, label, value, sub, tone = "default" }: {
@@ -125,7 +165,9 @@ function Dashboard() {
         <StatCard icon={XCircle} label="Perdidos" value={String(data?.lost ?? 0)} tone="danger" />
         <StatCard icon={DollarSign} label="Receita prevista" value={brl(data?.revenue_forecast ?? 0)} tone="brand" />
         <StatCard icon={Target} label="Conversão" value={`${(data?.conversion ?? 0).toFixed(1)}%`} tone="success" />
-        <StatCard icon={Clock} label="Ciclo médio" value="—" sub="Em breve" />
+        <StatCard icon={Clock} label="Resposta do lead" value={fmtDur(data?.leadResponseMs ?? null)} sub={`${data?.leadResponseCount ?? 0} respostas (30d)`} tone="default" />
+        <StatCard icon={Timer} label="Resposta do agente" value={fmtDur(data?.agentResponseMs ?? null)} sub={`${data?.agentResponseCount ?? 0} respostas (30d)`} tone="brand" />
+
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
