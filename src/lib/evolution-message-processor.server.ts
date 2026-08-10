@@ -633,6 +633,9 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         convByWaId.set(waId, { id: convId, last_message_at: conversationLastAt });
         stats.createdConversations++;
       }
+      // conversation resolvida (existente ou recém-criada): expõe o UUID interno
+      // para o enriquecimento do payload enviado ao n8n (crm_context).
+      trackConversation(convId);
 
       let mediaUrl: string | null = null;
       let mediaMime: string | null = media.mime;
