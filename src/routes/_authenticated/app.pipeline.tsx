@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, DollarSign, User as UserIcon, Flame, Clock, Info, Zap, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, DollarSign, User as UserIcon, Flame, Clock, Info, Zap, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PipelineStagesManager } from "@/components/pipeline/PipelineStagesManager";
 import { StageAutomationDialog } from "@/components/pipeline/StageAutomationDialog";
+import { LeadQualifyFields, type LeadFields } from "@/components/pipeline/LeadQualifyFields";
 import { useServerFn } from "@tanstack/react-start";
 import { runStageAutomations } from "@/lib/automations.functions";
 
@@ -46,7 +48,50 @@ function PipelinePage() {
   const [open, setOpen] = useState(false);
   const [infoLead, setInfoLead] = useState<Lead | null>(null);
   const [automationStage, setAutomationStage] = useState<Stage | null>(null);
+  const [newFields, setNewFields] = useState<LeadFields>({});
+  const [editForm, setEditForm] = useState<null | {
+    title: string; value: string; source: string; priority: string;
+    stage_id: string; notes: string; custom_fields: LeadFields;
+  }>(null);
   const runAutomationsFn = useServerFn(runStageAutomations);
+
+  function startEdit(l: Lead) {
+    setEditForm({
+      title: l.title,
+      value: String(l.value ?? ""),
+      source: l.source ?? "",
+      priority: l.priority,
+      stage_id: l.stage_id,
+      notes: l.notes ?? "",
+      custom_fields: (l.custom_fields ?? {}) as LeadFields,
+    });
+  }
+
+  async function saveEdit() {
+    if (!infoLead || !editForm || !ws) return;
+    const stage = pipelineQ.data?.stages.find((s) => s.id === editForm.stage_id);
+    const patch: Record<string, unknown> = {
+      title: editForm.title.trim() || infoLead.title,
+      value: editForm.value === "" ? null : Number(editForm.value),
+      source: editForm.source.trim() || null,
+      priority: editForm.priority,
+      stage_id: editForm.stage_id,
+      notes: editForm.notes.trim() || null,
+      custom_fields: Object.fromEntries(Object.entries(editForm.custom_fields).filter(([, v]) => v)),
+      last_interaction_at: new Date().toISOString(),
+    };
+    if (stage?.type === "won") patch.won_at = new Date().toISOString();
+    if (stage?.type === "lost") patch.lost_at = new Date().toISOString();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase.from("leads").update(patch as any).eq("id", infoLead.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Lead atualizado");
+    setEditForm(null);
+    setInfoLead(null);
+    qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
+    qc.invalidateQueries({ queryKey: ["dashboard", ws.id] });
+  }
+
 
   function notAllowed() {
     toast.info("Sem permissão", {
@@ -122,21 +167,25 @@ function PipelinePage() {
     const fd = new FormData(e.currentTarget);
     const { data: user } = await supabase.auth.getSession();
     const priority = (String(fd.get("priority") || "medium")) as "low" | "medium" | "high" | "urgent";
+    const stageId = String(fd.get("stage_id") || "") || pipelineQ.data.stages[0].id;
     const { error } = await supabase.from("leads").insert({
       workspace_id: ws.id,
       pipeline_id: pipelineQ.data.pipe.id,
-      stage_id: pipelineQ.data.stages[0].id,
+      stage_id: stageId,
       title: String(fd.get("title")),
       value: Number(fd.get("value") || 0),
       source: String(fd.get("source") || "") || null,
       priority,
       contact_id: String(fd.get("contact_id") || "") || null,
+      notes: String(fd.get("notes") || "") || null,
+      custom_fields: Object.fromEntries(Object.entries(newFields).filter(([, v]) => v)),
       owner_id: user.session?.user?.id,
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Lead criado");
     qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
     qc.invalidateQueries({ queryKey: ["dashboard", ws.id] });
+    setNewFields({});
     setOpen(false);
   }
 
@@ -172,7 +221,7 @@ function PipelinePage() {
             <DialogTrigger asChild>
               <Button className="gradient-brand text-primary-foreground border-0"><Plus className="h-4 w-4 mr-1" /> Novo lead</Button>
             </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Criar lead</DialogTitle></DialogHeader>
             <form onSubmit={createLead} className="space-y-4">
               <div><Label>Título *</Label><Input name="title" required placeholder="Ex: Website para clínica" /></div>
@@ -188,17 +237,33 @@ function PipelinePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Prioridade</Label>
-                <Select name="priority" defaultValue="medium">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baixa</SelectItem>
-                    <SelectItem value="medium">Média</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                    <SelectItem value="urgent">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Etapa</Label>
+                  <Select name="stage_id" defaultValue={pipelineQ.data?.stages[0]?.id}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {pipelineQ.data?.stages.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Prioridade</Label>
+                  <Select name="priority" defaultValue="medium">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Baixa</SelectItem>
+                      <SelectItem value="medium">Média</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                      <SelectItem value="urgent">Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              <div className="pt-2 border-t border-border">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
+                <LeadQualifyFields value={newFields} onChange={setNewFields} />
+              </div>
+              <div><Label>Anotações</Label><Textarea name="notes" rows={3} placeholder="Observações sobre o lead" /></div>
+
               <Button type="submit" className="w-full gradient-brand text-primary-foreground border-0">Criar</Button>
             </form>
           </DialogContent>
@@ -307,12 +372,12 @@ function PipelinePage() {
         </div>
       </div>
 
-      <Dialog open={!!infoLead} onOpenChange={(o) => !o && setInfoLead(null)}>
+      <Dialog open={!!infoLead} onOpenChange={(o) => { if (!o) { setInfoLead(null); setEditForm(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{infoLead?.title}</DialogTitle>
           </DialogHeader>
-          {infoLead && (
+          {infoLead && !editForm && (
             <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
                 <InfoRow label="Valor" value={Number(infoLead.value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
@@ -339,7 +404,10 @@ function PipelinePage() {
                   <p className="text-xs whitespace-pre-wrap text-muted-foreground">{infoLead.notes}</p>
                 </div>
               )}
-              <div className="pt-3 border-t border-border flex justify-end">
+              <div className="pt-3 border-t border-border flex justify-between">
+                <Button type="button" variant="outline" size="sm" onClick={() => startEdit(infoLead)}>
+                  <Pencil className="h-4 w-4 mr-1.5" /> Editar
+                </Button>
                 <Button
                   type="button"
                   variant="destructive"
@@ -347,6 +415,57 @@ function PipelinePage() {
                   onClick={() => deleteLead(infoLead.id)}
                 >
                   <Trash2 className="h-4 w-4 mr-1.5" /> Excluir lead
+                </Button>
+              </div>
+            </div>
+          )}
+          {infoLead && editForm && (
+            <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto pr-1">
+              <div><Label>Título</Label>
+                <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Valor (R$)</Label>
+                  <Input type="number" step="0.01" value={editForm.value}
+                    onChange={(e) => setEditForm({ ...editForm, value: e.target.value })} />
+                </div>
+                <div><Label>Origem</Label>
+                  <Input value={editForm.source} onChange={(e) => setEditForm({ ...editForm, source: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Etapa</Label>
+                  <Select value={editForm.stage_id} onValueChange={(v) => setEditForm({ ...editForm, stage_id: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {pipelineQ.data?.stages.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Prioridade</Label>
+                  <Select value={editForm.priority} onValueChange={(v) => setEditForm({ ...editForm, priority: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Baixa</SelectItem>
+                      <SelectItem value="medium">Média</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                      <SelectItem value="urgent">Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-border">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
+                <LeadQualifyFields value={editForm.custom_fields}
+                  onChange={(v) => setEditForm({ ...editForm, custom_fields: v })} />
+              </div>
+              <div><Label>Anotações</Label>
+                <Textarea rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+              </div>
+              <div className="pt-3 border-t border-border flex justify-end gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditForm(null)}>Cancelar</Button>
+                <Button type="button" size="sm" className="gradient-brand text-primary-foreground border-0" onClick={saveEdit}>
+                  Salvar
                 </Button>
               </div>
             </div>
