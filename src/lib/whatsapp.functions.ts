@@ -242,7 +242,7 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
     // Assinatura visível para o cliente no WhatsApp (o CRM guarda o texto puro).
     const { resolveSenderName } = await import("@/lib/sender-name.server");
     const senderName = await resolveSenderName(supabaseAdmin, context.userId);
-    const outgoingBody = `*${senderName}*\n${data.body}`;
+    const outgoingBody = `*${senderName} - Atendimento*\n${data.body}`;
 
     const nowIso = new Date().toISOString();
 
@@ -380,7 +380,7 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     // Assinatura do atendente na legenda enviada ao cliente.
     const { resolveSenderName } = await import("@/lib/sender-name.server");
     const senderName = await resolveSenderName(supabaseAdmin, context.userId);
-    const outgoingCaption = `*${senderName}*${data.caption ? `\n${data.caption}` : ""}`;
+    const outgoingCaption = `*${senderName} - Atendimento*${data.caption ? `\n${data.caption}` : ""}`;
 
 
     const cleanBase64 = data.base64.includes(",") ? data.base64.split(",").pop()! : data.base64;

@@ -629,6 +629,8 @@ function ConversationsPage() {
     const isWa = active.channel === "whatsapp";
     const activeIdLocal = active.id;
     const wsId = ws.id;
+    const { data: currentSession } = await supabase.auth.getSession();
+    const currentUserId = currentSession.session?.user.id ?? null;
     setText("");
     setSending(true);
 
@@ -641,6 +643,7 @@ function ConversationsPage() {
       conversation_id: activeIdLocal,
       direction: "outbound",
       sender_type: "user",
+      sender_user_id: currentUserId,
       content,
       created_at: nowIso,
       delivery_status: "sending",
@@ -1294,14 +1297,14 @@ function ConversationsPage() {
                 const mediaUrl = (m as { media_url?: string | null }).media_url;
                 const mediaType = (m as { media_type?: string | null }).media_type;
                 const mediaMime = (m as { media_mime_type?: string | null }).media_mime_type;
-                const assignedAgentId = (active as { assigned_to?: string | null }).assigned_to ?? null;
-                const agentName = assignedAgentId ? membersQ.data?.get(assignedAgentId)?.name : null;
+                const senderUserId = (m as { sender_user_id?: string | null }).sender_user_id ?? null;
+                const senderName = senderUserId ? membersQ.data?.get(senderUserId)?.name : null;
                 const senderLabel =
                   m.direction === "outbound"
                     ? m.sender_type === "ai"
                       ? "IA - Atendimento"
-                      : agentName
-                        ? `${agentName} - Atendimento`
+                      : senderName
+                        ? `${senderName} - Atendimento`
                         : null
                     : null;
                 return (
