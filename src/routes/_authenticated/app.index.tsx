@@ -107,6 +107,16 @@ function useDashboard(workspaceId: string | undefined) {
   });
 }
 
+function fmtDur(ms: number | null) {
+  if (ms == null) return "—";
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}min`;
+}
+
 function StatCard({ icon: Icon, label, value, sub, tone = "default" }: {
   icon: React.ComponentType<{ className?: string }>; label: string; value: string; sub?: string;
   tone?: "default" | "success" | "warning" | "danger" | "brand";
