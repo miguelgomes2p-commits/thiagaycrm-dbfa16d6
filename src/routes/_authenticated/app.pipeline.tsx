@@ -167,21 +167,25 @@ function PipelinePage() {
     const fd = new FormData(e.currentTarget);
     const { data: user } = await supabase.auth.getSession();
     const priority = (String(fd.get("priority") || "medium")) as "low" | "medium" | "high" | "urgent";
+    const stageId = String(fd.get("stage_id") || "") || pipelineQ.data.stages[0].id;
     const { error } = await supabase.from("leads").insert({
       workspace_id: ws.id,
       pipeline_id: pipelineQ.data.pipe.id,
-      stage_id: pipelineQ.data.stages[0].id,
+      stage_id: stageId,
       title: String(fd.get("title")),
       value: Number(fd.get("value") || 0),
       source: String(fd.get("source") || "") || null,
       priority,
       contact_id: String(fd.get("contact_id") || "") || null,
+      notes: String(fd.get("notes") || "") || null,
+      custom_fields: Object.fromEntries(Object.entries(newFields).filter(([, v]) => v)),
       owner_id: user.session?.user?.id,
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Lead criado");
     qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
     qc.invalidateQueries({ queryKey: ["dashboard", ws.id] });
+    setNewFields({});
     setOpen(false);
   }
 
