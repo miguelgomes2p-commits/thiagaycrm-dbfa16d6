@@ -923,6 +923,76 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          actor_user_id: string | null
+          body: string | null
+          conversation_id: string | null
+          created_at: string
+          event_key: string
+          id: string
+          lead_id: string | null
+          metadata: Json
+          read_at: string | null
+          recipient_user_id: string
+          title: string
+          type: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          body?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          event_key: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          read_at?: string | null
+          recipient_user_id: string
+          title: string
+          type: string
+          workspace_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          body?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          event_key?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          read_at?: string | null
+          recipient_user_id?: string
+          title?: string
+          type?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_stages: {
         Row: {
           allowed_roles: Database["public"]["Enums"]["app_role"][]

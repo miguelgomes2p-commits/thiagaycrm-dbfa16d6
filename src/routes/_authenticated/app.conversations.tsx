@@ -35,6 +35,8 @@ import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
+  validateSearch: (search: Record<string, unknown>): { c?: string } =>
+    typeof search["c"] === "string" ? { c: search["c"] } : {},
   component: ConversationsPage,
 });
 
@@ -84,7 +86,11 @@ function ConversationsPage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
   const isAdmin = ws?.role === "owner" || ws?.role === "admin";
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const { c: deepLinkConversationId } = Route.useSearch();
+  const [activeId, setActiveId] = useState<string | null>(deepLinkConversationId ?? null);
+  useEffect(() => {
+    if (deepLinkConversationId) setActiveId(deepLinkConversationId);
+  }, [deepLinkConversationId]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
