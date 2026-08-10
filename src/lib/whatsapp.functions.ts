@@ -277,7 +277,7 @@ export const sendWhatsappMessage = createServerFn({ method: "POST" })
           throw new Error("Credenciais Cloud API ausentes neste número.");
         }
         const { sendWaText } = await import("@/lib/whatsapp.server");
-        const resp = await sendWaText(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, data.body);
+        const resp = await sendWaText(num.phone_number_id, num.access_token, conv.wa_contact_wa_id, outgoingBody);
         waId = resp.messages?.[0]?.id ?? null;
       } else if (num.provider === "evolution") {
         if (!num.provider_base_url || !num.provider_api_key || !num.instance_name) {
