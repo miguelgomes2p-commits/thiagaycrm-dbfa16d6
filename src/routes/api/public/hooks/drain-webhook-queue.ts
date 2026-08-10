@@ -125,15 +125,22 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
             }
             try {
               const trace = (row.payload as { _crm_trace?: { trace_id?: string; request_id?: string } } | null)?._crm_trace;
-              // Registra a entrega ao n8n antes de processar (idempotente).
+              // ORDEM OBRIGATÓRIA: resolve/cria a conversation e persiste a mensagem
+              // ANTES de encaminhar ao n8n, para que `crm_context.conversation_id`
+              // sempre traga o UUID interno real.
+              const result = await processEvolutionPayload(numberId, row.payload, { touchWebhook: true, source: "queue" });
               await enqueueN8nDelivery({
                 whatsappNumberId: numberId,
                 payload: row.payload,
                 traceId: trace?.trace_id ?? null,
                 requestId: trace?.request_id ?? requestId,
                 webhookEventId: row.id,
+                crmContext: {
+                  conversation_id: result.conversationIds[0] ?? null,
+                  workspace_id: result.workspaceId,
+                  workspace_mode: result.workspaceMode,
+                },
               });
-              await processEvolutionPayload(numberId, row.payload, { touchWebhook: true, source: "queue" });
               await supabaseAdmin
                 .from("webhook_events")
                 .update({ status: "done", attempts: attempt, processed_at: new Date().toISOString(), last_error: null })
@@ -141,6 +148,15 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
               logDrain("event_done", { request_id: requestId, event_id: row.id, whatsapp_number_id: numberId, kind: row.event_kind, attempt, duration_ms: Date.now() - eventStartedAt });
               totalOk += 1;
             } catch (err) {
+              // Garantia de não perder o disparo ao n8n mesmo se o processamento falhar.
+              const trace = (row.payload as { _crm_trace?: { trace_id?: string; request_id?: string } } | null)?._crm_trace;
+              await enqueueN8nDelivery({
+                whatsappNumberId: numberId,
+                payload: row.payload,
+                traceId: trace?.trace_id ?? null,
+                requestId: trace?.request_id ?? requestId,
+                webhookEventId: row.id,
+              }).catch(() => undefined);
               const message = err instanceof Error ? err.message : "unknown error";
               const nextStatus = attempt >= MAX_ATTEMPTS ? "failed" : "pending";
               await supabaseAdmin
