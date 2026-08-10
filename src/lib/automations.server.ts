@@ -57,6 +57,19 @@ export async function sendWhatsappMessageInternal(params: {
     .update({ last_message_preview: body.slice(0, 200), last_message_at: nowIso })
     .eq("id", conv.id);
 
+  // Assinatura "*Nome - Atendimento*" igual aos envios manuais: fica só no
+  // payload enviado ao WhatsApp; o banco guarda o texto puro.
+  let outgoingBody = body;
+  if (senderUserId) {
+    try {
+      const { resolveSenderName } = await import("@/lib/sender-name.server");
+      const senderName = await resolveSenderName(supabaseAdmin, senderUserId);
+      outgoingBody = `*${senderName} - Atendimento*\n${body}`;
+    } catch {
+      outgoingBody = body;
+    }
+  }
+
   try {
     let waId: string | null = null;
     if (num.provider === "cloud_api") {
