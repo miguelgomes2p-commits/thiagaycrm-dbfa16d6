@@ -62,6 +62,28 @@ function useDashboard(workspaceId: string | undefined) {
       (convs.data ?? []).forEach((c) => { chanMap[c.channel] = (chanMap[c.channel] ?? 0) + 1; });
       const byChannel = Object.entries(chanMap).map(([name, value]) => ({ name, value }));
 
+      // Response times (last 30 days): pair consecutive messages per conversation.
+      const byConv: Record<string, { direction: string; t: number }[]> = {};
+      (msgs.data ?? []).forEach((m) => {
+        if (m.direction !== "inbound" && m.direction !== "outbound") return;
+        (byConv[m.conversation_id] ??= []).push({ direction: m.direction, t: new Date(m.created_at).getTime() });
+      });
+      const leadDeltas: number[] = [];
+      const agentDeltas: number[] = [];
+      const MAX_GAP = 24 * 60 * 60 * 1000; // ignora pausas > 24h
+      Object.values(byConv).forEach((list) => {
+        list.sort((a, b) => a.t - b.t);
+        for (let i = 1; i < list.length; i++) {
+          const prev = list[i - 1]!; const cur = list[i]!;
+          if (prev.direction === cur.direction) continue;
+          const delta = cur.t - prev.t;
+          if (delta <= 0 || delta > MAX_GAP) continue;
+          if (cur.direction === "inbound") leadDeltas.push(delta);
+          else agentDeltas.push(delta);
+        }
+      });
+      const avg = (arr: number[]) => (arr.length ? arr.reduce((s, n) => s + n, 0) / arr.length : null);
+
       return {
         total: l.length,
         newToday,
@@ -75,7 +97,12 @@ function useDashboard(workspaceId: string | undefined) {
         bySource,
         months,
         byChannel,
+        leadResponseMs: avg(leadDeltas),
+        agentResponseMs: avg(agentDeltas),
+        leadResponseCount: leadDeltas.length,
+        agentResponseCount: agentDeltas.length,
       };
+
     },
   });
 }
