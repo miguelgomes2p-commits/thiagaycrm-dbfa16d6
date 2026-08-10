@@ -27,13 +27,35 @@ export const Route = createFileRoute("/api/public/internal/conversations/$conver
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request, params }) => {
-        const secret = process.env["N8N_INTERNAL_API_SECRET"];
-        const auth = request.headers.get("authorization") ?? "";
-        const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+        const secret = process.env["N8N_INTERNAL_API_SECRET"]?.trim();
+        const auth = (request.headers.get("authorization") ?? request.headers.get("Authorization") ?? "").trim();
+        const bearerDetected = /^bearer\s+/i.test(auth);
+        const token = bearerDetected ? auth.replace(/^bearer\s+/i, "").trim() : "";
 
         if (!secret || !token || !timingSafeEqual(token, secret)) {
-          log("AUTH_FAILED", { conversation_id: params.conversationId, has_secret: Boolean(secret) });
-          return Response.json({ success: false, error: "unauthorized" }, { status: 401, headers: corsHeaders });
+          log("AUTH_FAILED", {
+            conversation_id: params.conversationId,
+            authorization_present: auth.length > 0,
+            bearer_detected: bearerDetected,
+            received_token_length: token.length,
+            expected_secret_configured: Boolean(secret),
+            expected_token_length: secret?.length ?? 0,
+            host: request.headers.get("host"),
+          });
+          return Response.json(
+            {
+              success: false,
+              error: !secret ? "server_secret_not_configured" : "unauthorized",
+              diagnostics: {
+                authorization_present: auth.length > 0,
+                bearer_detected: bearerDetected,
+                received_token_length: token.length,
+                expected_secret_configured: Boolean(secret),
+                expected_token_length: secret?.length ?? 0,
+              },
+            },
+            { status: !secret ? 500 : 401, headers: corsHeaders },
+          );
         }
 
         const conversationId = params.conversationId;
