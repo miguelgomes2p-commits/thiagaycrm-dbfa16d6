@@ -268,6 +268,7 @@ export type Database = {
         Row: {
           ai_summary: string | null
           assigned_to: string | null
+          assignment_status: string
           auto_reply_enabled: boolean
           channel: Database["public"]["Enums"]["channel_type"]
           contact_id: string | null
@@ -276,8 +277,10 @@ export type Database = {
           last_message_at: string | null
           last_message_preview: string | null
           lead_id: string | null
+          qualification_status: string
           status: Database["public"]["Enums"]["conversation_status"]
           subject: string | null
+          triage_idempotency_key: string | null
           unread_count: number
           updated_at: string
           wa_contact_wa_id: string | null
@@ -287,6 +290,7 @@ export type Database = {
         Insert: {
           ai_summary?: string | null
           assigned_to?: string | null
+          assignment_status?: string
           auto_reply_enabled?: boolean
           channel?: Database["public"]["Enums"]["channel_type"]
           contact_id?: string | null
@@ -295,8 +299,10 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           lead_id?: string | null
+          qualification_status?: string
           status?: Database["public"]["Enums"]["conversation_status"]
           subject?: string | null
+          triage_idempotency_key?: string | null
           unread_count?: number
           updated_at?: string
           wa_contact_wa_id?: string | null
@@ -306,6 +312,7 @@ export type Database = {
         Update: {
           ai_summary?: string | null
           assigned_to?: string | null
+          assignment_status?: string
           auto_reply_enabled?: boolean
           channel?: Database["public"]["Enums"]["channel_type"]
           contact_id?: string | null
@@ -314,8 +321,10 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           lead_id?: string | null
+          qualification_status?: string
           status?: Database["public"]["Enums"]["conversation_status"]
           subject?: string | null
+          triage_idempotency_key?: string | null
           unread_count?: number
           updated_at?: string
           wa_contact_wa_id?: string | null
@@ -2112,6 +2121,14 @@ export type Database = {
       can_access_conversation: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
+      }
+      complete_triage_and_assign: {
+        Args: {
+          _ai_summary?: string
+          _conversation_id: string
+          _idempotency_key?: string
+        }
+        Returns: Json
       }
       create_workspace_with_defaults: {
         Args: { _name: string; _slug: string; _user_id: string }

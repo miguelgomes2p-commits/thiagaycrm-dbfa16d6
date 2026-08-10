@@ -35,6 +35,7 @@ import { Route as ApiPublicHooksDrainRenaveQueueRouteImport } from './routes/api
 import { Route as ApiPublicHooksDrainN8nDeliveriesRouteImport } from './routes/api/public/hooks/drain-n8n-deliveries'
 import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
 import { Route as ApiPublicWebhooksEvolutionNumberIdRouteImport } from './routes/api/public/webhooks/evolution.$numberId'
+import { Route as ApiPublicInternalConversationsConversationIdTriageCompleteRouteImport } from './routes/api/public/internal/conversations.$conversationId.triage-complete'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -178,6 +179,12 @@ const ApiPublicWebhooksEvolutionNumberIdRoute =
     path: '/$numberId',
     getParentRoute: () => ApiPublicWebhooksEvolutionRoute,
   } as any)
+const ApiPublicInternalConversationsConversationIdTriageCompleteRoute =
+  ApiPublicInternalConversationsConversationIdTriageCompleteRouteImport.update({
+    id: '/api/public/internal/conversations/$conversationId/triage-complete',
+    path: '/api/public/internal/conversations/$conversationId/triage-complete',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/api/public/webhooks/focus-nfe': typeof ApiPublicWebhooksFocusNfeRoute
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
+  '/api/public/internal/conversations/$conversationId/triage-complete': typeof ApiPublicInternalConversationsConversationIdTriageCompleteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -231,6 +239,7 @@ export interface FileRoutesByTo {
   '/api/public/webhooks/focus-nfe': typeof ApiPublicWebhooksFocusNfeRoute
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
+  '/api/public/internal/conversations/$conversationId/triage-complete': typeof ApiPublicInternalConversationsConversationIdTriageCompleteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -260,6 +269,7 @@ export interface FileRoutesById {
   '/api/public/webhooks/focus-nfe': typeof ApiPublicWebhooksFocusNfeRoute
   '/api/public/webhooks/evolution/$numberId': typeof ApiPublicWebhooksEvolutionNumberIdRoute
   '/api/public/webhooks/whatsapp/$numberId': typeof ApiPublicWebhooksWhatsappNumberIdRoute
+  '/api/public/internal/conversations/$conversationId/triage-complete': typeof ApiPublicInternalConversationsConversationIdTriageCompleteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/focus-nfe'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
+    | '/api/public/internal/conversations/$conversationId/triage-complete'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/focus-nfe'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
+    | '/api/public/internal/conversations/$conversationId/triage-complete'
   id:
     | '__root__'
     | '/'
@@ -343,6 +355,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/focus-nfe'
     | '/api/public/webhooks/evolution/$numberId'
     | '/api/public/webhooks/whatsapp/$numberId'
+    | '/api/public/internal/conversations/$conversationId/triage-complete'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -358,6 +371,7 @@ export interface RootRouteChildren {
   ApiPublicWebhooksEvolutionRoute: typeof ApiPublicWebhooksEvolutionRouteWithChildren
   ApiPublicWebhooksFocusNfeRoute: typeof ApiPublicWebhooksFocusNfeRoute
   ApiPublicWebhooksWhatsappNumberIdRoute: typeof ApiPublicWebhooksWhatsappNumberIdRoute
+  ApiPublicInternalConversationsConversationIdTriageCompleteRoute: typeof ApiPublicInternalConversationsConversationIdTriageCompleteRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -544,6 +558,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksEvolutionNumberIdRouteImport
       parentRoute: typeof ApiPublicWebhooksEvolutionRoute
     }
+    '/api/public/internal/conversations/$conversationId/triage-complete': {
+      id: '/api/public/internal/conversations/$conversationId/triage-complete'
+      path: '/api/public/internal/conversations/$conversationId/triage-complete'
+      fullPath: '/api/public/internal/conversations/$conversationId/triage-complete'
+      preLoaderRoute: typeof ApiPublicInternalConversationsConversationIdTriageCompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -621,6 +642,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebhooksFocusNfeRoute: ApiPublicWebhooksFocusNfeRoute,
   ApiPublicWebhooksWhatsappNumberIdRoute:
     ApiPublicWebhooksWhatsappNumberIdRoute,
+  ApiPublicInternalConversationsConversationIdTriageCompleteRoute:
+    ApiPublicInternalConversationsConversationIdTriageCompleteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
