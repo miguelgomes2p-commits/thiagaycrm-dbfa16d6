@@ -48,6 +48,13 @@ function PipelinePage() {
   const [automationStage, setAutomationStage] = useState<Stage | null>(null);
   const runAutomationsFn = useServerFn(runStageAutomations);
 
+  function notAllowed() {
+    toast.info("Sem permissão", {
+      description: "Somente administradores do workspace podem personalizar etapas e criar automações.",
+    });
+  }
+
+
   const pipelineQ = useQuery({
     enabled: !!ws?.id,
     queryKey: ["pipeline", ws?.id],
@@ -152,8 +159,14 @@ function PipelinePage() {
           <p className="text-sm text-muted-foreground">Arraste os cartões entre etapas.</p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && pipelineQ.data?.pipe && ws && (
-            <PipelineStagesManager pipelineId={pipelineQ.data.pipe.id} workspaceId={ws.id} />
+          {pipelineQ.data?.pipe && ws && (
+            isAdmin ? (
+              <PipelineStagesManager pipelineId={pipelineQ.data.pipe.id} workspaceId={ws.id} />
+            ) : (
+              <Button variant="outline" onClick={notAllowed} title="Somente administradores">
+                Personalizar etapas
+              </Button>
+            )
           )}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -216,16 +229,19 @@ function PipelinePage() {
                     <span className="text-xs text-muted-foreground">
                       {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
                     </span>
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setAutomationStage(stage)}
-                        className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                        title="Configurar gatilhos"
-                      >
-                        <Zap className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => (isAdmin ? setAutomationStage(stage) : notAllowed())}
+                      className={cn(
+                        "p-1 rounded transition-colors",
+                        isAdmin
+                          ? "hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                          : "text-muted-foreground/40 hover:bg-muted",
+                      )}
+                      title={isAdmin ? "Configurar gatilhos" : "Somente administradores"}
+                    >
+                      <Zap className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
