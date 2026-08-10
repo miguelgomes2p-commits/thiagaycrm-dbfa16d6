@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, DollarSign, User as UserIcon, Flame, Clock, Info, Zap, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, DollarSign, User as UserIcon, Flame, Clock, Info, Zap, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PipelineStagesManager } from "@/components/pipeline/PipelineStagesManager";
 import { StageAutomationDialog } from "@/components/pipeline/StageAutomationDialog";
+import { LeadQualifyFields, type LeadFields } from "@/components/pipeline/LeadQualifyFields";
 import { useServerFn } from "@tanstack/react-start";
 import { runStageAutomations } from "@/lib/automations.functions";
 
