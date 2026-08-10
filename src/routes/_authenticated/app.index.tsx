@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
 import {
   TrendingUp, Users, MessageSquare, Trophy, XCircle, DollarSign,
-  Target, Clock, Sparkles
+  Target, Clock, Timer, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
