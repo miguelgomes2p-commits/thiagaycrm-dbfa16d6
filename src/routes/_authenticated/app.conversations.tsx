@@ -1294,6 +1294,16 @@ function ConversationsPage() {
                 const mediaUrl = (m as { media_url?: string | null }).media_url;
                 const mediaType = (m as { media_type?: string | null }).media_type;
                 const mediaMime = (m as { media_mime_type?: string | null }).media_mime_type;
+                const assignedAgentId = (active as { assigned_to?: string | null }).assigned_to ?? null;
+                const agentName = assignedAgentId ? membersQ.data?.get(assignedAgentId)?.name : null;
+                const senderLabel =
+                  m.direction === "outbound"
+                    ? m.sender_type === "ai"
+                      ? "IA - Atendimento"
+                      : agentName
+                        ? `${agentName} - Atendimento`
+                        : null
+                    : null;
                 return (
                   <div key={m.id} className={cn("flex", m.direction === "outbound" ? "justify-end" : "justify-start")}>
                     <div className={cn(
@@ -1304,7 +1314,11 @@ function ConversationsPage() {
                           ? "bg-info/10 text-foreground border border-info/30 rounded-bl-sm"
                           : "bg-bubble-in text-foreground border border-border rounded-bl-sm"
                     )}>
+                      {senderLabel && (
+                        <div className="text-[11px] font-semibold opacity-90 leading-tight">{senderLabel}</div>
+                      )}
                       {mediaUrl && (mediaType === "image" || mediaType === "sticker") && (
+
                         <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
                           <img
                             src={mediaUrl}
