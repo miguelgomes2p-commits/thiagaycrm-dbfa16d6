@@ -31,6 +31,7 @@ type Contact = {
 function ContactsPage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
+  const isAdmin = ws?.role === "owner" || ws?.role === "admin";
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -40,15 +41,22 @@ function ContactsPage() {
 
   const contacts = useQuery({
     enabled: !!ws?.id,
-    queryKey: ["contacts", ws?.id, q],
+    queryKey: ["contacts", ws?.id, q, isAdmin],
     queryFn: async () => {
       let query = supabase.from("contacts").select("*").eq("workspace_id", ws!.id).order("created_at", { ascending: false }).limit(200);
+      if (!isAdmin) {
+        const { data: s } = await supabase.auth.getSession();
+        const uid = s.session?.user?.id;
+        if (!uid) return [] as Contact[];
+        query = query.eq("owner_id", uid);
+      }
       if (q) query = query.ilike("name", `%${q}%`);
       const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as Contact[];
     },
   });
+
 
   const refreshM = useMutation({
     mutationFn: () => refreshFn({ data: { workspaceId: ws!.id } }),
