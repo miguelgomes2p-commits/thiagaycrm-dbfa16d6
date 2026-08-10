@@ -378,12 +378,8 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
 
     // Assinatura do atendente na legenda enviada ao cliente.
-    const { data: senderProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("full_name")
-      .eq("id", context.userId)
-      .maybeSingle();
-    const senderName = (senderProfile?.full_name ?? "").trim();
+    const { resolveSenderName } = await import("@/lib/sender-name.server");
+    const senderName = await resolveSenderName(supabaseAdmin, context.userId);
     const outgoingCaption = senderName
       ? `*${senderName}*${data.caption ? `\n${data.caption}` : ""}`
       : (data.caption ?? undefined);
