@@ -152,8 +152,14 @@ function PipelinePage() {
           <p className="text-sm text-muted-foreground">Arraste os cartões entre etapas.</p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && pipelineQ.data?.pipe && ws && (
-            <PipelineStagesManager pipelineId={pipelineQ.data.pipe.id} workspaceId={ws.id} />
+          {pipelineQ.data?.pipe && ws && (
+            isAdmin ? (
+              <PipelineStagesManager pipelineId={pipelineQ.data.pipe.id} workspaceId={ws.id} />
+            ) : (
+              <Button variant="outline" onClick={notAllowed} title="Somente administradores">
+                Personalizar etapas
+              </Button>
+            )
           )}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
