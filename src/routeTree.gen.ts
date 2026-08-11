@@ -34,6 +34,7 @@ import { Route as ApiPublicHooksRunRecurringAutomationsRouteImport } from './rou
 import { Route as ApiPublicHooksDrainWebhookQueueRouteImport } from './routes/api/public/hooks/drain-webhook-queue'
 import { Route as ApiPublicHooksDrainRenaveQueueRouteImport } from './routes/api/public/hooks/drain-renave-queue'
 import { Route as ApiPublicHooksDrainN8nDeliveriesRouteImport } from './routes/api/public/hooks/drain-n8n-deliveries'
+import { Route as ApiPublicHooksDrainAutomationsRouteImport } from './routes/api/public/hooks/drain-automations'
 import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
 import { Route as ApiPublicWebhooksEvolutionNumberIdRouteImport } from './routes/api/public/webhooks/evolution.$numberId'
 import { Route as ApiPublicInternalConversationsConversationIdTriageCompleteRouteImport } from './routes/api/public/internal/conversations.$conversationId.triage-complete'
@@ -174,6 +175,12 @@ const ApiPublicHooksDrainN8nDeliveriesRoute =
     path: '/api/public/hooks/drain-n8n-deliveries',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDrainAutomationsRoute =
+  ApiPublicHooksDrainAutomationsRouteImport.update({
+    id: '/api/public/hooks/drain-automations',
+    path: '/api/public/hooks/drain-automations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksWhatsappNumberIdRoute =
   ApiPublicWebhooksWhatsappNumberIdRouteImport.update({
     id: '/api/public/webhooks/whatsapp/$numberId',
@@ -212,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/hooks/drain-automations': typeof ApiPublicHooksDrainAutomationsRoute
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
@@ -240,6 +248,7 @@ export interface FileRoutesByTo {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/api/public/hooks/drain-automations': typeof ApiPublicHooksDrainAutomationsRoute
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
@@ -271,6 +280,7 @@ export interface FileRoutesById {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/hooks/drain-automations': typeof ApiPublicHooksDrainAutomationsRoute
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
@@ -302,6 +312,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/app/'
+    | '/api/public/hooks/drain-automations'
     | '/api/public/hooks/drain-n8n-deliveries'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
@@ -330,6 +341,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/app'
+    | '/api/public/hooks/drain-automations'
     | '/api/public/hooks/drain-n8n-deliveries'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
@@ -360,6 +372,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/_authenticated/app/'
+    | '/api/public/hooks/drain-automations'
     | '/api/public/hooks/drain-n8n-deliveries'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
@@ -377,6 +390,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiPublicHooksDrainAutomationsRoute: typeof ApiPublicHooksDrainAutomationsRoute
   ApiPublicHooksDrainN8nDeliveriesRoute: typeof ApiPublicHooksDrainN8nDeliveriesRoute
   ApiPublicHooksDrainRenaveQueueRoute: typeof ApiPublicHooksDrainRenaveQueueRoute
   ApiPublicHooksDrainWebhookQueueRoute: typeof ApiPublicHooksDrainWebhookQueueRoute
@@ -564,6 +578,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDrainN8nDeliveriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/drain-automations': {
+      id: '/api/public/hooks/drain-automations'
+      path: '/api/public/hooks/drain-automations'
+      fullPath: '/api/public/hooks/drain-automations'
+      preLoaderRoute: typeof ApiPublicHooksDrainAutomationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/whatsapp/$numberId': {
       id: '/api/public/webhooks/whatsapp/$numberId'
       path: '/api/public/webhooks/whatsapp/$numberId'
@@ -655,6 +676,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiAiChatRoute: ApiAiChatRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiPublicHooksDrainAutomationsRoute: ApiPublicHooksDrainAutomationsRoute,
   ApiPublicHooksDrainN8nDeliveriesRoute: ApiPublicHooksDrainN8nDeliveriesRoute,
   ApiPublicHooksDrainRenaveQueueRoute: ApiPublicHooksDrainRenaveQueueRoute,
   ApiPublicHooksDrainWebhookQueueRoute: ApiPublicHooksDrainWebhookQueueRoute,
