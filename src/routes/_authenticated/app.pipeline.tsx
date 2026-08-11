@@ -465,8 +465,15 @@ function PipelinePage() {
               </div>
               <div className="pt-2 border-t border-border">
                 <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
-                <LeadQualifyFields value={editForm.custom_fields}
-                  onChange={(v) => setEditForm({ ...editForm, custom_fields: v })} />
+                <LeadFieldsSection
+                  workspaceId={ws?.id ?? null}
+                  values={editForm.custom_fields}
+                  onChange={(v) => setEditForm({ ...editForm, custom_fields: v })}
+                  context="LEAD_DETAIL"
+                  pipelineId={pipelineQ.data?.pipe?.id ?? null}
+                  stageId={editForm.stage_id}
+                />
+
               </div>
               <div><Label>Anotações</Label>
                 <Textarea rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
