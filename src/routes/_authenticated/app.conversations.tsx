@@ -1737,6 +1737,11 @@ function ConversationsPage() {
                 )}
 
               </div>
+              {ws?.id && leadContextQ.data?.lead?.id && (
+                <div className="pt-2 mt-2 border-t border-border">
+                  <LeadVehiclesPanel leadId={leadContextQ.data.lead.id} workspaceId={ws.id} compact />
+                </div>
+              )}
               <div>
                 <Label className="text-xs">Resumo / anotações livres</Label>
                 <Textarea
