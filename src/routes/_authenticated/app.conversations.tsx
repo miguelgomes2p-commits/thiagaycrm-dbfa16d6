@@ -9,6 +9,7 @@ import {
   sendWhatsappMessage,
   sendWhatsappAttachment,
   repairWhatsappAudioMedia,
+  sendWhatsappLocation,
 } from "@/lib/whatsapp.functions";
 
 import { useLabels, useConversationLabels, useAssignLabel, useRemoveLabel } from "@/hooks/useLabels";
@@ -26,7 +27,7 @@ import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus,
   Tag, Filter, ChevronRight, ChevronLeft, Paperclip, BriefcaseBusiness, Save, Loader2,
-  Camera, Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil,
+  Camera, Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil, MapPin,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -34,7 +35,12 @@ import { toast } from "sonner";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
 import { CameraCaptureDialog } from "@/components/chat/CameraCaptureDialog";
+import { LocationMessageCard, parseLocationMetadata } from "@/components/chat/LocationMessageCard";
+import { LocationPickerDialog } from "@/components/chat/LocationPickerDialog";
+import { MediaLightbox, type MediaItem } from "@/components/chat/MediaLightbox";
+import { formatPhoneForDisplay } from "@/lib/phone";
 import { getCameraCapability } from "@/lib/communication/capabilities";
+
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
   validateSearch: (search: Record<string, unknown>): { c?: string } =>
