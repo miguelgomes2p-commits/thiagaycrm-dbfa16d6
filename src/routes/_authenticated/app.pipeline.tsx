@@ -266,7 +266,7 @@ function PipelinePage() {
                   workspaceId={ws?.id ?? null}
                   values={newFields}
                   onChange={(v) => setNewFields(v)}
-                  context="pipeline"
+                  context="CREATE_FROM_PIPELINE"
                   pipelineId={pipelineQ.data?.pipe?.id ?? null}
                 />
 
