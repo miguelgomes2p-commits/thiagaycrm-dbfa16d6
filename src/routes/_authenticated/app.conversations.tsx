@@ -1607,7 +1607,9 @@ function ConversationsPage() {
                 </div>
               )}
             </div>
+            <MediaLightbox items={mediaItems} startId={lightboxId} onClose={() => setLightboxId(null)} />
           </>
+
         )}
       </div>
       {active && leadPaneOpen && (
