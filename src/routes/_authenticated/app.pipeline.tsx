@@ -16,7 +16,9 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PipelineStagesManager } from "@/components/pipeline/PipelineStagesManager";
 import { StageAutomationDialog } from "@/components/pipeline/StageAutomationDialog";
-import { LeadQualifyFields, type LeadFields } from "@/components/pipeline/LeadQualifyFields";
+import { type LeadFields } from "@/components/pipeline/LeadQualifyFields";
+import { LeadFieldsSection } from "@/components/leads/LeadFieldsSection";
+
 import { useServerFn } from "@tanstack/react-start";
 import { runStageAutomations } from "@/lib/automations.functions";
 
