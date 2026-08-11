@@ -291,7 +291,7 @@ function ConversationsPage() {
   useEffect(() => {
     if (!activeId) return;
     const msgsKey = ["messages", activeId] as const;
-    const convsKey = ws?.id ? (["conversations", ws.id] as const) : null;
+    const convsKey = ws?.id ? (["conversations", ws.id, pageSize] as const) : null;
     let invalidateTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleInvalidate = () => {
       if (invalidateTimer) clearTimeout(invalidateTimer);
@@ -373,7 +373,7 @@ function ConversationsPage() {
 
   useEffect(() => {
     if (!ws?.id) return;
-    const convsKey = ["conversations", ws.id] as const;
+    const convsKey = ["conversations", ws.id, pageSize] as const;
     let invalidateTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleInvalidate = () => {
       if (invalidateTimer) clearTimeout(invalidateTimer);
@@ -684,7 +684,7 @@ function ConversationsPage() {
     const prevMsgs = qc.getQueryData<Record<string, unknown>[]>(msgsKey);
     qc.setQueryData<Record<string, unknown>[]>(msgsKey, [...(prevMsgs ?? []), optimistic]);
     // Optimistic conversation preview + reorder
-    const convsKey = ["conversations", wsId];
+    const convsKey = ["conversations", wsId, pageSize];
     const prevConvs = qc.getQueryData<Record<string, unknown>[]>(convsKey);
     if (prevConvs) {
       const updated = prevConvs.map((c) =>
