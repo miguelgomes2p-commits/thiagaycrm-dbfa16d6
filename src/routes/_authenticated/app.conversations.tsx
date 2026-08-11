@@ -1449,7 +1449,7 @@ function ConversationsPage() {
                         ) : null;
                       })()}
                       {mediaUrl && (mediaType === "image" || mediaType === "sticker") && (
-                        <button type="button" onClick={() => setLightboxId(m.id)} className="block">
+                        <button type="button" onClick={() => setLightboxId(m.id)} className="block cursor-pointer">
                           <img
                             src={mediaUrl}
                             alt={m.content ?? "imagem"}
@@ -1473,7 +1473,7 @@ function ConversationsPage() {
                           <button
                             type="button"
                             onClick={() => setLightboxId(m.id)}
-                            className="absolute top-1.5 right-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white"
+                            className="absolute top-1.5 right-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white cursor-pointer"
                           >
                             Ampliar
                           </button>
