@@ -254,7 +254,31 @@ export function evolutionSendMedia(
   );
 }
 
+// Envio de localização estática. Evolution v2: POST /message/sendLocation/{instance}
+// latitude/longitude devem ser NUMBER; name e address são strings.
+export function evolutionSendLocation(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string,
+  number: string,
+  latitude: number,
+  longitude: number,
+  name: string,
+  address: string,
+) {
+  return req<{ key?: { id?: string; remoteJid?: string; fromMe?: boolean } }>(
+    baseUrl,
+    apiKey,
+    `/message/sendLocation/${encodeURIComponent(instanceName)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ number, latitude, longitude, name, address }),
+    },
+  );
+}
+
 export function evolutionSendWhatsAppAudio(
+
   baseUrl: string,
   apiKey: string,
   instanceName: string,
