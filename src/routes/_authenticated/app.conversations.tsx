@@ -1483,7 +1483,7 @@ function ConversationsPage() {
                           <span className="opacity-60 text-[10px]">{mediaMime?.split("/")[1]?.toUpperCase()}</span>
                         </a>
                       )}
-                      {m.content && !(mediaType === "document" && m.content?.startsWith("📎")) && (
+                      {m.content && mediaType !== "location" && !(mediaType === "document" && m.content?.startsWith("📎")) && (
                         <>
                           <LinkifiedText text={m.content} />
                           {(() => {
