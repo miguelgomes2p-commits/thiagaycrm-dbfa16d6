@@ -64,7 +64,7 @@ function AppShell() {
     const invalidateConversations = () => {
       if (invalidateTimer) clearTimeout(invalidateTimer);
       invalidateTimer = setTimeout(() => {
-        qc.invalidateQueries({ queryKey: ["conversations", current.id], exact: true });
+        qc.invalidateQueries({ queryKey: ["conversations", current.id] });
       }, 350);
     };
 
