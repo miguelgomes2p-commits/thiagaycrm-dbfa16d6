@@ -703,7 +703,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         wa_message_id: key.id ?? null,
         delivery_status: "delivered",
         media_url: mediaUrl,
-        media_type: media.type,
+        media_type: location ? "location" : media.type,
         media_mime_type: mediaMime,
         metadata: {
           crm_trace: {
@@ -713,6 +713,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
             whatsapp_number_id: num.id,
             received_at: new Date(startedAt).toISOString(),
           },
+          ...(location ? { location } : {}),
         },
       });
       if (msgErr) {
@@ -726,12 +727,14 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
       }
       stats.insertedMessages++;
 
-      const previewText = media.type === "image" ? "📷 Imagem"
+      const previewText = location ? text
+        : media.type === "image" ? "📷 Imagem"
         : media.type === "audio" ? "🎵 Áudio"
         : media.type === "video" ? "🎬 Vídeo"
         : media.type === "sticker" ? "🌟 Sticker"
         : media.type === "document" ? `📎 ${media.filename ?? "Documento"}`
         : text;
+
       const shouldUpdatePreview = !conversationLastAt || new Date(conversationLastAt).getTime() <= new Date(messageCreatedAt).getTime();
       if (shouldUpdatePreview) {
         await supabaseAdmin.from("conversations").update({
