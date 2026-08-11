@@ -5,7 +5,7 @@ import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu
+  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu, Workflow
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,8 @@ function AppShell() {
     queryFn: async () => (await supabase.auth.getSession()).data.session?.user,
   });
   const isSuperAdmin = authUser?.email?.toLowerCase() === "miguelgomes2p@gmail.com";
+  const BETA_EMAILS = ["miguelgomes2p@gmail.com", "tj1605123@gmail.com"];
+  const isAutomationBeta = !!authUser?.email && BETA_EMAILS.includes(authUser.email.toLowerCase());
   const qc = useQueryClient();
   const current = workspaces?.[0];
 
@@ -100,6 +102,7 @@ function AppShell() {
   });
   const allNav = [
     ...filteredNav,
+    ...(isAutomationBeta ? [{ to: "/app/automations", label: "Automações BETA", icon: Workflow } as NavItem] : []),
     ...(isSuperAdmin ? [{ to: "/app/admin", label: "Admin Global", icon: ShieldAlert } as NavItem] : []),
   ];
 

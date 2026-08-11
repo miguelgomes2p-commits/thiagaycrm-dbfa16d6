@@ -26,6 +26,7 @@ import { Route as AuthenticatedAppLabelsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAppInventoryRouteImport } from './routes/_authenticated/app.inventory'
 import { Route as AuthenticatedAppConversationsRouteImport } from './routes/_authenticated/app.conversations'
 import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenticated/app.contacts'
+import { Route as AuthenticatedAppAutomationsRouteImport } from './routes/_authenticated/app.automations'
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app.admin'
 import { Route as ApiPublicWebhooksFocusNfeRouteImport } from './routes/api/public/webhooks/focus-nfe'
@@ -129,6 +130,12 @@ const AuthenticatedAppContactsRoute =
     path: '/contacts',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppAutomationsRoute =
+  AuthenticatedAppAutomationsRouteImport.update({
+    id: '/automations',
+    path: '/automations',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppAiRoute = AuthenticatedAppAiRouteImport.update({
   id: '/ai',
   path: '/ai',
@@ -207,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/ai': typeof AuthenticatedAppAiRoute
+  '/app/automations': typeof AuthenticatedAppAutomationsRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
   '/app/inventory': typeof AuthenticatedAppInventoryRoute
@@ -236,6 +244,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/ai': typeof AuthenticatedAppAiRoute
+  '/app/automations': typeof AuthenticatedAppAutomationsRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
   '/app/inventory': typeof AuthenticatedAppInventoryRoute
@@ -268,6 +277,7 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/app/admin': typeof AuthenticatedAppAdminRoute
   '/_authenticated/app/ai': typeof AuthenticatedAppAiRoute
+  '/_authenticated/app/automations': typeof AuthenticatedAppAutomationsRoute
   '/_authenticated/app/contacts': typeof AuthenticatedAppContactsRoute
   '/_authenticated/app/conversations': typeof AuthenticatedAppConversationsRoute
   '/_authenticated/app/inventory': typeof AuthenticatedAppInventoryRoute
@@ -300,6 +310,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/app/admin'
     | '/app/ai'
+    | '/app/automations'
     | '/app/contacts'
     | '/app/conversations'
     | '/app/inventory'
@@ -329,6 +340,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/app/admin'
     | '/app/ai'
+    | '/app/automations'
     | '/app/contacts'
     | '/app/conversations'
     | '/app/inventory'
@@ -360,6 +372,7 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/app/admin'
     | '/_authenticated/app/ai'
+    | '/_authenticated/app/automations'
     | '/_authenticated/app/contacts'
     | '/_authenticated/app/conversations'
     | '/_authenticated/app/inventory'
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppContactsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/automations': {
+      id: '/_authenticated/app/automations'
+      path: '/automations'
+      fullPath: '/app/automations'
+      preLoaderRoute: typeof AuthenticatedAppAutomationsRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/ai': {
       id: '/_authenticated/app/ai'
       path: '/ai'
@@ -612,6 +632,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppAdminRoute: typeof AuthenticatedAppAdminRoute
   AuthenticatedAppAiRoute: typeof AuthenticatedAppAiRoute
+  AuthenticatedAppAutomationsRoute: typeof AuthenticatedAppAutomationsRoute
   AuthenticatedAppContactsRoute: typeof AuthenticatedAppContactsRoute
   AuthenticatedAppConversationsRoute: typeof AuthenticatedAppConversationsRoute
   AuthenticatedAppInventoryRoute: typeof AuthenticatedAppInventoryRoute
@@ -627,6 +648,7 @@ interface AuthenticatedAppRouteChildren {
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppAdminRoute: AuthenticatedAppAdminRoute,
   AuthenticatedAppAiRoute: AuthenticatedAppAiRoute,
+  AuthenticatedAppAutomationsRoute: AuthenticatedAppAutomationsRoute,
   AuthenticatedAppContactsRoute: AuthenticatedAppContactsRoute,
   AuthenticatedAppConversationsRoute: AuthenticatedAppConversationsRoute,
   AuthenticatedAppInventoryRoute: AuthenticatedAppInventoryRoute,
