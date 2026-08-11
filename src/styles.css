@@ -175,3 +175,26 @@
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover { background: #A8ACB3; }
+
+/* ---- App nativo (Capacitor / Android) ---- */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+html.is-native body {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  overscroll-behavior-y: none;
+}
+
+html.is-native.keyboard-open body {
+  padding-bottom: 0;
+}
+
+@utility safe-top { padding-top: var(--safe-top); }
+@utility safe-bottom { padding-bottom: var(--safe-bottom); }

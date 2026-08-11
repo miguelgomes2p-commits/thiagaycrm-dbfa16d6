@@ -18,6 +18,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
+import { initNative } from "@/lib/native";
 import { Toaster } from "@/components/ui/sonner";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 
@@ -81,7 +82,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#FFFFFF" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { title: "Lupus CRM — CRM conversacional com IA" },
       { name: "description", content: "CRM moderno, multi-tenant, com pipeline visual, inbox omnichannel e assistente IA para vendas e atendimento." },
       { name: "author", content: "Lupus" },
@@ -134,6 +137,12 @@ function RootComponent() {
     });
     return () => sub.subscription.unsubscribe();
   }, [router, queryClient]);
+
+  useEffect(() => {
+    void initNative((path) => {
+      router.navigate({ to: path as never });
+    });
+  }, [router]);
 
   return (
     <QueryClientProvider client={queryClient}>
