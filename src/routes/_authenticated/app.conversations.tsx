@@ -182,29 +182,40 @@ function ConversationsPage() {
     }));
   }, [view.activeLabels, view.groupBy, view.sortBy, view.filterMode]);
 
+  // Paginação da lista de conversas. O limite fixo antigo (200) escondia o
+  // histórico em workspaces com muito volume — as conversas continuavam no banco.
+  const PAGE_SIZE = 200;
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  useEffect(() => { setPageSize(PAGE_SIZE); }, [ws?.id]);
+
   const convsQ = useQuery({
     enabled: !!ws?.id,
-    queryKey: ["conversations", ws?.id],
+    queryKey: ["conversations", ws?.id, pageSize],
     queryFn: async ({ signal }) => {
       const timed = withTimeoutSignal(signal, 12_000);
       const startedAt = performance.now();
-      // Janela de visualização: só mostramos conversas ativas nos últimos 30 dias.
-      // O restante permanece no banco (retido por 45 dias via pg_cron) mas não polui a UI.
+      // Primeira página: janela de 30 dias (rápida). Ao pedir mais páginas,
+      // liberamos todo o histórico retido no banco.
       const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       try {
-        // Aceita conversas com last_message_at recente OU sem mensagem (criadas há
-        // menos de 30 dias). Assim recém-criadas sem histórico ainda aparecem.
-        const { data, error } = await supabase.from("conversations")
-        .select("*, contacts:contact_id(name, type, avatar_url, phone)")
-        .eq("workspace_id", ws!.id)
-        .not("whatsapp_number_id", "is", null)
-        .or(`last_message_at.gte.${since30d},and(last_message_at.is.null,created_at.gte.${since30d})`)
-        .order("last_message_at", { ascending: false, nullsFirst: false })
-        .limit(200)
-        .abortSignal(timed.signal);
+        let q = supabase.from("conversations")
+          .select("*, contacts:contact_id(name, type, avatar_url, phone)")
+          .eq("workspace_id", ws!.id)
+          .not("whatsapp_number_id", "is", null);
+
+        if (pageSize <= PAGE_SIZE) {
+          // Aceita conversas com last_message_at recente OU sem mensagem (criadas há
+          // menos de 30 dias). Assim recém-criadas sem histórico ainda aparecem.
+          q = q.or(`last_message_at.gte.${since30d},and(last_message_at.is.null,created_at.gte.${since30d})`);
+        }
+
+        const { data, error } = await q
+          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .limit(pageSize)
+          .abortSignal(timed.signal);
 
 
-        console.info(JSON.stringify({ scope: "frontend_conversations", event: "loaded", workspace_id: ws!.id, rows: data?.length ?? 0, duration_ms: Math.round(performance.now() - startedAt) }));
+        console.info(JSON.stringify({ scope: "frontend_conversations", event: "loaded", workspace_id: ws!.id, rows: data?.length ?? 0, page_size: pageSize, duration_ms: Math.round(performance.now() - startedAt) }));
         if (error) throw error;
       return data ?? [];
       } finally {
@@ -213,7 +224,11 @@ function ConversationsPage() {
     },
     refetchOnWindowFocus: true,
     staleTime: 10_000,
+    placeholderData: (prev) => prev,
   });
+
+  const hasMoreConversations = (convsQ.data?.length ?? 0) >= pageSize;
+
 
   // Membros do workspace + perfis para mostrar quem está atendendo cada conversa
   const membersQ = useQuery({
