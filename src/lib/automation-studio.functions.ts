@@ -156,7 +156,9 @@ export const testAutomation = createServerFn({ method: "POST" })
       payload: {},
     });
     const matched = evaluateConditions(data.definition.conditions, engineCtx);
-    if (!matched) return { matched: false, steps: [], context: engineCtx };
+    if (!matched) {
+      return { matched: false, steps: [] as Array<{ node_id: string; node_type: string; status: string; detail: string | null; error: string | null }>, context: engineCtx };
+    }
     const run = await executeAutomation({
       workspaceId: data.workspaceId,
       automationId: "00000000-0000-0000-0000-000000000000",
@@ -166,5 +168,12 @@ export const testAutomation = createServerFn({ method: "POST" })
       leadId,
       dryRun: true,
     });
-    return { matched: true, steps: run.steps, context: engineCtx };
+    const steps = run.steps.map((s) => ({
+      node_id: s.node_id,
+      node_type: s.node_type,
+      status: s.status,
+      detail: s.result ? JSON.stringify(s.result) : null,
+      error: s.error ?? null,
+    }));
+    return { matched: true, steps, context: engineCtx };
   });
