@@ -18,6 +18,7 @@ import { PipelineStagesManager } from "@/components/pipeline/PipelineStagesManag
 import { StageAutomationDialog } from "@/components/pipeline/StageAutomationDialog";
 import { type LeadFields } from "@/components/pipeline/LeadQualifyFields";
 import { LeadFieldsSection } from "@/components/leads/LeadFieldsSection";
+import { LeadVehiclesPanel } from "@/components/vehicles/LeadVehiclesPanel";
 
 import { useServerFn } from "@tanstack/react-start";
 import { runStageAutomations } from "@/lib/automations.functions";
@@ -405,6 +406,11 @@ function PipelinePage() {
                       <InfoRow key={k} label={k.replace(/_/g, " ")} value={String(v)} />
                     ))}
                   </div>
+                </div>
+              )}
+              {ws?.id && (
+                <div className="pt-2 border-t border-border">
+                  <LeadVehiclesPanel leadId={infoLead.id} workspaceId={ws.id} />
                 </div>
               )}
               {infoLead.notes && (

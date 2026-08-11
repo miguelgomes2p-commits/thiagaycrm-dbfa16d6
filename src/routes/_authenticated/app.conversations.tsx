@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { LeadVehiclesPanel } from "@/components/vehicles/LeadVehiclesPanel";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
 import { useServerFn } from "@tanstack/react-start";
 import { transferConversation, unassignConversation } from "@/lib/workspace.functions";
