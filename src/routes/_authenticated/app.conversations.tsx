@@ -1199,7 +1199,17 @@ function ConversationsPage() {
               })}
             </div>
           ))}
+          {hasMoreConversations && (
+            <button
+              onClick={() => setPageSize((n) => n + PAGE_SIZE)}
+              disabled={convsQ.isFetching}
+              className="w-full py-3 text-xs text-primary hover:bg-surface/50 transition-colors disabled:opacity-50"
+            >
+              {convsQ.isFetching ? "Carregando…" : "Carregar conversas mais antigas"}
+            </button>
+          )}
         </div>
+
       </div>
 
       {/* Thread */}
