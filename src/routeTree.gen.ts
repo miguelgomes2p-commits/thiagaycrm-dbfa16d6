@@ -23,8 +23,10 @@ import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppRenaveRouteImport } from './routes/_authenticated/app.renave'
 import { Route as AuthenticatedAppPipelineRouteImport } from './routes/_authenticated/app.pipeline'
 import { Route as AuthenticatedAppLabelsRouteImport } from './routes/_authenticated/app.labels'
+import { Route as AuthenticatedAppInventoryRouteImport } from './routes/_authenticated/app.inventory'
 import { Route as AuthenticatedAppConversationsRouteImport } from './routes/_authenticated/app.conversations'
 import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenticated/app.contacts'
+import { Route as AuthenticatedAppAutomationsRouteImport } from './routes/_authenticated/app.automations'
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app.admin'
 import { Route as ApiPublicWebhooksFocusNfeRouteImport } from './routes/api/public/webhooks/focus-nfe'
@@ -33,6 +35,7 @@ import { Route as ApiPublicHooksRunRecurringAutomationsRouteImport } from './rou
 import { Route as ApiPublicHooksDrainWebhookQueueRouteImport } from './routes/api/public/hooks/drain-webhook-queue'
 import { Route as ApiPublicHooksDrainRenaveQueueRouteImport } from './routes/api/public/hooks/drain-renave-queue'
 import { Route as ApiPublicHooksDrainN8nDeliveriesRouteImport } from './routes/api/public/hooks/drain-n8n-deliveries'
+import { Route as ApiPublicHooksDrainAutomationsRouteImport } from './routes/api/public/hooks/drain-automations'
 import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
 import { Route as ApiPublicWebhooksEvolutionNumberIdRouteImport } from './routes/api/public/webhooks/evolution.$numberId'
 import { Route as ApiPublicInternalConversationsConversationIdTriageCompleteRouteImport } from './routes/api/public/internal/conversations.$conversationId.triage-complete'
@@ -109,6 +112,12 @@ const AuthenticatedAppLabelsRoute = AuthenticatedAppLabelsRouteImport.update({
   path: '/labels',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppInventoryRoute =
+  AuthenticatedAppInventoryRouteImport.update({
+    id: '/inventory',
+    path: '/inventory',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppConversationsRoute =
   AuthenticatedAppConversationsRouteImport.update({
     id: '/conversations',
@@ -119,6 +128,12 @@ const AuthenticatedAppContactsRoute =
   AuthenticatedAppContactsRouteImport.update({
     id: '/contacts',
     path: '/contacts',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppAutomationsRoute =
+  AuthenticatedAppAutomationsRouteImport.update({
+    id: '/automations',
+    path: '/automations',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
 const AuthenticatedAppAiRoute = AuthenticatedAppAiRouteImport.update({
@@ -167,6 +182,12 @@ const ApiPublicHooksDrainN8nDeliveriesRoute =
     path: '/api/public/hooks/drain-n8n-deliveries',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDrainAutomationsRoute =
+  ApiPublicHooksDrainAutomationsRouteImport.update({
+    id: '/api/public/hooks/drain-automations',
+    path: '/api/public/hooks/drain-automations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksWhatsappNumberIdRoute =
   ApiPublicWebhooksWhatsappNumberIdRouteImport.update({
     id: '/api/public/webhooks/whatsapp/$numberId',
@@ -193,8 +214,10 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/ai': typeof AuthenticatedAppAiRoute
+  '/app/automations': typeof AuthenticatedAppAutomationsRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
+  '/app/inventory': typeof AuthenticatedAppInventoryRoute
   '/app/labels': typeof AuthenticatedAppLabelsRoute
   '/app/pipeline': typeof AuthenticatedAppPipelineRoute
   '/app/renave': typeof AuthenticatedAppRenaveRoute
@@ -204,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/hooks/drain-automations': typeof ApiPublicHooksDrainAutomationsRoute
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
@@ -220,8 +244,10 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/ai': typeof AuthenticatedAppAiRoute
+  '/app/automations': typeof AuthenticatedAppAutomationsRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
+  '/app/inventory': typeof AuthenticatedAppInventoryRoute
   '/app/labels': typeof AuthenticatedAppLabelsRoute
   '/app/pipeline': typeof AuthenticatedAppPipelineRoute
   '/app/renave': typeof AuthenticatedAppRenaveRoute
@@ -231,6 +257,7 @@ export interface FileRoutesByTo {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/api/public/hooks/drain-automations': typeof ApiPublicHooksDrainAutomationsRoute
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
@@ -250,8 +277,10 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/app/admin': typeof AuthenticatedAppAdminRoute
   '/_authenticated/app/ai': typeof AuthenticatedAppAiRoute
+  '/_authenticated/app/automations': typeof AuthenticatedAppAutomationsRoute
   '/_authenticated/app/contacts': typeof AuthenticatedAppContactsRoute
   '/_authenticated/app/conversations': typeof AuthenticatedAppConversationsRoute
+  '/_authenticated/app/inventory': typeof AuthenticatedAppInventoryRoute
   '/_authenticated/app/labels': typeof AuthenticatedAppLabelsRoute
   '/_authenticated/app/pipeline': typeof AuthenticatedAppPipelineRoute
   '/_authenticated/app/renave': typeof AuthenticatedAppRenaveRoute
@@ -261,6 +290,7 @@ export interface FileRoutesById {
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/hooks/drain-automations': typeof ApiPublicHooksDrainAutomationsRoute
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
@@ -280,8 +310,10 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/app/admin'
     | '/app/ai'
+    | '/app/automations'
     | '/app/contacts'
     | '/app/conversations'
+    | '/app/inventory'
     | '/app/labels'
     | '/app/pipeline'
     | '/app/renave'
@@ -291,6 +323,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/app/'
+    | '/api/public/hooks/drain-automations'
     | '/api/public/hooks/drain-n8n-deliveries'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
@@ -307,8 +340,10 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/app/admin'
     | '/app/ai'
+    | '/app/automations'
     | '/app/contacts'
     | '/app/conversations'
+    | '/app/inventory'
     | '/app/labels'
     | '/app/pipeline'
     | '/app/renave'
@@ -318,6 +353,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/app'
+    | '/api/public/hooks/drain-automations'
     | '/api/public/hooks/drain-n8n-deliveries'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
@@ -336,8 +372,10 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/app/admin'
     | '/_authenticated/app/ai'
+    | '/_authenticated/app/automations'
     | '/_authenticated/app/contacts'
     | '/_authenticated/app/conversations'
+    | '/_authenticated/app/inventory'
     | '/_authenticated/app/labels'
     | '/_authenticated/app/pipeline'
     | '/_authenticated/app/renave'
@@ -347,6 +385,7 @@ export interface FileRouteTypes {
     | '/api/ai/chat'
     | '/api/public/health'
     | '/_authenticated/app/'
+    | '/api/public/hooks/drain-automations'
     | '/api/public/hooks/drain-n8n-deliveries'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
@@ -364,6 +403,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiPublicHooksDrainAutomationsRoute: typeof ApiPublicHooksDrainAutomationsRoute
   ApiPublicHooksDrainN8nDeliveriesRoute: typeof ApiPublicHooksDrainN8nDeliveriesRoute
   ApiPublicHooksDrainRenaveQueueRoute: typeof ApiPublicHooksDrainRenaveQueueRoute
   ApiPublicHooksDrainWebhookQueueRoute: typeof ApiPublicHooksDrainWebhookQueueRoute
@@ -474,6 +514,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppLabelsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/inventory': {
+      id: '/_authenticated/app/inventory'
+      path: '/inventory'
+      fullPath: '/app/inventory'
+      preLoaderRoute: typeof AuthenticatedAppInventoryRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/conversations': {
       id: '/_authenticated/app/conversations'
       path: '/conversations'
@@ -486,6 +533,13 @@ declare module '@tanstack/react-router' {
       path: '/contacts'
       fullPath: '/app/contacts'
       preLoaderRoute: typeof AuthenticatedAppContactsRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/automations': {
+      id: '/_authenticated/app/automations'
+      path: '/automations'
+      fullPath: '/app/automations'
+      preLoaderRoute: typeof AuthenticatedAppAutomationsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/ai': {
@@ -544,6 +598,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDrainN8nDeliveriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/drain-automations': {
+      id: '/api/public/hooks/drain-automations'
+      path: '/api/public/hooks/drain-automations'
+      fullPath: '/api/public/hooks/drain-automations'
+      preLoaderRoute: typeof ApiPublicHooksDrainAutomationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/whatsapp/$numberId': {
       id: '/api/public/webhooks/whatsapp/$numberId'
       path: '/api/public/webhooks/whatsapp/$numberId'
@@ -571,8 +632,10 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppAdminRoute: typeof AuthenticatedAppAdminRoute
   AuthenticatedAppAiRoute: typeof AuthenticatedAppAiRoute
+  AuthenticatedAppAutomationsRoute: typeof AuthenticatedAppAutomationsRoute
   AuthenticatedAppContactsRoute: typeof AuthenticatedAppContactsRoute
   AuthenticatedAppConversationsRoute: typeof AuthenticatedAppConversationsRoute
+  AuthenticatedAppInventoryRoute: typeof AuthenticatedAppInventoryRoute
   AuthenticatedAppLabelsRoute: typeof AuthenticatedAppLabelsRoute
   AuthenticatedAppPipelineRoute: typeof AuthenticatedAppPipelineRoute
   AuthenticatedAppRenaveRoute: typeof AuthenticatedAppRenaveRoute
@@ -585,8 +648,10 @@ interface AuthenticatedAppRouteChildren {
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppAdminRoute: AuthenticatedAppAdminRoute,
   AuthenticatedAppAiRoute: AuthenticatedAppAiRoute,
+  AuthenticatedAppAutomationsRoute: AuthenticatedAppAutomationsRoute,
   AuthenticatedAppContactsRoute: AuthenticatedAppContactsRoute,
   AuthenticatedAppConversationsRoute: AuthenticatedAppConversationsRoute,
+  AuthenticatedAppInventoryRoute: AuthenticatedAppInventoryRoute,
   AuthenticatedAppLabelsRoute: AuthenticatedAppLabelsRoute,
   AuthenticatedAppPipelineRoute: AuthenticatedAppPipelineRoute,
   AuthenticatedAppRenaveRoute: AuthenticatedAppRenaveRoute,
@@ -633,6 +698,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiAiChatRoute: ApiAiChatRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiPublicHooksDrainAutomationsRoute: ApiPublicHooksDrainAutomationsRoute,
   ApiPublicHooksDrainN8nDeliveriesRoute: ApiPublicHooksDrainN8nDeliveriesRoute,
   ApiPublicHooksDrainRenaveQueueRoute: ApiPublicHooksDrainRenaveQueueRoute,
   ApiPublicHooksDrainWebhookQueueRoute: ApiPublicHooksDrainWebhookQueueRoute,

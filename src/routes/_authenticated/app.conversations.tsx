@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { LeadVehiclesPanel } from "@/components/vehicles/LeadVehiclesPanel";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
 import { useServerFn } from "@tanstack/react-start";
 import { transferConversation, unassignConversation } from "@/lib/workspace.functions";
@@ -1737,6 +1738,11 @@ function ConversationsPage() {
                 )}
 
               </div>
+              {ws?.id && leadContextQ.data?.lead?.id && (
+                <div className="pt-2 mt-2 border-t border-border">
+                  <LeadVehiclesPanel leadId={leadContextQ.data.lead.id} workspaceId={ws.id} compact />
+                </div>
+              )}
               <div>
                 <Label className="text-xs">Resumo / anotações livres</Label>
                 <Textarea
