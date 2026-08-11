@@ -26,13 +26,16 @@ import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus,
   Tag, Filter, ChevronRight, ChevronLeft, Paperclip, BriefcaseBusiness, Save, Loader2,
-  Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil,
+  Camera, Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
+import { CameraCaptureDialog } from "@/components/chat/CameraCaptureDialog";
+import { CallButton } from "@/components/chat/CallButton";
+import { getCameraCapability } from "@/lib/communication/capabilities";
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
   validateSearch: (search: Record<string, unknown>): { c?: string } =>
@@ -94,6 +97,7 @@ function ConversationsPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [view, setView] = useState(loadView);
   const [labelPaneOpen, setLabelPaneOpen] = useState(true);
   const [leadTitle, setLeadTitle] = useState("");
@@ -1295,6 +1299,18 @@ function ConversationsPage() {
                     </SelectContent>
                   </Select>
                 )}
+                <CallButton
+                  isAdmin={isAdmin}
+                  target={{
+                    conversationId: active.id,
+                    workspaceId: (active as { workspace_id: string }).workspace_id,
+                    contactName: (active.contacts as { name?: string } | null)?.name ?? null,
+                    phone: (active.contacts as { phone?: string | null } | null)?.phone ?? null,
+                    waProvider:
+                      waNumbers?.providerById.get((active as { whatsapp_number_id?: string | null }).whatsapp_number_id ?? "") ?? null,
+                    isGroup: (active.contacts as { type?: string } | null)?.type === "group",
+                  }}
+                />
                 <Button
                   size="sm"
                   variant={leadPaneOpen ? "outline" : "ghost"}
@@ -1446,6 +1462,12 @@ function ConversationsPage() {
                 accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
                 onChange={(e) => sendAttachment(e.target.files?.[0])}
               />
+              <CameraCaptureDialog
+                open={cameraOpen}
+                onOpenChange={setCameraOpen}
+                sending={uploading}
+                onCapture={(file) => sendAttachment(file)}
+              />
               {isRecording ? (
                 <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-2">
                   <Button type="button" variant="ghost" size="icon" onClick={cancelAudioRecording} title="Cancelar gravação">
@@ -1462,6 +1484,18 @@ function ConversationsPage() {
                 </div>
               ) : (
                 <div className="flex gap-2">
+                  {getCameraCapability().available && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      disabled={sending || uploading || !active}
+                      onClick={() => setCameraOpen(true)}
+                      title="Tirar foto"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
