@@ -18,6 +18,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
+import { initNative } from "@/lib/native";
 import { Toaster } from "@/components/ui/sonner";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 
@@ -136,6 +137,12 @@ function RootComponent() {
     });
     return () => sub.subscription.unsubscribe();
   }, [router, queryClient]);
+
+  useEffect(() => {
+    void initNative((path) => {
+      router.navigate({ to: path as never });
+    });
+  }, [router]);
 
   return (
     <QueryClientProvider client={queryClient}>
