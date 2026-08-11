@@ -63,7 +63,7 @@ export function MediaLightbox({
       }}
     >
       <div className="flex items-center gap-2 px-3 py-3 text-white/90">
-        <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-white/10" aria-label="Voltar">
+        <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-white/10 cursor-pointer" aria-label="Voltar">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div className="flex-1 min-w-0">
@@ -78,12 +78,12 @@ export function MediaLightbox({
           target="_blank"
           rel="noopener noreferrer"
           download
-          className="p-2 rounded-full hover:bg-white/10"
+          className="p-2 rounded-full hover:bg-white/10 cursor-pointer"
           aria-label="Baixar"
         >
           <Download className="h-5 w-5" />
         </a>
-        <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-white/10" aria-label="Fechar">
+        <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-white/10 cursor-pointer" aria-label="Fechar">
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -93,7 +93,7 @@ export function MediaLightbox({
           <button
             type="button"
             onClick={() => go(-1)}
-            className="absolute left-2 z-10 p-2 rounded-full bg-black/40 text-white hover:bg-black/60"
+            className="absolute left-2 z-10 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 cursor-pointer"
             aria-label="Anterior"
           >
             <ChevronLeft className="h-6 w-6" />
@@ -108,7 +108,7 @@ export function MediaLightbox({
           <button
             type="button"
             onClick={() => go(1)}
-            className="absolute right-2 z-10 p-2 rounded-full bg-black/40 text-white hover:bg-black/60"
+            className="absolute right-2 z-10 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 cursor-pointer"
             aria-label="Próxima"
           >
             <ChevronRight className="h-6 w-6" />
@@ -124,7 +124,7 @@ export function MediaLightbox({
               type="button"
               onClick={() => setIndex(i)}
               className={cn(
-                "h-12 w-12 shrink-0 overflow-hidden rounded border-2 transition-colors",
+                "h-12 w-12 shrink-0 overflow-hidden rounded border-2 transition-colors cursor-pointer",
                 i === index ? "border-primary" : "border-transparent opacity-60 hover:opacity-100",
               )}
             >
