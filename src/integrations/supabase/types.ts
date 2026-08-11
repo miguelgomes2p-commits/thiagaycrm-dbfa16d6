@@ -478,6 +478,143 @@ export type Database = {
           },
         ]
       }
+      lead_field_definitions: {
+        Row: {
+          conditional_rules: Json
+          created_at: string
+          created_by: string | null
+          default_value: string | null
+          display_config: Json
+          entity_type: string
+          field_key: string
+          field_type: string
+          group_id: string | null
+          help_text: string | null
+          id: string
+          is_active: boolean
+          is_filterable: boolean
+          is_required: boolean
+          is_searchable: boolean
+          is_system: boolean
+          label: string
+          options: Json
+          pipeline_ids: string[]
+          placeholder: string | null
+          required_stage_ids: string[]
+          sort_order: number
+          updated_at: string
+          validation: Json
+          workspace_id: string
+        }
+        Insert: {
+          conditional_rules?: Json
+          created_at?: string
+          created_by?: string | null
+          default_value?: string | null
+          display_config?: Json
+          entity_type?: string
+          field_key: string
+          field_type?: string
+          group_id?: string | null
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_filterable?: boolean
+          is_required?: boolean
+          is_searchable?: boolean
+          is_system?: boolean
+          label: string
+          options?: Json
+          pipeline_ids?: string[]
+          placeholder?: string | null
+          required_stage_ids?: string[]
+          sort_order?: number
+          updated_at?: string
+          validation?: Json
+          workspace_id: string
+        }
+        Update: {
+          conditional_rules?: Json
+          created_at?: string
+          created_by?: string | null
+          default_value?: string | null
+          display_config?: Json
+          entity_type?: string
+          field_key?: string
+          field_type?: string
+          group_id?: string | null
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_filterable?: boolean
+          is_required?: boolean
+          is_searchable?: boolean
+          is_system?: boolean
+          label?: string
+          options?: Json
+          pipeline_ids?: string[]
+          placeholder?: string | null
+          required_stage_ids?: string[]
+          sort_order?: number
+          updated_at?: string
+          validation?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_field_definitions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "lead_field_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_field_definitions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_field_groups: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_field_groups_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           contact_id: string | null
@@ -2095,6 +2232,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "workspace_invitations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_locations: {
+        Row: {
+          address: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          latitude: number
+          longitude: number
+          name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          latitude: number
+          longitude: number
+          name: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          latitude?: number
+          longitude?: number
+          name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_locations_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
