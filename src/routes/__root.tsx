@@ -81,7 +81,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#FFFFFF" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { title: "Lupus CRM — CRM conversacional com IA" },
       { name: "description", content: "CRM moderno, multi-tenant, com pipeline visual, inbox omnichannel e assistente IA para vendas e atendimento." },
       { name: "author", content: "Lupus" },
