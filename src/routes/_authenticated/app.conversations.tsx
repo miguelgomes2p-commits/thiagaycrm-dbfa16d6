@@ -312,6 +312,12 @@ function ConversationsPage() {
       }));
   }, [msgsQ.data]);
 
+  const leadFieldsQ = useLeadFields(ws?.id ?? null);
+  const dynamicLeadDefs = useMemo(
+    () => (leadFieldsQ.data?.definitions ?? []).filter((d) => d.is_active),
+    [leadFieldsQ.data],
+  );
+
 
   useEffect(() => {
     activeIdRef.current = activeId;
