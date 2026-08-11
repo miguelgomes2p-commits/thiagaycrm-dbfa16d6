@@ -293,6 +293,22 @@ function ConversationsPage() {
     staleTime: 10_000,
   });
 
+  /** Galeria da conversa: permite navegar entre fotos/vídeos no visualizador. */
+  const mediaItems = useMemo<MediaItem[]>(() => {
+    return (msgsQ.data ?? [])
+      .filter((m) => {
+        const t = (m as { media_type?: string | null }).media_type;
+        return !!(m as { media_url?: string | null }).media_url && (t === "image" || t === "video" || t === "sticker");
+      })
+      .map((m) => ({
+        id: (m as { id: string }).id,
+        url: (m as { media_url: string }).media_url,
+        type: ((m as { media_type: string }).media_type === "video" ? "video" : (m as { media_type: string }).media_type === "sticker" ? "sticker" : "image") as MediaItem["type"],
+        caption: (m as { content?: string | null }).content ?? null,
+        createdAt: (m as { created_at?: string | null }).created_at ?? null,
+      }));
+  }, [msgsQ.data]);
+
 
   useEffect(() => {
     activeIdRef.current = activeId;
