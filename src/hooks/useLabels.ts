@@ -51,15 +51,28 @@ export function useConversationLabels(workspaceId?: string) {
 
   useEffect(() => {
     if (!workspaceId) return;
+    // Debounce Realtime invalidation: a burst of label changes (e.g. new
+    // conversations auto-tagged by trigger) would otherwise cause all connected
+    // users to refetch the entire label map simultaneously (thundering herd).
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedInvalidate = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ["conversation_labels", workspaceId] });
+      }, 2500);
+    };
     const ch = supabase
       .channel(`conv-labels-${workspaceId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversation_labels", filter: `workspace_id=eq.${workspaceId}` },
-        () => qc.invalidateQueries({ queryKey: ["conversation_labels", workspaceId] }),
+        debouncedInvalidate,
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(ch);
+    };
   }, [workspaceId, qc]);
 
   return useQuery({
