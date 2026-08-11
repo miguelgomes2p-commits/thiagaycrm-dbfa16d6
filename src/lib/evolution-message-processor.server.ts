@@ -513,9 +513,15 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
 
     try {
       const media = detectMediaKind(m);
+      const location = detectLocation(m);
       let text = messageText(m, media);
+      if (location) {
+        const locTitle = location.name ?? location.address ?? "Localização recebida";
+        text = `📍 ${locTitle}`;
+      }
       if (isGroup && !fromMe && text) text = `${pushName ?? participantId ?? "membro"}: ${text}`;
-      if (!text && !media.type) continue;
+      if (!text && !media.type && !location) continue;
+
 
       let contactId: string;
       const exContact = contactByPhone.get(waId) ?? null;
