@@ -5,26 +5,6 @@
 
 export type CameraSource = "web" | "native" | "file-fallback" | "none";
 
-export type CommunicationFlags = {
-  camera_capture_enabled: boolean;
-  phone_call_enabled: boolean;
-  whatsapp_calling_enabled: boolean;
-  crm_voip_enabled: boolean;
-};
-
-/** Defaults seguros. WhatsApp Calling e VoIP ficam desligados até existir backend real. */
-export const DEFAULT_COMMUNICATION_FLAGS: CommunicationFlags = {
-  camera_capture_enabled: true,
-  phone_call_enabled: true,
-  whatsapp_calling_enabled: false,
-  crm_voip_enabled: false,
-};
-
-export type CommunicationCapabilities = {
-  camera: { available: boolean; source: CameraSource; canSwitch: boolean; secureContext: boolean };
-  calls: { phone: boolean; whatsapp: boolean; webrtc: boolean };
-};
-
 export function isNativeShell(): boolean {
   if (typeof window === "undefined") return false;
   const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
@@ -56,10 +36,14 @@ export async function countVideoInputs(): Promise<number> {
   }
 }
 
-export function getCameraCapability(flags: CommunicationFlags = DEFAULT_COMMUNICATION_FLAGS) {
-  if (!flags.camera_capture_enabled) {
-    return { available: false, source: "none" as CameraSource, canSwitch: false, secureContext: isSecureCameraContext() };
-  }
+export type CameraCapability = {
+  available: boolean;
+  source: CameraSource;
+  canSwitch: boolean;
+  secureContext: boolean;
+};
+
+export function getCameraCapability(): CameraCapability {
   if (hasGetUserMedia()) {
     return {
       available: true,
@@ -72,18 +56,3 @@ export function getCameraCapability(flags: CommunicationFlags = DEFAULT_COMMUNIC
   return { available: true, source: "file-fallback" as CameraSource, canSwitch: false, secureContext: isSecureCameraContext() };
 }
 
-export function getCommunicationCapabilities(opts?: {
-  flags?: Partial<CommunicationFlags>;
-  hasPhoneNumber?: boolean;
-}): CommunicationCapabilities {
-  const flags = { ...DEFAULT_COMMUNICATION_FLAGS, ...(opts?.flags ?? {}) };
-  return {
-    camera: getCameraCapability(flags),
-    calls: {
-      phone: flags.phone_call_enabled && Boolean(opts?.hasPhoneNumber),
-      // Só habilita quando existir provider real configurado (ver call-providers.ts).
-      whatsapp: false,
-      webrtc: false,
-    },
-  };
-}

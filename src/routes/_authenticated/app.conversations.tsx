@@ -34,7 +34,6 @@ import { toast } from "sonner";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
 import { CameraCaptureDialog } from "@/components/chat/CameraCaptureDialog";
-import { CallButton } from "@/components/chat/CallButton";
 import { getCameraCapability } from "@/lib/communication/capabilities";
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
@@ -152,24 +151,19 @@ function ConversationsPage() {
   const assignLabel = useAssignLabel(ws?.id);
   const removeLabel = useRemoveLabel(ws?.id);
 
-  // Números WhatsApp existentes no workspace (para filtrar etiquetas de sistema órfãs
-  // e para detectar o provider da conversa — usado nas capacidades de chamada)
-  const { data: waNumbers } = useQuery({
+  // Números WhatsApp existentes no workspace (para filtrar etiquetas de sistema órfãs)
+  const { data: waNumberIds } = useQuery({
     enabled: !!ws?.id,
     queryKey: ["wa-number-ids", ws?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("whatsapp_numbers")
-        .select("id, provider")
+        .select("id")
         .eq("workspace_id", ws!.id);
       if (error) throw error;
-      return {
-        ids: new Set((data ?? []).map((r) => r.id as string)),
-        providerById: new Map((data ?? []).map((r) => [r.id as string, (r.provider as string | null) ?? null])),
-      };
+      return new Set((data ?? []).map((r) => r.id as string));
     },
   });
-  const waNumberIds = waNumbers?.ids;
 
   // Remove etiquetas de sistema cujo número WhatsApp não existe mais
   const labels = useMemo(() => {
@@ -1299,18 +1293,6 @@ function ConversationsPage() {
                     </SelectContent>
                   </Select>
                 )}
-                <CallButton
-                  isAdmin={isAdmin}
-                  target={{
-                    conversationId: active.id,
-                    workspaceId: (active as { workspace_id: string }).workspace_id,
-                    contactName: (active.contacts as { name?: string } | null)?.name ?? null,
-                    phone: (active.contacts as { phone?: string | null } | null)?.phone ?? null,
-                    waProvider:
-                      waNumbers?.providerById.get((active as { whatsapp_number_id?: string | null }).whatsapp_number_id ?? "") ?? null,
-                    isGroup: (active.contacts as { type?: string } | null)?.type === "group",
-                  }}
-                />
                 <Button
                   size="sm"
                   variant={leadPaneOpen ? "outline" : "ghost"}
