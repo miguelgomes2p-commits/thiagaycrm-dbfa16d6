@@ -9,6 +9,7 @@ import {
   sendWhatsappMessage,
   sendWhatsappAttachment,
   repairWhatsappAudioMedia,
+  sendWhatsappLocation,
 } from "@/lib/whatsapp.functions";
 
 import { useLabels, useConversationLabels, useAssignLabel, useRemoveLabel } from "@/hooks/useLabels";
@@ -26,7 +27,7 @@ import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus,
   Tag, Filter, ChevronRight, ChevronLeft, Paperclip, BriefcaseBusiness, Save, Loader2,
-  Camera, Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil,
+  Camera, Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil, MapPin,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -34,7 +35,15 @@ import { toast } from "sonner";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
 import { CameraCaptureDialog } from "@/components/chat/CameraCaptureDialog";
+import { LocationMessageCard, parseLocationMetadata } from "@/components/chat/LocationMessageCard";
+import { LocationPickerDialog } from "@/components/chat/LocationPickerDialog";
+import { MediaLightbox, type MediaItem } from "@/components/chat/MediaLightbox";
+import { formatPhoneForDisplay } from "@/lib/phone";
 import { getCameraCapability } from "@/lib/communication/capabilities";
+import { useLeadFields } from "@/hooks/useLeadFields";
+import { DynamicLeadForm } from "@/components/leads/DynamicLeadForm";
+
+
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
   validateSearch: (search: Record<string, unknown>): { c?: string } =>
@@ -120,11 +129,16 @@ function ConversationsPage() {
   const recordingTimerRef = useRef<number | null>(null);
   const repairingAudioRef = useRef(new Set<string>());
   const activeIdRef = useRef<string | null>(null);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [sendingLocation, setSendingLocation] = useState(false);
+  const [lightboxId, setLightboxId] = useState<string | null>(null);
 
   const qc = useQueryClient();
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
+  const sendWaLocation = useServerFn(sendWhatsappLocation);
   const repairAudio = useServerFn(repairWhatsappAudioMedia);
+
   const transferConv = useServerFn(transferConversation);
   const transferM = useMutation({
     mutationFn: (p: { conversationId: string; toUserId: string }) => transferConv({ data: p }),
@@ -281,6 +295,28 @@ function ConversationsPage() {
     refetchOnWindowFocus: true,
     staleTime: 10_000,
   });
+
+  /** Galeria da conversa: permite navegar entre fotos/vídeos no visualizador. */
+  const mediaItems = useMemo<MediaItem[]>(() => {
+    return (msgsQ.data ?? [])
+      .filter((m) => {
+        const t = (m as { media_type?: string | null }).media_type;
+        return !!(m as { media_url?: string | null }).media_url && (t === "image" || t === "video" || t === "sticker");
+      })
+      .map((m) => ({
+        id: (m as { id: string }).id,
+        url: (m as { media_url: string }).media_url,
+        type: ((m as { media_type: string }).media_type === "video" ? "video" : (m as { media_type: string }).media_type === "sticker" ? "sticker" : "image") as MediaItem["type"],
+        caption: (m as { content?: string | null }).content ?? null,
+        createdAt: (m as { created_at?: string | null }).created_at ?? null,
+      }));
+  }, [msgsQ.data]);
+
+  const leadFieldsQ = useLeadFields(ws?.id ?? null);
+  const dynamicLeadDefs = useMemo(
+    () => (leadFieldsQ.data?.definitions ?? []).filter((d) => d.is_active),
+    [leadFieldsQ.data],
+  );
 
 
   useEffect(() => {
@@ -765,6 +801,29 @@ function ConversationsPage() {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
+
+  async function sendLocation(loc: { latitude: number; longitude: number; name?: string | null; address?: string | null }) {
+    if (!active || !ws) return;
+    setSendingLocation(true);
+    try {
+      await sendWaLocation({ data: {
+        conversationId: active.id,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        name: loc.name ?? null,
+        address: loc.address ?? null,
+      }});
+      setLocationOpen(false);
+      qc.invalidateQueries({ queryKey: ["messages", active.id] });
+      qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+      toast.success("Localização enviada");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao enviar localização");
+    } finally {
+      setSendingLocation(false);
+    }
+  }
+
 
   function preferredAudioMime() {
     const options = [
@@ -1262,8 +1321,19 @@ function ConversationsPage() {
                     </button>
                   )}
                 </div>
+                {(() => {
+                  const rawPhone =
+                    (active.contacts as { phone?: string | null } | null)?.phone ??
+                    (active as { wa_contact_wa_id?: string | null }).wa_contact_wa_id ??
+                    null;
+                  const pretty = formatPhoneForDisplay(rawPhone);
+                  return pretty && !/@g\.us$/i.test(pretty) ? (
+                    <div className="text-xs text-muted-foreground truncate">{pretty}</div>
+                  ) : null;
+                })()}
                 <div className="text-xs text-muted-foreground flex items-center gap-1.5 min-w-0 truncate">
                   <span className="truncate">{active.channel} · {active.status}</span>
+
                   {(() => {
                     const aid = (active as { assigned_to?: string | null }).assigned_to ?? null;
                     const ag = aid ? membersQ.data?.get(aid) : null;
@@ -1370,18 +1440,25 @@ function ConversationsPage() {
                       {senderLabel && (
                         <div className="text-[11px] font-semibold opacity-90 leading-tight">{senderLabel}</div>
                       )}
+                      {(() => {
+                        const loc = mediaType === "location"
+                          ? parseLocationMetadata((m as { metadata?: unknown }).metadata)
+                          : null;
+                        return loc ? (
+                          <LocationMessageCard loc={loc} tone={m.direction === "outbound" ? "out" : "in"} />
+                        ) : null;
+                      })()}
                       {mediaUrl && (mediaType === "image" || mediaType === "sticker") && (
-
-                        <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
+                        <button type="button" onClick={() => setLightboxId(m.id)} className="block">
                           <img
                             src={mediaUrl}
                             alt={m.content ?? "imagem"}
                             className={cn(
-                              "rounded-lg max-h-72 w-auto object-cover",
+                              "rounded-lg max-h-72 w-auto object-cover cursor-zoom-in",
                               mediaType === "sticker" && "max-h-32 bg-white/5",
                             )}
                           />
-                        </a>
+                        </button>
                       )}
                       {mediaUrl && mediaType === "audio" && (
                         <AudioPlayer
@@ -1391,8 +1468,18 @@ function ConversationsPage() {
                         />
                       )}
                       {mediaUrl && mediaType === "video" && (
-                        <video controls src={mediaUrl} className="rounded-lg max-h-72 w-full" />
+                        <div className="relative">
+                          <video controls src={mediaUrl} className="rounded-lg max-h-72 w-full" />
+                          <button
+                            type="button"
+                            onClick={() => setLightboxId(m.id)}
+                            className="absolute top-1.5 right-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white"
+                          >
+                            Ampliar
+                          </button>
+                        </div>
                       )}
+
                       {mediaUrl && mediaType === "document" && (
                         <a
                           href={mediaUrl}
@@ -1405,7 +1492,7 @@ function ConversationsPage() {
                           <span className="opacity-60 text-[10px]">{mediaMime?.split("/")[1]?.toUpperCase()}</span>
                         </a>
                       )}
-                      {m.content && !(mediaType === "document" && m.content?.startsWith("📎")) && (
+                      {m.content && mediaType !== "location" && !(mediaType === "document" && m.content?.startsWith("📎")) && (
                         <>
                           <LinkifiedText text={m.content} />
                           {(() => {
@@ -1450,6 +1537,14 @@ function ConversationsPage() {
                 sending={uploading}
                 onCapture={(file) => sendAttachment(file)}
               />
+              <LocationPickerDialog
+                open={locationOpen}
+                onOpenChange={setLocationOpen}
+                workspaceId={ws?.id ?? null}
+                sending={sendingLocation}
+                onSend={(loc) => sendLocation(loc)}
+              />
+
               {isRecording ? (
                 <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-2">
                   <Button type="button" variant="ghost" size="icon" onClick={cancelAudioRecording} title="Cancelar gravação">
@@ -1498,6 +1593,17 @@ function ConversationsPage() {
                   >
                     <Mic className="h-4 w-4" />
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={sending || uploading || sendingLocation || !active}
+                    onClick={() => setLocationOpen(true)}
+                    title="Enviar localização"
+                  >
+                    {sendingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                  </Button>
+
                   <Input
                     value={text} onChange={(e) => setText(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
@@ -1510,7 +1616,9 @@ function ConversationsPage() {
                 </div>
               )}
             </div>
+            <MediaLightbox items={mediaItems} startId={lightboxId} onClose={() => setLightboxId(null)} />
           </>
+
         )}
       </div>
       {active && leadPaneOpen && (
@@ -1591,6 +1699,18 @@ function ConversationsPage() {
               </div>
               <div className="pt-2 mt-2 border-t border-border">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h3>
+                {dynamicLeadDefs.length > 0 ? (
+                  <DynamicLeadForm
+                    definitions={dynamicLeadDefs}
+                    groups={leadFieldsQ.data?.groups ?? []}
+                    values={leadFields}
+                    onChange={setLeadFields}
+                    context="CREATE_FROM_CONVERSATION"
+                    stageId={leadStageId || null}
+                    members={Array.from(membersQ.data?.entries() ?? []).map(([id, m]) => ({ id, name: m.name }))}
+                    compact
+                  />
+                ) : (
                 <div className="space-y-2">
                   <LeadTextField label="Origem" value={leadFields.origem} onChange={(v) => setLeadFields({ ...leadFields, origem: v })} placeholder="Instagram, Google, indicação..." />
                   <LeadSelectField label="Canal" value={leadFields.canal} onChange={(v) => setLeadFields({ ...leadFields, canal: v })}
@@ -1614,6 +1734,8 @@ function ConversationsPage() {
                   <LeadTextField label="Urgência" value={leadFields.urgencia} onChange={(v) => setLeadFields({ ...leadFields, urgencia: v })} placeholder="Essa semana, este mês..." />
                   <LeadTextField label="Última mensagem" value={leadFields.ultima_mensagem} onChange={(v) => setLeadFields({ ...leadFields, ultima_mensagem: v })} />
                 </div>
+                )}
+
               </div>
               <div>
                 <Label className="text-xs">Resumo / anotações livres</Label>

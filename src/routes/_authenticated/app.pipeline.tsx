@@ -16,7 +16,9 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PipelineStagesManager } from "@/components/pipeline/PipelineStagesManager";
 import { StageAutomationDialog } from "@/components/pipeline/StageAutomationDialog";
-import { LeadQualifyFields, type LeadFields } from "@/components/pipeline/LeadQualifyFields";
+import { type LeadFields } from "@/components/pipeline/LeadQualifyFields";
+import { LeadFieldsSection } from "@/components/leads/LeadFieldsSection";
+
 import { useServerFn } from "@tanstack/react-start";
 import { runStageAutomations } from "@/lib/automations.functions";
 
@@ -260,7 +262,14 @@ function PipelinePage() {
               </div>
               <div className="pt-2 border-t border-border">
                 <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
-                <LeadQualifyFields value={newFields} onChange={setNewFields} />
+                <LeadFieldsSection
+                  workspaceId={ws?.id ?? null}
+                  values={newFields}
+                  onChange={(v) => setNewFields(v)}
+                  context="CREATE_FROM_PIPELINE"
+                  pipelineId={pipelineQ.data?.pipe?.id ?? null}
+                />
+
               </div>
               <div><Label>Anotações</Label><Textarea name="notes" rows={3} placeholder="Observações sobre o lead" /></div>
 
@@ -456,8 +465,15 @@ function PipelinePage() {
               </div>
               <div className="pt-2 border-t border-border">
                 <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
-                <LeadQualifyFields value={editForm.custom_fields}
-                  onChange={(v) => setEditForm({ ...editForm, custom_fields: v })} />
+                <LeadFieldsSection
+                  workspaceId={ws?.id ?? null}
+                  values={editForm.custom_fields}
+                  onChange={(v) => setEditForm({ ...editForm, custom_fields: v })}
+                  context="LEAD_DETAIL"
+                  pipelineId={pipelineQ.data?.pipe?.id ?? null}
+                  stageId={editForm.stage_id}
+                />
+
               </div>
               <div><Label>Anotações</Label>
                 <Textarea rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />

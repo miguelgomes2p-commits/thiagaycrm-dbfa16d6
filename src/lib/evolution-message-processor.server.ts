@@ -289,7 +289,30 @@ function messageText(m: Json, media: ReturnType<typeof detectMediaKind>) {
   );
 }
 
+/**
+ * Localização recebida (Baileys/Evolution): `message.locationMessage` com
+ * degreesLatitude/degreesLongitude e, opcionalmente, name/address.
+ * `liveLocationMessage` também é normalizado como localização estática (V1).
+ */
+function detectLocation(m: Json): { latitude: number; longitude: number; name: string | null; address: string | null } | null {
+  const inner = unwrapMessage(m.message);
+  const node =
+    inner?.locationMessage ??
+    inner?.liveLocationMessage ??
+    m.message?.locationMessage ??
+    m.message?.liveLocationMessage ??
+    findDeep(m, (_v, key) => key === "locationMessage" || key === "liveLocationMessage");
+  if (!node) return null;
+  const lat = Number(node.degreesLatitude ?? node.latitude ?? node.lat);
+  const lng = Number(node.degreesLongitude ?? node.longitude ?? node.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const name = typeof node.name === "string" && node.name.trim() ? node.name.trim() : null;
+  const address = typeof node.address === "string" && node.address.trim() ? node.address.trim() : null;
+  return { latitude: lat, longitude: lng, name, address };
+}
+
 function firstString(...values: unknown[]) {
+
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
@@ -490,9 +513,15 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
 
     try {
       const media = detectMediaKind(m);
+      const location = detectLocation(m);
       let text = messageText(m, media);
+      if (location) {
+        const locTitle = location.name ?? location.address ?? "Localização recebida";
+        text = `📍 ${locTitle}`;
+      }
       if (isGroup && !fromMe && text) text = `${pushName ?? participantId ?? "membro"}: ${text}`;
-      if (!text && !media.type) continue;
+      if (!text && !media.type && !location) continue;
+
 
       let contactId: string;
       const exContact = contactByPhone.get(waId) ?? null;
@@ -674,7 +703,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         wa_message_id: key.id ?? null,
         delivery_status: "delivered",
         media_url: mediaUrl,
-        media_type: media.type,
+        media_type: location ? "location" : media.type,
         media_mime_type: mediaMime,
         metadata: {
           crm_trace: {
@@ -684,6 +713,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
             whatsapp_number_id: num.id,
             received_at: new Date(startedAt).toISOString(),
           },
+          ...(location ? { location } : {}),
         },
       });
       if (msgErr) {
@@ -697,12 +727,14 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
       }
       stats.insertedMessages++;
 
-      const previewText = media.type === "image" ? "📷 Imagem"
+      const previewText = location ? text
+        : media.type === "image" ? "📷 Imagem"
         : media.type === "audio" ? "🎵 Áudio"
         : media.type === "video" ? "🎬 Vídeo"
         : media.type === "sticker" ? "🌟 Sticker"
         : media.type === "document" ? `📎 ${media.filename ?? "Documento"}`
         : text;
+
       const shouldUpdatePreview = !conversationLastAt || new Date(conversationLastAt).getTime() <= new Date(messageCreatedAt).getTime();
       if (shouldUpdatePreview) {
         await supabaseAdmin.from("conversations").update({

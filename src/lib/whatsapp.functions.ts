@@ -498,6 +498,128 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     }
   });
 
+/**
+ * Envio de localização estática (WhatsApp). Reaproveita exatamente o mesmo
+ * pipeline de persistência das demais mensagens: registra `pending`, envia
+ * pelo provider server-side e atualiza para `sent`/`failed`.
+ */
+export const sendWhatsappLocation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      conversationId: z.string().uuid(),
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+      name: z.string().max(160).optional().nullable(),
+      address: z.string().max(400).optional().nullable(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: conv, error: cerr } = await context.supabase
+      .from("conversations")
+      .select("id, workspace_id, whatsapp_number_id, wa_contact_wa_id")
+      .eq("id", data.conversationId)
+      .single();
+    if (cerr || !conv) throw new Error("Conversa não encontrada");
+    if (!conv.whatsapp_number_id || !conv.wa_contact_wa_id) {
+      throw new Error("Esta conversa não está vinculada a um número WhatsApp");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: num, error: nerr } = await supabaseAdmin
+      .from("whatsapp_numbers")
+      .select("id, provider, provider_base_url, provider_api_key, instance_name")
+      .eq("id", conv.whatsapp_number_id)
+      .eq("workspace_id", conv.workspace_id)
+      .single();
+    if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
+
+    const locName = (data.name ?? "").trim() || "Localização";
+    const locAddress = (data.address ?? "").trim() || `${data.latitude}, ${data.longitude}`;
+    const preview = `📍 ${locName}`;
+    const nowIso = new Date().toISOString();
+
+    const { data: pendingMsg, error: pendingErr } = await context.supabase
+      .from("messages")
+      .insert({
+        workspace_id: conv.workspace_id,
+        conversation_id: conv.id,
+        direction: "outbound",
+        sender_type: "user",
+        sender_user_id: context.userId,
+        content: preview,
+        delivery_status: "pending",
+        media_type: "location",
+        created_at: nowIso,
+        metadata: {
+          location: {
+            latitude: data.latitude,
+            longitude: data.longitude,
+            name: locName,
+            address: locAddress,
+          },
+        },
+      })
+      .select()
+      .single();
+    if (pendingErr || !pendingMsg) throw new Error(pendingErr?.message ?? "Falha ao registrar localização");
+    await context.supabase
+      .from("conversations")
+      .update({ last_message_preview: preview.slice(0, 200), last_message_at: nowIso })
+      .eq("id", conv.id);
+
+    try {
+      if (num.provider !== "evolution") {
+        throw new Error(`Envio de localização não suportado pelo provedor ${num.provider}.`);
+      }
+      if (!num.provider_base_url || !num.provider_api_key || !num.instance_name) {
+        throw new Error("Configuração da instância Evolution ausente.");
+      }
+      const { evolutionSendLocation } = await import("@/lib/evolution.server");
+      const resp = await evolutionSendLocation(
+        num.provider_base_url,
+        num.provider_api_key,
+        num.instance_name,
+        conv.wa_contact_wa_id,
+        data.latitude,
+        data.longitude,
+        locName,
+        locAddress,
+      );
+      const waId = resp.key?.id ?? null;
+      const { data: msg, error: merr } = await context.supabase
+        .from("messages")
+        .update({ wa_message_id: waId, delivery_status: "sent" })
+        .eq("id", pendingMsg.id)
+        .select()
+        .single();
+      if (merr) {
+        if (waId && merr.code === "23505") {
+          const { data: existing } = await context.supabase
+            .from("messages")
+            .select("*")
+            .eq("workspace_id", conv.workspace_id)
+            .eq("wa_message_id", waId)
+            .maybeSingle();
+          if (existing) {
+            await supabaseAdmin.from("messages").delete().eq("id", pendingMsg.id);
+            return existing;
+          }
+        }
+        throw new Error(merr.message);
+      }
+      return msg;
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      await context.supabase.from("messages").update({
+        delivery_status: "failed",
+        error_message: errorMessage,
+      }).eq("id", pendingMsg.id);
+      throw new Error(errorMessage);
+    }
+  });
+
+
 export const repairWhatsappAudioMedia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ conversationId: z.string().uuid() }).parse(d))
