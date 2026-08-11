@@ -23,6 +23,7 @@ import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppRenaveRouteImport } from './routes/_authenticated/app.renave'
 import { Route as AuthenticatedAppPipelineRouteImport } from './routes/_authenticated/app.pipeline'
 import { Route as AuthenticatedAppLabelsRouteImport } from './routes/_authenticated/app.labels'
+import { Route as AuthenticatedAppInventoryRouteImport } from './routes/_authenticated/app.inventory'
 import { Route as AuthenticatedAppConversationsRouteImport } from './routes/_authenticated/app.conversations'
 import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenticated/app.contacts'
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
@@ -109,6 +110,12 @@ const AuthenticatedAppLabelsRoute = AuthenticatedAppLabelsRouteImport.update({
   path: '/labels',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppInventoryRoute =
+  AuthenticatedAppInventoryRouteImport.update({
+    id: '/inventory',
+    path: '/inventory',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppConversationsRoute =
   AuthenticatedAppConversationsRouteImport.update({
     id: '/conversations',
@@ -195,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/app/ai': typeof AuthenticatedAppAiRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
+  '/app/inventory': typeof AuthenticatedAppInventoryRoute
   '/app/labels': typeof AuthenticatedAppLabelsRoute
   '/app/pipeline': typeof AuthenticatedAppPipelineRoute
   '/app/renave': typeof AuthenticatedAppRenaveRoute
@@ -222,6 +230,7 @@ export interface FileRoutesByTo {
   '/app/ai': typeof AuthenticatedAppAiRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
+  '/app/inventory': typeof AuthenticatedAppInventoryRoute
   '/app/labels': typeof AuthenticatedAppLabelsRoute
   '/app/pipeline': typeof AuthenticatedAppPipelineRoute
   '/app/renave': typeof AuthenticatedAppRenaveRoute
@@ -252,6 +261,7 @@ export interface FileRoutesById {
   '/_authenticated/app/ai': typeof AuthenticatedAppAiRoute
   '/_authenticated/app/contacts': typeof AuthenticatedAppContactsRoute
   '/_authenticated/app/conversations': typeof AuthenticatedAppConversationsRoute
+  '/_authenticated/app/inventory': typeof AuthenticatedAppInventoryRoute
   '/_authenticated/app/labels': typeof AuthenticatedAppLabelsRoute
   '/_authenticated/app/pipeline': typeof AuthenticatedAppPipelineRoute
   '/_authenticated/app/renave': typeof AuthenticatedAppRenaveRoute
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/app/ai'
     | '/app/contacts'
     | '/app/conversations'
+    | '/app/inventory'
     | '/app/labels'
     | '/app/pipeline'
     | '/app/renave'
@@ -309,6 +320,7 @@ export interface FileRouteTypes {
     | '/app/ai'
     | '/app/contacts'
     | '/app/conversations'
+    | '/app/inventory'
     | '/app/labels'
     | '/app/pipeline'
     | '/app/renave'
@@ -338,6 +350,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/ai'
     | '/_authenticated/app/contacts'
     | '/_authenticated/app/conversations'
+    | '/_authenticated/app/inventory'
     | '/_authenticated/app/labels'
     | '/_authenticated/app/pipeline'
     | '/_authenticated/app/renave'
@@ -474,6 +487,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppLabelsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/inventory': {
+      id: '/_authenticated/app/inventory'
+      path: '/inventory'
+      fullPath: '/app/inventory'
+      preLoaderRoute: typeof AuthenticatedAppInventoryRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/conversations': {
       id: '/_authenticated/app/conversations'
       path: '/conversations'
@@ -573,6 +593,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppAiRoute: typeof AuthenticatedAppAiRoute
   AuthenticatedAppContactsRoute: typeof AuthenticatedAppContactsRoute
   AuthenticatedAppConversationsRoute: typeof AuthenticatedAppConversationsRoute
+  AuthenticatedAppInventoryRoute: typeof AuthenticatedAppInventoryRoute
   AuthenticatedAppLabelsRoute: typeof AuthenticatedAppLabelsRoute
   AuthenticatedAppPipelineRoute: typeof AuthenticatedAppPipelineRoute
   AuthenticatedAppRenaveRoute: typeof AuthenticatedAppRenaveRoute
@@ -587,6 +608,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppAiRoute: AuthenticatedAppAiRoute,
   AuthenticatedAppContactsRoute: AuthenticatedAppContactsRoute,
   AuthenticatedAppConversationsRoute: AuthenticatedAppConversationsRoute,
+  AuthenticatedAppInventoryRoute: AuthenticatedAppInventoryRoute,
   AuthenticatedAppLabelsRoute: AuthenticatedAppLabelsRoute,
   AuthenticatedAppPipelineRoute: AuthenticatedAppPipelineRoute,
   AuthenticatedAppRenaveRoute: AuthenticatedAppRenaveRoute,
