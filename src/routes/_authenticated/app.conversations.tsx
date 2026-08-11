@@ -34,7 +34,6 @@ import { toast } from "sonner";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
 import { CameraCaptureDialog } from "@/components/chat/CameraCaptureDialog";
-import { CallButton } from "@/components/chat/CallButton";
 import { getCameraCapability } from "@/lib/communication/capabilities";
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
