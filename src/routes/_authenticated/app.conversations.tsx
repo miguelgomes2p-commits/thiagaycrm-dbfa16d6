@@ -1528,6 +1528,14 @@ function ConversationsPage() {
                 sending={uploading}
                 onCapture={(file) => sendAttachment(file)}
               />
+              <LocationPickerDialog
+                open={locationOpen}
+                onOpenChange={setLocationOpen}
+                workspaceId={ws?.id ?? null}
+                sending={sendingLocation}
+                onSend={(loc) => sendLocation(loc)}
+              />
+
               {isRecording ? (
                 <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-2">
                   <Button type="button" variant="ghost" size="icon" onClick={cancelAudioRecording} title="Cancelar gravação">
