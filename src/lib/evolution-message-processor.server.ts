@@ -289,7 +289,30 @@ function messageText(m: Json, media: ReturnType<typeof detectMediaKind>) {
   );
 }
 
+/**
+ * Localização recebida (Baileys/Evolution): `message.locationMessage` com
+ * degreesLatitude/degreesLongitude e, opcionalmente, name/address.
+ * `liveLocationMessage` também é normalizado como localização estática (V1).
+ */
+function detectLocation(m: Json): { latitude: number; longitude: number; name: string | null; address: string | null } | null {
+  const inner = unwrapMessage(m.message);
+  const node =
+    inner?.locationMessage ??
+    inner?.liveLocationMessage ??
+    m.message?.locationMessage ??
+    m.message?.liveLocationMessage ??
+    findDeep(m, (_v, key) => key === "locationMessage" || key === "liveLocationMessage");
+  if (!node) return null;
+  const lat = Number(node.degreesLatitude ?? node.latitude ?? node.lat);
+  const lng = Number(node.degreesLongitude ?? node.longitude ?? node.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const name = typeof node.name === "string" && node.name.trim() ? node.name.trim() : null;
+  const address = typeof node.address === "string" && node.address.trim() ? node.address.trim() : null;
+  return { latitude: lat, longitude: lng, name, address };
+}
+
 function firstString(...values: unknown[]) {
+
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
