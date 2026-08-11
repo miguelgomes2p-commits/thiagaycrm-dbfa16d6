@@ -777,6 +777,29 @@ function ConversationsPage() {
     }
   }
 
+  async function sendLocation(loc: { latitude: number; longitude: number; name?: string | null; address?: string | null }) {
+    if (!active || !ws) return;
+    setSendingLocation(true);
+    try {
+      await sendWaLocation({ data: {
+        conversationId: active.id,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        name: loc.name ?? null,
+        address: loc.address ?? null,
+      }});
+      setLocationOpen(false);
+      qc.invalidateQueries({ queryKey: ["messages", active.id] });
+      qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+      toast.success("Localização enviada");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao enviar localização");
+    } finally {
+      setSendingLocation(false);
+    }
+  }
+
+
   function preferredAudioMime() {
     const options = [
       "audio/ogg;codecs=opus",
