@@ -369,7 +369,7 @@ function ConversationsPage() {
       if (invalidateTimer) clearTimeout(invalidateTimer);
       supabase.removeChannel(ch);
     };
-  }, [activeId, ws?.id, qc]);
+  }, [activeId, ws?.id, pageSize, qc]);
 
   useEffect(() => {
     if (!ws?.id) return;
@@ -428,7 +428,7 @@ function ConversationsPage() {
       if (invalidateTimer) clearTimeout(invalidateTimer);
       supabase.removeChannel(ch);
     };
-  }, [ws?.id, qc]);
+  }, [ws?.id, pageSize, qc]);
 
   const labelById = useMemo(() => {
     const m = new Map<string, typeof labels extends (infer T)[] | undefined ? T : never>();
