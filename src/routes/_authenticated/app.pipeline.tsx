@@ -262,7 +262,14 @@ function PipelinePage() {
               </div>
               <div className="pt-2 border-t border-border">
                 <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
-                <LeadQualifyFields value={newFields} onChange={setNewFields} />
+                <LeadFieldsSection
+                  workspaceId={ws?.id ?? null}
+                  values={newFields}
+                  onChange={(v) => setNewFields(v)}
+                  context="pipeline"
+                  pipelineId={pipelineQ.data?.pipe?.id ?? null}
+                />
+
               </div>
               <div><Label>Anotações</Label><Textarea name="notes" rows={3} placeholder="Observações sobre o lead" /></div>
 
