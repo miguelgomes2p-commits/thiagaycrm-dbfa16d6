@@ -126,11 +126,16 @@ function ConversationsPage() {
   const recordingTimerRef = useRef<number | null>(null);
   const repairingAudioRef = useRef(new Set<string>());
   const activeIdRef = useRef<string | null>(null);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [sendingLocation, setSendingLocation] = useState(false);
+  const [lightboxId, setLightboxId] = useState<string | null>(null);
 
   const qc = useQueryClient();
   const sendWa = useServerFn(sendWhatsappMessage);
   const sendWaFile = useServerFn(sendWhatsappAttachment);
+  const sendWaLocation = useServerFn(sendWhatsappLocation);
   const repairAudio = useServerFn(repairWhatsappAudioMedia);
+
   const transferConv = useServerFn(transferConversation);
   const transferM = useMutation({
     mutationFn: (p: { conversationId: string; toUserId: string }) => transferConv({ data: p }),
