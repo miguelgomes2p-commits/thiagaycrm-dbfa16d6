@@ -40,6 +40,9 @@ import { LocationPickerDialog } from "@/components/chat/LocationPickerDialog";
 import { MediaLightbox, type MediaItem } from "@/components/chat/MediaLightbox";
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { getCameraCapability } from "@/lib/communication/capabilities";
+import { useLeadFields } from "@/hooks/useLeadFields";
+import { DynamicLeadForm } from "@/components/leads/DynamicLeadForm";
+
 
 
 export const Route = createFileRoute("/_authenticated/app/conversations")({
