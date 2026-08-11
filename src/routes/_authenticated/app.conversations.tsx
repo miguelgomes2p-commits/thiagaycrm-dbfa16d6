@@ -148,19 +148,24 @@ function ConversationsPage() {
   const assignLabel = useAssignLabel(ws?.id);
   const removeLabel = useRemoveLabel(ws?.id);
 
-  // Números WhatsApp existentes no workspace (para filtrar etiquetas de sistema órfãs)
-  const { data: waNumberIds } = useQuery({
+  // Números WhatsApp existentes no workspace (para filtrar etiquetas de sistema órfãs
+  // e para detectar o provider da conversa — usado nas capacidades de chamada)
+  const { data: waNumbers } = useQuery({
     enabled: !!ws?.id,
     queryKey: ["wa-number-ids", ws?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("whatsapp_numbers")
-        .select("id")
+        .select("id, provider")
         .eq("workspace_id", ws!.id);
       if (error) throw error;
-      return new Set((data ?? []).map((r) => r.id as string));
+      return {
+        ids: new Set((data ?? []).map((r) => r.id as string)),
+        providerById: new Map((data ?? []).map((r) => [r.id as string, (r.provider as string | null) ?? null])),
+      };
     },
   });
+  const waNumberIds = waNumbers?.ids;
 
   // Remove etiquetas de sistema cujo número WhatsApp não existe mais
   const labels = useMemo(() => {
