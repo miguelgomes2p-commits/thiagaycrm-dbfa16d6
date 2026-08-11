@@ -75,6 +75,318 @@ export type Database = {
           },
         ]
       }
+      automation_beta_users: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      automation_execution_steps: {
+        Row: {
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          execution_id: string
+          id: string
+          node_id: string
+          node_type: string
+          result: Json
+          seq: number
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          execution_id: string
+          id?: string
+          node_id: string
+          node_type: string
+          result?: Json
+          seq?: number
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          execution_id?: string
+          id?: string
+          node_id?: string
+          node_type?: string
+          result?: Json
+          seq?: number
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_execution_steps_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "automation_executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_execution_steps_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_executions: {
+        Row: {
+          automation_id: string
+          depth: number
+          entity_id: string | null
+          entity_type: string | null
+          error_message: string | null
+          event_id: string | null
+          finished_at: string | null
+          id: string
+          idempotency_key: string | null
+          mode: string
+          started_at: string
+          status: string
+          version: number
+          workspace_id: string
+        }
+        Insert: {
+          automation_id: string
+          depth?: number
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          mode?: string
+          started_at?: string
+          status?: string
+          version: number
+          workspace_id: string
+        }
+        Update: {
+          automation_id?: string
+          depth?: number
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          mode?: string
+          started_at?: string
+          status?: string
+          version?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_executions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_jobs: {
+        Row: {
+          attempts: number
+          automation_id: string
+          context: Json
+          created_at: string
+          execution_id: string
+          id: string
+          last_error: string | null
+          resume_node_id: string
+          run_at: string
+          status: string
+          updated_at: string
+          version: number
+          workspace_id: string
+        }
+        Insert: {
+          attempts?: number
+          automation_id: string
+          context?: Json
+          created_at?: string
+          execution_id: string
+          id?: string
+          last_error?: string | null
+          resume_node_id: string
+          run_at: string
+          status?: string
+          updated_at?: string
+          version: number
+          workspace_id: string
+        }
+        Update: {
+          attempts?: number
+          automation_id?: string
+          context?: Json
+          created_at?: string
+          execution_id?: string
+          id?: string
+          last_error?: string | null
+          resume_node_id?: string
+          run_at?: string
+          status?: string
+          updated_at?: string
+          version?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_jobs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_jobs_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "automation_executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_jobs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_versions: {
+        Row: {
+          automation_id: string
+          created_at: string
+          definition: Json
+          id: string
+          published_by: string | null
+          trigger_type: string | null
+          version: number
+          workspace_id: string
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string
+          definition: Json
+          id?: string
+          published_by?: string | null
+          trigger_type?: string | null
+          version: number
+          workspace_id: string
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string
+          definition?: Json
+          id?: string
+          published_by?: string | null
+          trigger_type?: string | null
+          version?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_versions_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_versions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automations: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          draft_definition: Json
+          id: string
+          name: string
+          published_version: number | null
+          status: string
+          trigger_type: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          draft_definition?: Json
+          id?: string
+          name: string
+          published_version?: number | null
+          status?: string
+          trigger_type?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          draft_definition?: Json
+          id?: string
+          name?: string
+          published_version?: number | null
+          status?: string
+          trigger_type?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           address: string | null
@@ -362,6 +674,59 @@ export type Database = {
           },
         ]
       }
+      crm_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          depth: number
+          entity_id: string | null
+          entity_type: string
+          event_type: string
+          id: string
+          origin_event_id: string | null
+          payload: Json
+          processed_at: string | null
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          depth?: number
+          entity_id?: string | null
+          entity_type: string
+          event_type: string
+          id?: string
+          origin_event_id?: string | null
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          depth?: number
+          entity_id?: string | null
+          entity_type?: string
+          event_type?: string
+          id?: string
+          origin_event_id?: string | null
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evolution_error_logs: {
         Row: {
           base_url: string | null
@@ -608,6 +973,70 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "lead_field_groups_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_vehicle_interests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          interest_type: string
+          is_primary: boolean
+          lead_id: string
+          notes: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interest_type?: string
+          is_primary?: boolean
+          lead_id: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interest_type?: string
+          is_primary?: boolean
+          lead_id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_vehicle_interests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_vehicle_interests_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_vehicle_interests_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -1971,6 +2400,178 @@ export type Database = {
           },
         ]
       }
+      vehicle_media: {
+        Row: {
+          created_at: string
+          id: string
+          is_cover: boolean
+          media_type: string
+          sort_order: number
+          storage_path: string
+          vehicle_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_cover?: boolean
+          media_type?: string
+          sort_order?: number
+          storage_path: string
+          vehicle_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_cover?: boolean
+          media_type?: string
+          sort_order?: number
+          storage_path?: string
+          vehicle_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_media_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_media_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          brand: string
+          category: string | null
+          chassis: string | null
+          color: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          engine: string | null
+          external_ref: string | null
+          featured: boolean
+          fuel: string | null
+          id: string
+          metadata: Json
+          mileage: number | null
+          model: string
+          plate: string | null
+          price: number | null
+          renavam: string | null
+          reserved_at: string | null
+          reserved_for_lead_id: string | null
+          sold_at: string | null
+          sold_to_lead_id: string | null
+          status: Database["public"]["Enums"]["vehicle_status"]
+          stock_code: string | null
+          transmission: string | null
+          updated_at: string
+          version: string | null
+          workspace_id: string
+          year_manufacture: number | null
+          year_model: number | null
+        }
+        Insert: {
+          brand: string
+          category?: string | null
+          chassis?: string | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          engine?: string | null
+          external_ref?: string | null
+          featured?: boolean
+          fuel?: string | null
+          id?: string
+          metadata?: Json
+          mileage?: number | null
+          model: string
+          plate?: string | null
+          price?: number | null
+          renavam?: string | null
+          reserved_at?: string | null
+          reserved_for_lead_id?: string | null
+          sold_at?: string | null
+          sold_to_lead_id?: string | null
+          status?: Database["public"]["Enums"]["vehicle_status"]
+          stock_code?: string | null
+          transmission?: string | null
+          updated_at?: string
+          version?: string | null
+          workspace_id: string
+          year_manufacture?: number | null
+          year_model?: number | null
+        }
+        Update: {
+          brand?: string
+          category?: string | null
+          chassis?: string | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          engine?: string | null
+          external_ref?: string | null
+          featured?: boolean
+          fuel?: string | null
+          id?: string
+          metadata?: Json
+          mileage?: number | null
+          model?: string
+          plate?: string | null
+          price?: number | null
+          renavam?: string | null
+          reserved_at?: string | null
+          reserved_for_lead_id?: string | null
+          sold_at?: string | null
+          sold_to_lead_id?: string | null
+          status?: Database["public"]["Enums"]["vehicle_status"]
+          stock_code?: string | null
+          transmission?: string | null
+          updated_at?: string
+          version?: string | null
+          workspace_id?: string
+          year_manufacture?: number | null
+          year_model?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_reserved_for_lead_id_fkey"
+            columns: ["reserved_for_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_sold_to_lead_id_fkey"
+            columns: ["sold_to_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_events: {
         Row: {
           attempts: number
@@ -2399,6 +3000,7 @@ export type Database = {
         Args: { _wa_number_id: string; _workspace_id: string }
         Returns: string
       }
+      has_automation_beta: { Args: { _user_id: string }; Returns: boolean }
       has_workspace_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -2453,6 +3055,7 @@ export type Database = {
       queue_strategy: "round_robin" | "manual" | "hybrid"
       sender_type: "contact" | "user" | "ai" | "system"
       stage_type: "open" | "won" | "lost"
+      vehicle_status: "available" | "reserved" | "sold" | "inactive"
       wa_connection_status:
         | "disconnected"
         | "qr"
@@ -2609,6 +3212,7 @@ export const Constants = {
       queue_strategy: ["round_robin", "manual", "hybrid"],
       sender_type: ["contact", "user", "ai", "system"],
       stage_type: ["open", "won", "lost"],
+      vehicle_status: ["available", "reserved", "sold", "inactive"],
       wa_connection_status: [
         "disconnected",
         "qr",
