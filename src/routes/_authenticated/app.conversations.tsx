@@ -1431,18 +1431,25 @@ function ConversationsPage() {
                       {senderLabel && (
                         <div className="text-[11px] font-semibold opacity-90 leading-tight">{senderLabel}</div>
                       )}
+                      {(() => {
+                        const loc = mediaType === "location"
+                          ? parseLocationMetadata((m as { metadata?: unknown }).metadata)
+                          : null;
+                        return loc ? (
+                          <LocationMessageCard loc={loc} tone={m.direction === "outbound" ? "out" : "in"} />
+                        ) : null;
+                      })()}
                       {mediaUrl && (mediaType === "image" || mediaType === "sticker") && (
-
-                        <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
+                        <button type="button" onClick={() => setLightboxId(m.id)} className="block">
                           <img
                             src={mediaUrl}
                             alt={m.content ?? "imagem"}
                             className={cn(
-                              "rounded-lg max-h-72 w-auto object-cover",
+                              "rounded-lg max-h-72 w-auto object-cover cursor-zoom-in",
                               mediaType === "sticker" && "max-h-32 bg-white/5",
                             )}
                           />
-                        </a>
+                        </button>
                       )}
                       {mediaUrl && mediaType === "audio" && (
                         <AudioPlayer
@@ -1452,8 +1459,18 @@ function ConversationsPage() {
                         />
                       )}
                       {mediaUrl && mediaType === "video" && (
-                        <video controls src={mediaUrl} className="rounded-lg max-h-72 w-full" />
+                        <div className="relative">
+                          <video controls src={mediaUrl} className="rounded-lg max-h-72 w-full" />
+                          <button
+                            type="button"
+                            onClick={() => setLightboxId(m.id)}
+                            className="absolute top-1.5 right-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white"
+                          >
+                            Ampliar
+                          </button>
+                        </div>
                       )}
+
                       {mediaUrl && mediaType === "document" && (
                         <a
                           href={mediaUrl}
