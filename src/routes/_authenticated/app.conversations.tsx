@@ -1312,8 +1312,19 @@ function ConversationsPage() {
                     </button>
                   )}
                 </div>
+                {(() => {
+                  const rawPhone =
+                    (active.contacts as { phone?: string | null } | null)?.phone ??
+                    (active as { wa_contact_wa_id?: string | null }).wa_contact_wa_id ??
+                    null;
+                  const pretty = formatPhoneForDisplay(rawPhone);
+                  return pretty && !/@g\.us$/i.test(pretty) ? (
+                    <div className="text-xs text-muted-foreground truncate">{pretty}</div>
+                  ) : null;
+                })()}
                 <div className="text-xs text-muted-foreground flex items-center gap-1.5 min-w-0 truncate">
                   <span className="truncate">{active.channel} · {active.status}</span>
+
                   {(() => {
                     const aid = (active as { assigned_to?: string | null }).assigned_to ?? null;
                     const ag = aid ? membersQ.data?.get(aid) : null;
