@@ -1690,6 +1690,18 @@ function ConversationsPage() {
               </div>
               <div className="pt-2 mt-2 border-t border-border">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h3>
+                {dynamicLeadDefs.length > 0 ? (
+                  <DynamicLeadForm
+                    definitions={dynamicLeadDefs}
+                    groups={leadFieldsQ.data?.groups ?? []}
+                    values={leadFields}
+                    onChange={setLeadFields}
+                    context="CREATE_FROM_CONVERSATION"
+                    stageId={leadStageId || null}
+                    members={Array.from(membersQ.data?.entries() ?? []).map(([id, m]) => ({ id, name: m.name }))}
+                    compact
+                  />
+                ) : (
                 <div className="space-y-2">
                   <LeadTextField label="Origem" value={leadFields.origem} onChange={(v) => setLeadFields({ ...leadFields, origem: v })} placeholder="Instagram, Google, indicação..." />
                   <LeadSelectField label="Canal" value={leadFields.canal} onChange={(v) => setLeadFields({ ...leadFields, canal: v })}
@@ -1713,6 +1725,8 @@ function ConversationsPage() {
                   <LeadTextField label="Urgência" value={leadFields.urgencia} onChange={(v) => setLeadFields({ ...leadFields, urgencia: v })} placeholder="Essa semana, este mês..." />
                   <LeadTextField label="Última mensagem" value={leadFields.ultima_mensagem} onChange={(v) => setLeadFields({ ...leadFields, ultima_mensagem: v })} />
                 </div>
+                )}
+
               </div>
               <div>
                 <Label className="text-xs">Resumo / anotações livres</Label>
