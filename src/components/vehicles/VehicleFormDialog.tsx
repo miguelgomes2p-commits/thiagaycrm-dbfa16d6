@@ -120,7 +120,9 @@ export function VehicleFormDialog({
       setSaving(false);
       toast.success("Veículo cadastrado");
     }
-    qc.invalidateQueries({ queryKey: ["vehicles"] });
+    await qc.invalidateQueries({ queryKey: ["vehicles"] });
+    qc.invalidateQueries({ queryKey: ["vehicle-covers"] });
+    onOpenChange(false);
   }
 
 
