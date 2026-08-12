@@ -1567,7 +1567,7 @@ function ConversationsPage() {
                       fileName: photo.fileName,
                       mimeType: photo.mimeType,
                       base64: photo.base64,
-                      caption: null,
+                      caption: photo.caption ?? null,
                     } });
                     qc.invalidateQueries({ queryKey: ["messages", active.id] });
                     qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
