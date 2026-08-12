@@ -5,7 +5,7 @@ import { useMyWorkspaces, useCurrentProfile, setActiveWorkspaceId } from "@/hook
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu, Workflow, Check, ChevronDown
+  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu, Workflow, Check, ChevronDown, FileText
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
