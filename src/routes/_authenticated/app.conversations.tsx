@@ -39,6 +39,8 @@ import { CameraCaptureDialog } from "@/components/chat/CameraCaptureDialog";
 import { LocationMessageCard, parseLocationMetadata } from "@/components/chat/LocationMessageCard";
 import { LocationPickerDialog } from "@/components/chat/LocationPickerDialog";
 import { MediaLightbox, type MediaItem } from "@/components/chat/MediaLightbox";
+import { SendVehicleDialog } from "@/components/vehicles/SendVehicleDialog";
+
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { getCameraCapability } from "@/lib/communication/capabilities";
 import { useLeadFields } from "@/hooks/useLeadFields";
@@ -107,6 +109,8 @@ function ConversationsPage() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [vehicleSendOpen, setVehicleSendOpen] = useState(false);
+
   const [view, setView] = useState(loadView);
   const [labelPaneOpen, setLabelPaneOpen] = useState(true);
   const [leadTitle, setLeadTitle] = useState("");
