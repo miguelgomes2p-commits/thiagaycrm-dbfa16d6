@@ -63,6 +63,7 @@ export const listAllWorkspaces = createServerFn({ method: "GET" })
       ...w,
       member_count: byWs.get(w.id)?.count ?? 0,
       roles: byWs.get(w.id)?.roles ?? {},
+      joined: (members ?? []).some((m) => m.workspace_id === w.id && m.user_id === context.userId),
     }));
   });
 
