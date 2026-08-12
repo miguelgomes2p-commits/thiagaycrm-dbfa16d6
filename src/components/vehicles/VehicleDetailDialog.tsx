@@ -6,14 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Car, ChevronLeft, ChevronRight, Pencil, Users } from "lucide-react";
+import { Car, ChevronLeft, ChevronRight, FileText, Pencil, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVehicleLeads, useVehicleMedia } from "@/hooks/useVehicles";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { listFiscalDocuments } from "@/lib/fiscal.functions";
+import { FISCAL_STATUS_LABEL } from "@/lib/fiscal/types";
+import { IssueNfeDialog } from "@/components/fiscal/IssueNfeDialog";
 import {
   VEHICLE_STATUS_CLASS, VEHICLE_STATUS_LABEL, findSimilarVehicles, formatBRL, formatKm, formatYear,
   logLeadActivity, vehicleTitle, type Vehicle, type VehicleStatus,
 } from "@/lib/vehicles";
+
 
 export function VehicleDetailDialog({
   vehicle, onOpenChange, onEdit,
