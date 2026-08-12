@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Car, Pencil, Users } from "lucide-react";
+import { Car, ChevronLeft, ChevronRight, Pencil, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVehicleLeads, useVehicleMedia } from "@/hooks/useVehicles";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,8 @@ export function VehicleDetailDialog({
   const mediaQ = useVehicleMedia(vehicle?.id);
   const leadsQ = useVehicleLeads(vehicle?.id);
   const [active, setActive] = useState(0);
+  const [touchX, setTouchX] = useState<number | null>(null);
+
   const similarQ = useQuery({
     enabled: !!vehicle?.id,
     queryKey: ["vehicle-similar", vehicle?.id],
