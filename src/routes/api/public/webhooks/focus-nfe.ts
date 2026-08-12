@@ -34,12 +34,29 @@ export const Route = createFileRoute("/api/public/webhooks/focus-nfe")({
         if (!payload.ref) return new Response("missing ref", { status: 400 });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+        // Novo módulo Fiscal (fiscal_documents) — atualização assíncrona idempotente.
+        const { data: fiscalDoc } = await supabaseAdmin
+          .from("fiscal_documents")
+          .select("id, workspace_id, status")
+          .eq("provider_document_id", payload.ref)
+          .maybeSingle();
+        if (fiscalDoc) {
+          const svc = await import("@/lib/fiscal/service.server");
+          const { provider } = await svc.getProviderForWorkspace(supabaseAdmin, fiscalDoc.workspace_id);
+          // Não confiamos apenas no payload: reconsultamos o provedor.
+          const res = await provider.getNFe({ ref: payload.ref });
+          await svc.applyProviderResult(supabaseAdmin, provider, fiscalDoc.id, res);
+          return new Response("ok");
+        }
+
         const { data: doc } = await supabaseAdmin
           .from("nfe_documents")
           .select("id, workspace_id, vehicle_id, direction, environment")
           .eq("ref", payload.ref)
           .maybeSingle();
         if (!doc) return new Response("ref not found", { status: 404 });
+
 
         const base =
           doc.environment === "producao"
