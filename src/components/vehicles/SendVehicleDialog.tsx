@@ -150,7 +150,7 @@ export function SendVehicleDialog({
             </div>
             {!term.trim() && (
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Veículos vinculados a este lead
+                Vinculados ao lead e estoque recente
               </p>
             )}
             <div className="max-h-72 overflow-y-auto space-y-1">
