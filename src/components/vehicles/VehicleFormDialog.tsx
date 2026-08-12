@@ -101,13 +101,28 @@ export function VehicleFormDialog({
       toast.success("Veículo atualizado");
     } else {
       const { data, error } = await supabase.from("vehicles").insert(payload as never).select("id").single();
+      if (error) { setSaving(false); toast.error(error.message); return; }
+      const newId = (data as { id: string }).id;
+      setCreatedId(newId);
+      if (pending.length > 0) {
+        setUploadProgress({ done: 0, total: pending.length });
+        const { failed } = await flushPendingPhotos({
+          pending, vehicleId: newId, workspaceId,
+          onProgress: (done, total) => setUploadProgress({ done, total }),
+        });
+        pending.forEach((p) => URL.revokeObjectURL(p.url));
+        setPending([]);
+        setUploadProgress(null);
+        if (failed) toast.error(`${failed} foto(s) não puderam ser enviadas`);
+        qc.invalidateQueries({ queryKey: ["vehicle-media", newId] });
+        qc.invalidateQueries({ queryKey: ["vehicle-covers"] });
+      }
       setSaving(false);
-      if (error) { toast.error(error.message); return; }
-      setCreatedId((data as { id: string }).id);
-      toast.success("Veículo cadastrado", { description: "Agora você pode adicionar as fotos." });
+      toast.success("Veículo cadastrado");
     }
     qc.invalidateQueries({ queryKey: ["vehicles"] });
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
