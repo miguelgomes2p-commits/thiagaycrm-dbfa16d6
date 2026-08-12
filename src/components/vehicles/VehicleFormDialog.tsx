@@ -52,12 +52,17 @@ export function VehicleFormDialog({
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingPhoto[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setForm(vehicle ? fromVehicle(vehicle) : EMPTY);
     setCreatedId(vehicle?.id ?? null);
+    setPending([]);
+    setUploadProgress(null);
   }, [open, vehicle]);
+
 
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
