@@ -1634,6 +1634,17 @@ function ConversationsPage() {
                   >
                     {sendingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={sending || uploading || !active}
+                    onClick={() => setVehicleSendOpen(true)}
+                    title="Enviar veículo"
+                  >
+                    <Car className="h-4 w-4" />
+                  </Button>
+
 
                   <Input
                     value={text} onChange={(e) => setText(e.target.value)}
