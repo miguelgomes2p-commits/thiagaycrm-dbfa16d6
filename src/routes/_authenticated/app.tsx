@@ -28,6 +28,7 @@ const NAV: NavItem[] = [
   { to: "/app/labels", label: "Etiquetas", icon: Tag },
   { to: "/app/tasks", label: "Tarefas", icon: CheckSquare },
   { to: "/app/inventory", label: "Estoque", icon: Car },
+  { to: "/app/fiscal", label: "Fiscal", icon: FileText },
   { to: "/app/renave", label: "RENAVE", icon: Car, feature: "renave" },
   { to: "/app/ai", label: "Assistente IA", icon: Bot, feature: "ai" },
   { to: "/app/settings", label: "Configurações", icon: Settings },
