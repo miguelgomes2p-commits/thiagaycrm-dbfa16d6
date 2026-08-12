@@ -168,7 +168,7 @@ export function SendVehicleDialog({
               ))}
               {options.length === 0 && (
                 <p className="text-xs text-muted-foreground py-4 text-center">
-                  {term.trim() ? "Nenhum veículo encontrado." : "Nenhum veículo vinculado — busque no estoque acima."}
+                  {term.trim() ? "Nenhum veículo encontrado." : "Nenhum veículo no estoque ainda."}
                 </p>
               )}
             </div>
