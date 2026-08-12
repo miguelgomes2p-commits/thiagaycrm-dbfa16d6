@@ -109,8 +109,30 @@ async function req<T>(baseUrl: string, apiKey: string, path: string, init?: Requ
           : `resposta inesperada do servidor (HTTP ${res.status}).`;
     } else {
       try {
-        const j = JSON.parse(text) as { message?: string | string[]; error?: string };
-        const raw = Array.isArray(j.message) ? j.message.join("; ") : j.message ?? j.error;
+        type ErrShape = {
+          message?: string | string[];
+          error?: string;
+          response?: { message?: string | string[] } | string;
+        };
+        const j = JSON.parse(text) as ErrShape;
+        const flat = (v: unknown): string | null => {
+          if (!v) return null;
+          if (typeof v === "string") return v;
+          if (Array.isArray(v)) {
+            return v
+              .map((x) => (typeof x === "string" ? x : JSON.stringify(x)))
+              .filter(Boolean)
+              .join("; ");
+          }
+          return null;
+        };
+        // Evolution v2 esconde o motivo real em response.message.
+        const detail =
+          flat(typeof j.response === "object" ? j.response?.message : j.response) ??
+          flat(j.message) ??
+          flat(j.error);
+        const generic = flat(j.error) ?? "";
+        const raw = detail && detail !== generic ? `${generic ? `${generic} — ` : ""}${detail}` : detail ?? generic;
         if (raw) friendly = raw;
       } catch { /* keep raw */ }
     }
