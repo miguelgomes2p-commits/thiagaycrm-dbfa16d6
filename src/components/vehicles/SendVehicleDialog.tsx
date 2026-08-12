@@ -39,7 +39,7 @@ export function SendVehicleDialog({
   workspaceId: string;
   leadId: string | null;
   sendText: (body: string) => Promise<void>;
-  sendPhoto: (photo: { fileName: string; mimeType: string; base64: string }) => Promise<void>;
+  sendPhoto: (photo: { fileName: string; mimeType: string; base64: string; caption?: string | null }) => Promise<void>;
 }) {
   const linkedQ = useLeadVehicles(leadId ?? undefined);
   const [term, setTerm] = useState("");
