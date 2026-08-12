@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Star, Trash2, Upload } from "lucide-react";
-import { useVehicleMedia } from "@/hooks/useVehicles";
+import { Loader2 } from "lucide-react";
 import {
-  FUEL_OPTIONS, TRANSMISSION_OPTIONS, VEHICLE_MEDIA_BUCKET, parseBRLNumber, type Vehicle, type VehicleStatus,
+  VehicleGalleryManager, flushPendingPhotos, type PendingPhoto,
+} from "@/components/vehicles/VehicleGalleryManager";
+import {
+  FUEL_OPTIONS, TRANSMISSION_OPTIONS, parseBRLNumber, type Vehicle, type VehicleStatus,
 } from "@/lib/vehicles";
+
 
 type FormState = {
   brand: string; model: string; version: string; year_manufacture: string; year_model: string;
