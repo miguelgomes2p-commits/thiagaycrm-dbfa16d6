@@ -17,14 +17,27 @@ export const listAllUsers = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
     if (error) throw new Error(error.message);
+    const { data: memberships } = await supabaseAdmin
+      .from("workspace_members")
+      .select("user_id, role, workspaces:workspace_id(id, name)");
+    const byUser = new Map<string, { id: string; name: string; role: string }[]>();
+    for (const m of memberships ?? []) {
+      const w = m.workspaces as unknown as { id: string; name: string } | null;
+      if (!w) continue;
+      const list = byUser.get(m.user_id) ?? [];
+      list.push({ id: w.id, name: w.name, role: m.role });
+      byUser.set(m.user_id, list);
+    }
     return data.users.map((u) => ({
       id: u.id,
       email: u.email ?? null,
       created_at: u.created_at,
       last_sign_in_at: u.last_sign_in_at ?? null,
       full_name: (u.user_metadata?.full_name as string | undefined) ?? null,
+      workspaces: byUser.get(u.id) ?? [],
     }));
   });
+
 
 export const deleteUserById = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
