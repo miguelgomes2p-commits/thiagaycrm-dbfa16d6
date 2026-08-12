@@ -170,3 +170,50 @@ export async function logLeadActivity(params: {
     metadata: (params.metadata ?? {}) as never,
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Ficha do veículo (texto para WhatsApp)                              */
+/* ------------------------------------------------------------------ */
+
+export function vehicleSpecText(v: Vehicle): string {
+  const lines: string[] = [`*${vehicleTitle(v)}*`];
+  const add = (label: string, value: string | null | undefined) => {
+    if (value && value !== "—") lines.push(`• ${label}: ${value}`);
+  };
+  add("Ano", formatYear(v));
+  add("KM", formatKm(v.mileage));
+  add("Cor", v.color);
+  add("Câmbio", v.transmission);
+  add("Combustível", v.fuel);
+  add("Motor", v.engine);
+  if (v.price != null) lines.push(`\n💰 *${formatBRL(v.price)}*`);
+  if (v.description?.trim()) lines.push(`\n${v.description.trim()}`);
+  return lines.join("\n");
+}
+
+/** Sobe uma foto para o bucket privado e cria o registro em vehicle_media. */
+export async function uploadVehiclePhoto(params: {
+  file: File;
+  vehicleId: string;
+  workspaceId: string;
+  sortOrder: number;
+  isCover: boolean;
+}): Promise<{ error: string | null }> {
+  const { file, vehicleId, workspaceId, sortOrder, isCover } = params;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `${workspaceId}/${vehicleId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from(VEHICLE_MEDIA_BUCKET).upload(path, file, {
+    contentType: file.type || "image/jpeg",
+    upsert: false,
+  });
+  if (error) return { error: error.message };
+  const { error: dberr } = await supabase.from("vehicle_media").insert({
+    vehicle_id: vehicleId,
+    workspace_id: workspaceId,
+    storage_path: path,
+    media_type: file.type.startsWith("video") ? "video" : "photo",
+    sort_order: sortOrder,
+    is_cover: isCover,
+  } as never);
+  return { error: dberr?.message ?? null };
+}

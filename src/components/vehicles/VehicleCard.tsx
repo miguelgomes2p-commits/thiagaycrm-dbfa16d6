@@ -13,16 +13,25 @@ export function VehicleCard({
     <Card
       onClick={onClick}
       className={cn(
-        "overflow-hidden cursor-pointer transition-shadow hover:shadow-md border-border",
+        "group overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 border-border",
         vehicle.status === "sold" && "opacity-70",
       )}
     >
-      <div className={cn("relative bg-muted flex items-center justify-center", compact ? "h-28" : "h-40")}>
+      <div className={cn("relative overflow-hidden bg-muted", compact ? "h-28" : "aspect-[4/3]")}>
         {cover ? (
-          <img src={cover} alt={vehicleTitle(vehicle)} className="h-full w-full object-cover" loading="lazy" />
+          <img
+            src={cover}
+            alt={vehicleTitle(vehicle)}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
         ) : (
-          <Car className="h-8 w-8 text-muted-foreground" />
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-muted to-muted/40">
+            <Car className="h-7 w-7 text-muted-foreground/60" />
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">Sem foto</span>
+          </div>
         )}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-foreground/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         <Badge className={cn("absolute top-2 left-2 border-0", VEHICLE_STATUS_CLASS[vehicle.status])}>
           {VEHICLE_STATUS_LABEL[vehicle.status]}
         </Badge>
@@ -32,6 +41,7 @@ export function VehicleCard({
           </span>
         )}
       </div>
+
       <div className="p-3 space-y-1">
         <p className="text-sm font-semibold leading-tight truncate">{vehicleTitle(vehicle)}</p>
         <p className="text-xs text-muted-foreground">

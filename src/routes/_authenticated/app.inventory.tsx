@@ -127,11 +127,12 @@ function InventoryPage() {
           {rows.map((v) => (
             <button key={v.id} type="button" onClick={() => setDetail(v)}
               className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted/50 cursor-pointer">
-              <div className="h-12 w-16 rounded bg-muted overflow-hidden flex items-center justify-center shrink-0">
+              <div className="h-12 w-16 rounded-md bg-gradient-to-br from-muted to-muted/40 overflow-hidden flex items-center justify-center shrink-0">
                 {coversQ.data?.[v.id]
-                  ? <img src={coversQ.data[v.id]!} alt={vehicleTitle(v)} className="h-full w-full object-cover" />
-                  : <Car className="h-4 w-4 text-muted-foreground" />}
+                  ? <img src={coversQ.data[v.id]!} alt={vehicleTitle(v)} className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
+                  : <Car className="h-4 w-4 text-muted-foreground/60" />}
               </div>
+
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{vehicleTitle(v)}</p>
                 <p className="text-xs text-muted-foreground">

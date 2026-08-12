@@ -28,7 +28,7 @@ import {
   MessageSquare, Send, Search, Phone, Instagram, Facebook, Mail, Globe,
   Check, CheckCheck, AlertTriangle, UserPlus,
   Tag, Filter, ChevronRight, ChevronLeft, Paperclip, BriefcaseBusiness, Save, Loader2,
-  Camera, Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil, MapPin,
+  Camera, Mic, Square, PanelRightOpen, PanelRightClose, X, Link2, Unlink, Kanban, Pencil, MapPin, Car,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -39,6 +39,8 @@ import { CameraCaptureDialog } from "@/components/chat/CameraCaptureDialog";
 import { LocationMessageCard, parseLocationMetadata } from "@/components/chat/LocationMessageCard";
 import { LocationPickerDialog } from "@/components/chat/LocationPickerDialog";
 import { MediaLightbox, type MediaItem } from "@/components/chat/MediaLightbox";
+import { SendVehicleDialog } from "@/components/vehicles/SendVehicleDialog";
+
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { getCameraCapability } from "@/lib/communication/capabilities";
 import { useLeadFields } from "@/hooks/useLeadFields";
@@ -107,6 +109,8 @@ function ConversationsPage() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [vehicleSendOpen, setVehicleSendOpen] = useState(false);
+
   const [view, setView] = useState(loadView);
   const [labelPaneOpen, setLabelPaneOpen] = useState(true);
   const [leadTitle, setLeadTitle] = useState("");
@@ -1545,6 +1549,32 @@ function ConversationsPage() {
                 sending={sendingLocation}
                 onSend={(loc) => sendLocation(loc)}
               />
+              {ws?.id && (
+                <SendVehicleDialog
+                  open={vehicleSendOpen}
+                  onOpenChange={setVehicleSendOpen}
+                  workspaceId={ws.id}
+                  leadId={leadContextQ.data?.lead?.id ?? null}
+                  sendText={async (body) => {
+                    if (!active) return;
+                    await sendWa({ data: { conversationId: active.id, body } });
+                    qc.invalidateQueries({ queryKey: ["messages", active.id] });
+                  }}
+                  sendPhoto={async (photo) => {
+                    if (!active) return;
+                    await sendWaFile({ data: {
+                      conversationId: active.id,
+                      fileName: photo.fileName,
+                      mimeType: photo.mimeType,
+                      base64: photo.base64,
+                      caption: null,
+                    } });
+                    qc.invalidateQueries({ queryKey: ["messages", active.id] });
+                    qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+                  }}
+                />
+              )}
+
 
               {isRecording ? (
                 <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-2">
@@ -1604,6 +1634,17 @@ function ConversationsPage() {
                   >
                     {sendingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={sending || uploading || !active}
+                    onClick={() => setVehicleSendOpen(true)}
+                    title="Enviar veículo"
+                  >
+                    <Car className="h-4 w-4" />
+                  </Button>
+
 
                   <Input
                     value={text} onChange={(e) => setText(e.target.value)}

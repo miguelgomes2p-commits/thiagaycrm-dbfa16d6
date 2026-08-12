@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Car, Pencil, Users } from "lucide-react";
+import { Car, ChevronLeft, ChevronRight, Pencil, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVehicleLeads, useVehicleMedia } from "@/hooks/useVehicles";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,8 @@ export function VehicleDetailDialog({
   const mediaQ = useVehicleMedia(vehicle?.id);
   const leadsQ = useVehicleLeads(vehicle?.id);
   const [active, setActive] = useState(0);
+  const [touchX, setTouchX] = useState<number | null>(null);
+
   const similarQ = useQuery({
     enabled: !!vehicle?.id,
     queryKey: ["vehicle-similar", vehicle?.id],
@@ -65,23 +67,57 @@ export function VehicleDetailDialog({
         </DialogHeader>
         <div className="grid md:grid-cols-2 gap-4 max-h-[72vh] overflow-y-auto pr-1">
           <div className="space-y-2">
-            <div className="h-56 rounded-lg bg-muted overflow-hidden flex items-center justify-center">
+            <div
+              className="relative aspect-[4/3] rounded-xl bg-muted overflow-hidden flex items-center justify-center group"
+              onTouchStart={(e) => setTouchX(e.touches[0]?.clientX ?? null)}
+              onTouchEnd={(e) => {
+                if (touchX === null) return;
+                const dx = (e.changedTouches[0]?.clientX ?? touchX) - touchX;
+                if (Math.abs(dx) > 50) setActive((i) => Math.min(photos.length - 1, Math.max(0, i + (dx < 0 ? 1 : -1))));
+                setTouchX(null);
+              }}
+            >
               {photos[active]?.url
                 ? <img src={photos[active]!.url!} alt={vehicleTitle(vehicle)} className="h-full w-full object-cover" />
-                : <Car className="h-10 w-10 text-muted-foreground" />}
+                : (
+                  <div className="flex flex-col items-center gap-1">
+                    <Car className="h-9 w-9 text-muted-foreground/60" />
+                    <span className="text-[11px] text-muted-foreground">Sem fotos cadastradas</span>
+                  </div>
+                )}
+              {photos.length > 1 && (
+                <>
+                  {active > 0 && (
+                    <button type="button" aria-label="Anterior" onClick={() => setActive((i) => i - 1)}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-foreground/50 p-1.5 text-background cursor-pointer hover:bg-foreground/70">
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                  )}
+                  {active < photos.length - 1 && (
+                    <button type="button" aria-label="Próxima" onClick={() => setActive((i) => i + 1)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-foreground/50 p-1.5 text-background cursor-pointer hover:bg-foreground/70">
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  )}
+                  <span className="absolute bottom-2 right-2 rounded-full bg-foreground/60 px-2 py-0.5 text-[10px] text-background">
+                    {active + 1}/{photos.length}
+                  </span>
+                </>
+              )}
             </div>
             {photos.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto">
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {photos.map((p, i) => (
                   <button key={p.id} type="button" onClick={() => setActive(i)}
-                    className={cn("h-14 w-20 shrink-0 rounded-md overflow-hidden border cursor-pointer",
-                      i === active ? "border-primary" : "border-border")}>
+                    className={cn("h-14 w-20 shrink-0 rounded-md overflow-hidden border-2 cursor-pointer transition-opacity",
+                      i === active ? "border-primary" : "border-transparent opacity-60 hover:opacity-100")}>
                     {p.url && <img src={p.url} alt="" className="h-full w-full object-cover" />}
                   </button>
                 ))}
               </div>
             )}
           </div>
+
 
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-2">
