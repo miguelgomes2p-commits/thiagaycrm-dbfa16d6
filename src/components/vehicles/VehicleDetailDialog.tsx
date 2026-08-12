@@ -217,9 +217,18 @@ export function VehicleDetailDialog({
 
           </div>
         </div>
+        {nfeOpen && (
+          <IssueNfeDialog
+            open={nfeOpen}
+            onOpenChange={(o) => { setNfeOpen(o); if (!o) nfeQ.refetch(); }}
+            vehicle={vehicle}
+            workspaceId={vehicle.workspace_id}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
+
 }
 
 function StatusWithLead({
