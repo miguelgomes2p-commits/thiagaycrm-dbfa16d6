@@ -219,9 +219,21 @@ function AdminPage() {
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground truncate">{u.email ?? u.id}</div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {(u.workspaces ?? []).length === 0 ? (
+                        <span className="text-[11px] text-muted-foreground">Sem workspace</span>
+                      ) : (
+                        (u.workspaces ?? []).map((w) => (
+                          <span key={w.id} className="text-[10px] px-2 py-0.5 rounded bg-surface border border-border text-muted-foreground">
+                            {w.name} · {w.role}
+                          </span>
+                        ))
+                      )}
+                    </div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">
                       Criado {new Date(u.created_at).toLocaleDateString("pt-BR")} · Último acesso {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("pt-BR") : "—"}
                     </div>
+
                   </div>
                   <Button
                     variant="ghost" size="sm"
