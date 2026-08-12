@@ -1,15 +1,16 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById, updateWorkspaceFeatures } from "@/lib/admin.functions";
+import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById, updateWorkspaceFeatures, joinWorkspaceAsSuperAdmin, leaveWorkspaceAsSuperAdmin } from "@/lib/admin.functions";
+import { setActiveWorkspaceId } from "@/hooks/useWorkspace";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldAlert, Trash2, Search, Users, Building2 } from "lucide-react";
+import { ShieldAlert, Trash2, Search, Users, Building2, LogIn, DoorOpen } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -34,6 +35,33 @@ function AdminPage() {
   const listWsFn = useServerFn(listAllWorkspaces);
   const delWsFn = useServerFn(deleteWorkspaceById);
   const updateFeaturesFn = useServerFn(updateWorkspaceFeatures);
+  const joinWsFn = useServerFn(joinWorkspaceAsSuperAdmin);
+  const leaveWsFn = useServerFn(leaveWorkspaceAsSuperAdmin);
+  const navigate = useNavigate();
+
+  // Entra no workspace como owner e passa a navegar nele em todo o CRM.
+  const enterWsM = useMutation({
+    mutationFn: (workspaceId: string) => joinWsFn({ data: { workspaceId } }),
+    onSuccess: async (res) => {
+      setActiveWorkspaceId(res.workspaceId);
+      await qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+      qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
+      toast.success("Você está navegando neste workspace");
+      navigate({ to: "/app" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const leaveWsM = useMutation({
+    mutationFn: (workspaceId: string) => leaveWsFn({ data: { workspaceId } }),
+    onSuccess: () => {
+      setActiveWorkspaceId(null);
+      qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+      qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
+      toast.success("Acesso removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const [q, setQ] = useState("");
   const [confirmUser, setConfirmUser] = useState<{ id: string; email: string } | null>(null);
@@ -139,6 +167,25 @@ function AdminPage() {
                           }}
                         />
                       </label>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline" size="sm" className="cursor-pointer"
+                        disabled={enterWsM.isPending}
+                        onClick={() => enterWsM.mutate(w.id)}
+                      >
+                        <LogIn className="h-4 w-4 mr-1" /> Acessar
+                      </Button>
+                      {w.joined && (
+                        <Button
+                          variant="ghost" size="sm" className="cursor-pointer text-muted-foreground"
+                          disabled={leaveWsM.isPending}
+                          onClick={() => leaveWsM.mutate(w.id)}
+                          title="Remover meu acesso a este workspace"
+                        >
+                          <DoorOpen className="h-4 w-4 mr-1" /> Sair
+                        </Button>
+                      )}
                     </div>
                     <Button
                       variant="ghost" size="sm"

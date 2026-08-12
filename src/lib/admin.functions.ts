@@ -63,6 +63,7 @@ export const listAllWorkspaces = createServerFn({ method: "GET" })
       ...w,
       member_count: byWs.get(w.id)?.count ?? 0,
       roles: byWs.get(w.id)?.roles ?? {},
+      joined: (members ?? []).some((m) => m.workspace_id === w.id && m.user_id === context.userId),
     }));
   });
 
@@ -91,3 +92,55 @@ export const deleteWorkspaceById = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+/**
+ * Dá ao super admin acesso total a qualquer workspace, criando (se preciso)
+ * uma associação com papel `owner`. As RLS já liberam tudo para owners.
+ */
+export const joinWorkspaceAsSuperAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { workspaceId: string }) => data)
+  .handler(async ({ data, context }) => {
+    assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existing } = await supabaseAdmin
+      .from("workspace_members")
+      .select("id, role")
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
+    if (!existing) {
+      const { error } = await supabaseAdmin
+        .from("workspace_members")
+        .insert({ workspace_id: data.workspaceId, user_id: context.userId, role: "owner" });
+      if (error) throw new Error(error.message);
+    } else if (existing.role !== "owner") {
+      const { error } = await supabaseAdmin
+        .from("workspace_members").update({ role: "owner" }).eq("id", existing.id);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true as const, workspaceId: data.workspaceId };
+  });
+
+/** Remove o acesso do super admin a um workspace (sai da lista dele). */
+export const leaveWorkspaceAsSuperAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { workspaceId: string }) => data)
+  .handler(async ({ data, context }) => {
+    assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: ws } = await supabaseAdmin
+      .from("workspaces").select("created_by").eq("id", data.workspaceId).maybeSingle();
+    if (ws && (ws as { created_by?: string | null }).created_by === context.userId) {
+      throw new Error("Você é o criador deste workspace — não é possível sair.");
+    }
+    const { error } = await supabaseAdmin
+      .from("workspace_members")
+      .delete()
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
