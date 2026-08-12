@@ -39,7 +39,7 @@ export function SendVehicleDialog({
   workspaceId: string;
   leadId: string | null;
   sendText: (body: string) => Promise<void>;
-  sendPhoto: (photo: { fileName: string; mimeType: string; base64: string }) => Promise<void>;
+  sendPhoto: (photo: { fileName: string; mimeType: string; base64: string; caption?: string | null }) => Promise<void>;
 }) {
   const linkedQ = useLeadVehicles(leadId ?? undefined);
   const [term, setTerm] = useState("");
@@ -69,27 +69,54 @@ export function SendVehicleDialog({
     },
   });
 
+  // Estoque recente — mostrado assim que o diálogo abre (sem precisar pesquisar).
+  const recentQ = useQuery({
+    enabled: open && term.trim().length === 0,
+    queryKey: ["vehicle-recent-send", workspaceId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vehicles")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      return (data ?? []) as unknown as Vehicle[];
+    },
+  });
+
   const linked = (linkedQ.data ?? []).map((i) => i.vehicles).filter(Boolean) as Vehicle[];
-  const options = term.trim() ? (searchQ.data ?? []) : linked;
+  const options = term.trim()
+    ? (searchQ.data ?? [])
+    : [...linked, ...(recentQ.data ?? []).filter((v) => !linked.some((l) => l.id === v.id))];
   const photos = (mediaQ.data ?? []).filter((m) => m.url);
 
   async function confirm() {
     if (!picked) return;
     setSending(true);
     setProgress({ done: 0, total: photos.length });
+    const spec = vehicleSpecText(picked);
     try {
-      await sendText(vehicleSpecText(picked));
       let failed = 0;
+      let captionSent = false;
       for (const [i, p] of photos.entries()) {
         try {
           const { base64, mimeType } = await urlToBase64(p.url!);
-          await sendPhoto({ fileName: `${vehicleTitle(picked)} ${i + 1}.jpg`.replace(/\s+/g, "-"), mimeType, base64 });
+          await sendPhoto({
+            fileName: `${vehicleTitle(picked)} ${i + 1}.jpg`.replace(/\s+/g, "-"),
+            mimeType,
+            base64,
+            caption: captionSent ? null : spec,
+          });
+          captionSent = true;
         } catch {
           failed++;
           toast.error(`Foto ${i + 1} não pôde ser enviada`);
         }
         setProgress({ done: i + 1, total: photos.length });
       }
+      // Sem fotos (ou todas falharam): garante o envio da ficha em texto.
+      if (!captionSent) await sendText(spec);
       if (leadId) {
         await logLeadActivity({
           workspaceId, leadId, type: "vehicle_sent",
@@ -123,7 +150,7 @@ export function SendVehicleDialog({
             </div>
             {!term.trim() && (
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Veículos vinculados a este lead
+                Vinculados ao lead e estoque recente
               </p>
             )}
             <div className="max-h-72 overflow-y-auto space-y-1">
@@ -141,7 +168,7 @@ export function SendVehicleDialog({
               ))}
               {options.length === 0 && (
                 <p className="text-xs text-muted-foreground py-4 text-center">
-                  {term.trim() ? "Nenhum veículo encontrado." : "Nenhum veículo vinculado — busque no estoque acima."}
+                  {term.trim() ? "Nenhum veículo encontrado." : "Nenhum veículo no estoque ainda."}
                 </p>
               )}
             </div>
