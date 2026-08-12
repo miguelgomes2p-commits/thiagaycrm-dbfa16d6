@@ -1,11 +1,11 @@
 import { createFileRoute, Outlet, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useMyWorkspaces, useCurrentProfile } from "@/hooks/useWorkspace";
+import { useMyWorkspaces, useCurrentProfile, setActiveWorkspaceId } from "@/hooks/useWorkspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu, Workflow
+  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu, Workflow, Check, ChevronDown
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
@@ -108,6 +108,38 @@ function AppShell() {
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Seletor de workspace: aparece quando o usuário (ex.: admin global) tem mais de um.
+  const WorkspaceSwitcher = ({ onPick }: { onPick?: () => void }) => {
+    if (!workspaces || workspaces.length < 2) {
+      return <div className="text-[11px] text-muted-foreground truncate">{current?.name ?? "—"}</div>;
+    }
+    return (
+      <div className="relative group/ws">
+        <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer max-w-full">
+          <span className="truncate">{current?.name ?? "—"}</span>
+          <ChevronDown className="h-3 w-3 shrink-0" />
+        </button>
+        <div className="absolute left-0 top-full mt-1 w-60 card-elevated p-1 z-50 opacity-0 invisible group-hover/ws:opacity-100 group-hover/ws:visible transition-all max-h-72 overflow-y-auto">
+          {workspaces.map((w) => (
+            <button
+              key={w.id}
+              onClick={() => {
+                setActiveWorkspaceId(w.id);
+                qc.invalidateQueries();
+                onPick?.();
+              }}
+              className="w-full flex items-center gap-2 px-2 py-2 text-xs rounded hover:bg-accent/10 text-left cursor-pointer"
+            >
+              <Check className={cn("h-3.5 w-3.5 shrink-0", w.id === current?.id ? "text-primary" : "opacity-0")} />
+              <span className="truncate flex-1">{w.name}</span>
+              <span className="text-[10px] uppercase text-muted-foreground">{w.role}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const NavList = ({ dense = false, onNavigate }: { dense?: boolean; onNavigate?: () => void }) => (
     <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
       {allNav.map((item) => {
@@ -148,7 +180,7 @@ function AppShell() {
           {!collapsed && (
             <div className="min-w-0">
               <div className="text-sm font-semibold text-sidebar-foreground truncate">Lupus CRM</div>
-              <div className="text-[11px] text-muted-foreground truncate">{current?.name ?? "—"}</div>
+              <WorkspaceSwitcher />
             </div>
           )}
         </div>
@@ -205,7 +237,7 @@ function AppShell() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-sidebar-foreground truncate">Lupus CRM</div>
-                  <div className="text-[11px] text-muted-foreground truncate">{current?.name ?? "—"}</div>
+                  <WorkspaceSwitcher onPick={() => setMobileOpen(false)} />
                 </div>
               </div>
               <div className="flex flex-col h-[calc(100%-3.5rem)]">
