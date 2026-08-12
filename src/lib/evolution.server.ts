@@ -150,6 +150,15 @@ async function req<T>(baseUrl: string, apiKey: string, path: string, init?: Requ
       friendly = `Endpoint/instância não encontrada: ${friendly}`;
     }
 
+    console.error(
+      JSON.stringify({
+        scope: "evolution_api_error",
+        status: res.status,
+        method,
+        url,
+        body: text.slice(0, 1000),
+      }),
+    );
     throw new EvolutionError({
       status: res.status,
       bodyText: text.slice(0, 4000),
