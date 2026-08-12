@@ -5,7 +5,7 @@ import { useMyWorkspaces, useCurrentProfile, setActiveWorkspaceId } from "@/hook
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu, Workflow, Check, ChevronDown
+  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu, Workflow, Check, ChevronDown, FileText
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ const NAV: NavItem[] = [
   { to: "/app/labels", label: "Etiquetas", icon: Tag },
   { to: "/app/tasks", label: "Tarefas", icon: CheckSquare },
   { to: "/app/inventory", label: "Estoque", icon: Car },
+  { to: "/app/fiscal", label: "Fiscal", icon: FileText },
   { to: "/app/renave", label: "RENAVE", icon: Car, feature: "renave" },
   { to: "/app/ai", label: "Assistente IA", icon: Bot, feature: "ai" },
   { to: "/app/settings", label: "Configurações", icon: Settings },

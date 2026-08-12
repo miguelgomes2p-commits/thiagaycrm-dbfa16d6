@@ -790,6 +790,272 @@ export type Database = {
           },
         ]
       }
+      fiscal_documents: {
+        Row: {
+          access_key: string | null
+          authorized_at: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          contact_id: string | null
+          created_at: string
+          created_by: string | null
+          danfe_storage_path: string | null
+          danfe_url: string | null
+          document_type: string
+          environment: string
+          fiscal_profile_id: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issuer_snapshot: Json
+          items_snapshot: Json
+          lead_id: string | null
+          number: string | null
+          owner_user_id: string | null
+          protocol: string | null
+          provider: string
+          provider_document_id: string | null
+          recipient_snapshot: Json
+          rejection_code: string | null
+          rejection_message: string | null
+          series: string | null
+          status: string
+          tax_snapshot: Json
+          total_amount: number | null
+          updated_at: string
+          vehicle_id: string | null
+          workspace_id: string
+          xml_storage_path: string | null
+          xml_url: string | null
+        }
+        Insert: {
+          access_key?: string | null
+          authorized_at?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          danfe_storage_path?: string | null
+          danfe_url?: string | null
+          document_type?: string
+          environment?: string
+          fiscal_profile_id?: string | null
+          id?: string
+          idempotency_key: string
+          issued_at?: string | null
+          issuer_snapshot?: Json
+          items_snapshot?: Json
+          lead_id?: string | null
+          number?: string | null
+          owner_user_id?: string | null
+          protocol?: string | null
+          provider?: string
+          provider_document_id?: string | null
+          recipient_snapshot?: Json
+          rejection_code?: string | null
+          rejection_message?: string | null
+          series?: string | null
+          status?: string
+          tax_snapshot?: Json
+          total_amount?: number | null
+          updated_at?: string
+          vehicle_id?: string | null
+          workspace_id: string
+          xml_storage_path?: string | null
+          xml_url?: string | null
+        }
+        Update: {
+          access_key?: string | null
+          authorized_at?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          danfe_storage_path?: string | null
+          danfe_url?: string | null
+          document_type?: string
+          environment?: string
+          fiscal_profile_id?: string | null
+          id?: string
+          idempotency_key?: string
+          issued_at?: string | null
+          issuer_snapshot?: Json
+          items_snapshot?: Json
+          lead_id?: string | null
+          number?: string | null
+          owner_user_id?: string | null
+          protocol?: string | null
+          provider?: string
+          provider_document_id?: string | null
+          recipient_snapshot?: Json
+          rejection_code?: string | null
+          rejection_message?: string | null
+          series?: string | null
+          status?: string
+          tax_snapshot?: Json
+          total_amount?: number | null
+          updated_at?: string
+          vehicle_id?: string | null
+          workspace_id?: string
+          xml_storage_path?: string | null
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_documents_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_fiscal_profile_id_fkey"
+            columns: ["fiscal_profile_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_emission_attempts: {
+        Row: {
+          action: string
+          created_at: string
+          document_id: string | null
+          error_code: string | null
+          error_message: string | null
+          http_status: number | null
+          id: string
+          provider: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          document_id?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          provider?: string
+          status: string
+          workspace_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          document_id?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          provider?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_emission_attempts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_emission_attempts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_profiles: {
+        Row: {
+          active: boolean
+          additional_information: string | null
+          cest: string | null
+          cfop: string | null
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          natureza_operacao: string | null
+          ncm: string | null
+          operation_type: string
+          product_origin: string | null
+          tax_configuration: Json
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          active?: boolean
+          additional_information?: string | null
+          cest?: string | null
+          cfop?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          natureza_operacao?: string | null
+          ncm?: string | null
+          operation_type?: string
+          product_origin?: string | null
+          tax_configuration?: Json
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          active?: boolean
+          additional_information?: string | null
+          cest?: string | null
+          cfop?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          natureza_operacao?: string | null
+          ncm?: string | null
+          operation_type?: string
+          product_origin?: string | null
+          tax_configuration?: Json
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_profiles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labels: {
         Row: {
           archived: boolean
@@ -1312,12 +1578,19 @@ export type Database = {
       }
       nfe_config: {
         Row: {
+          accountant_checklist: Json
+          certificate_expires_at: string | null
+          certificate_filename: string | null
+          certificate_status: string
+          certificate_uploaded_at: string | null
           cfop_entrada_padrao: string
           cfop_saida_padrao: string
           cnpj_emitente: string | null
           created_at: string
           emit_bairro: string | null
           emit_cep: string | null
+          emit_complemento: string | null
+          emit_email: string | null
           emit_ibge: string | null
           emit_logradouro: string | null
           emit_municipio: string | null
@@ -1332,7 +1605,11 @@ export type Database = {
           is_active: boolean
           natureza_operacao_entrada: string
           natureza_operacao_saida: string
+          production_enabled: boolean
+          production_enabled_at: string | null
+          production_enabled_by: string | null
           provider: string
+          provider_company_id: string | null
           regime_tributario: number | null
           serie_padrao: number
           token_homolog_enc: string | null
@@ -1341,12 +1618,19 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          accountant_checklist?: Json
+          certificate_expires_at?: string | null
+          certificate_filename?: string | null
+          certificate_status?: string
+          certificate_uploaded_at?: string | null
           cfop_entrada_padrao?: string
           cfop_saida_padrao?: string
           cnpj_emitente?: string | null
           created_at?: string
           emit_bairro?: string | null
           emit_cep?: string | null
+          emit_complemento?: string | null
+          emit_email?: string | null
           emit_ibge?: string | null
           emit_logradouro?: string | null
           emit_municipio?: string | null
@@ -1361,7 +1645,11 @@ export type Database = {
           is_active?: boolean
           natureza_operacao_entrada?: string
           natureza_operacao_saida?: string
+          production_enabled?: boolean
+          production_enabled_at?: string | null
+          production_enabled_by?: string | null
           provider?: string
+          provider_company_id?: string | null
           regime_tributario?: number | null
           serie_padrao?: number
           token_homolog_enc?: string | null
@@ -1370,12 +1658,19 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          accountant_checklist?: Json
+          certificate_expires_at?: string | null
+          certificate_filename?: string | null
+          certificate_status?: string
+          certificate_uploaded_at?: string | null
           cfop_entrada_padrao?: string
           cfop_saida_padrao?: string
           cnpj_emitente?: string | null
           created_at?: string
           emit_bairro?: string | null
           emit_cep?: string | null
+          emit_complemento?: string | null
+          emit_email?: string | null
           emit_ibge?: string | null
           emit_logradouro?: string | null
           emit_municipio?: string | null
@@ -1390,7 +1685,11 @@ export type Database = {
           is_active?: boolean
           natureza_operacao_entrada?: string
           natureza_operacao_saida?: string
+          production_enabled?: boolean
+          production_enabled_at?: string | null
+          production_enabled_by?: string | null
           provider?: string
+          provider_company_id?: string | null
           regime_tributario?: number | null
           serie_padrao?: number
           token_homolog_enc?: string | null
@@ -2461,6 +2760,7 @@ export type Database = {
           engine: string | null
           external_ref: string | null
           featured: boolean
+          fiscal_profile_id: string | null
           fuel: string | null
           id: string
           metadata: Json
@@ -2494,6 +2794,7 @@ export type Database = {
           engine?: string | null
           external_ref?: string | null
           featured?: boolean
+          fiscal_profile_id?: string | null
           fuel?: string | null
           id?: string
           metadata?: Json
@@ -2527,6 +2828,7 @@ export type Database = {
           engine?: string | null
           external_ref?: string | null
           featured?: boolean
+          fiscal_profile_id?: string | null
           fuel?: string | null
           id?: string
           metadata?: Json
@@ -2549,6 +2851,13 @@ export type Database = {
           year_model?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicles_fiscal_profile_id_fkey"
+            columns: ["fiscal_profile_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicles_reserved_for_lead_id_fkey"
             columns: ["reserved_for_lead_id"]

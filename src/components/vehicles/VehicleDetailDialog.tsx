@@ -6,14 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Car, ChevronLeft, ChevronRight, Pencil, Users } from "lucide-react";
+import { Car, ChevronLeft, ChevronRight, FileText, Pencil, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVehicleLeads, useVehicleMedia } from "@/hooks/useVehicles";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { listFiscalDocuments } from "@/lib/fiscal.functions";
+import { FISCAL_STATUS_LABEL } from "@/lib/fiscal/types";
+import { IssueNfeDialog } from "@/components/fiscal/IssueNfeDialog";
 import {
   VEHICLE_STATUS_CLASS, VEHICLE_STATUS_LABEL, findSimilarVehicles, formatBRL, formatKm, formatYear,
   logLeadActivity, vehicleTitle, type Vehicle, type VehicleStatus,
 } from "@/lib/vehicles";
+
 
 export function VehicleDetailDialog({
   vehicle, onOpenChange, onEdit,
@@ -23,12 +28,24 @@ export function VehicleDetailDialog({
   const leadsQ = useVehicleLeads(vehicle?.id);
   const [active, setActive] = useState(0);
   const [touchX, setTouchX] = useState<number | null>(null);
+  const [nfeOpen, setNfeOpen] = useState(false);
 
   const similarQ = useQuery({
     enabled: !!vehicle?.id,
     queryKey: ["vehicle-similar", vehicle?.id],
     queryFn: () => findSimilarVehicles(vehicle!.id, 4),
   });
+
+  const listDocsFn = useServerFn(listFiscalDocuments);
+  const nfeQ = useQuery({
+    enabled: !!vehicle?.id && vehicle?.status === "sold",
+    queryKey: ["fiscal-documents", "vehicle", vehicle?.id],
+    queryFn: () =>
+      listDocsFn({ data: { workspaceId: vehicle!.workspace_id, vehicleId: vehicle!.id, limit: 5 } }) as Promise<
+        Array<{ id: string; status: string; number: string | null }>
+      >,
+  });
+
 
   async function changeStatus(status: VehicleStatus, leadId?: string | null) {
     if (!vehicle) return;
@@ -171,14 +188,47 @@ export function VehicleDetailDialog({
               </div>
             )}
 
+            <div className="pt-2 border-t border-border space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Nota fiscal</p>
+              {vehicle.status === "sold" ? (
+                nfeQ.data?.[0] ? (
+                  <p className="text-xs">
+                    NF-e {nfeQ.data[0].number ?? ""}{" "}
+                    <Badge variant="secondary" className="text-[10px]">
+                      {FISCAL_STATUS_LABEL[nfeQ.data[0].status as keyof typeof FISCAL_STATUS_LABEL] ?? nfeQ.data[0].status}
+                    </Badge>
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-amber-600">⚠ Pendente</span>
+                    <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => setNfeOpen(true)}>
+                      <FileText className="h-4 w-4 mr-1.5" /> Emitir NF-e
+                    </Button>
+                  </div>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground">Disponível após marcar o veículo como vendido.</p>
+              )}
+            </div>
+
             <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => onEdit(vehicle)}>
               <Pencil className="h-4 w-4 mr-1.5" /> Editar veículo
             </Button>
+
           </div>
         </div>
+        {nfeOpen && (
+          <IssueNfeDialog
+            open={nfeOpen}
+            onOpenChange={(o) => { setNfeOpen(o); if (!o) nfeQ.refetch(); }}
+            vehicle={vehicle}
+            workspaceId={vehicle.workspace_id}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
+
 }
 
 function StatusWithLead({
