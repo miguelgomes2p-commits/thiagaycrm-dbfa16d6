@@ -28,12 +28,24 @@ export function VehicleDetailDialog({
   const leadsQ = useVehicleLeads(vehicle?.id);
   const [active, setActive] = useState(0);
   const [touchX, setTouchX] = useState<number | null>(null);
+  const [nfeOpen, setNfeOpen] = useState(false);
 
   const similarQ = useQuery({
     enabled: !!vehicle?.id,
     queryKey: ["vehicle-similar", vehicle?.id],
     queryFn: () => findSimilarVehicles(vehicle!.id, 4),
   });
+
+  const listDocsFn = useServerFn(listFiscalDocuments);
+  const nfeQ = useQuery({
+    enabled: !!vehicle?.id && vehicle?.status === "sold",
+    queryKey: ["fiscal-documents", "vehicle", vehicle?.id],
+    queryFn: () =>
+      listDocsFn({ data: { workspaceId: vehicle!.workspace_id, vehicleId: vehicle!.id, limit: 5 } }) as Promise<
+        Array<{ id: string; status: string; number: string | null }>
+      >,
+  });
+
 
   async function changeStatus(status: VehicleStatus, leadId?: string | null) {
     if (!vehicle) return;
