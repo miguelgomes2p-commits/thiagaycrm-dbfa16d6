@@ -1549,6 +1549,32 @@ function ConversationsPage() {
                 sending={sendingLocation}
                 onSend={(loc) => sendLocation(loc)}
               />
+              {ws?.id && (
+                <SendVehicleDialog
+                  open={vehicleSendOpen}
+                  onOpenChange={setVehicleSendOpen}
+                  workspaceId={ws.id}
+                  leadId={leadContextQ.data?.lead?.id ?? null}
+                  sendText={async (body) => {
+                    if (!active) return;
+                    await sendWa({ data: { conversationId: active.id, body } });
+                    qc.invalidateQueries({ queryKey: ["messages", active.id] });
+                  }}
+                  sendPhoto={async (photo) => {
+                    if (!active) return;
+                    await sendWaFile({ data: {
+                      conversationId: active.id,
+                      fileName: photo.fileName,
+                      mimeType: photo.mimeType,
+                      base64: photo.base64,
+                      caption: null,
+                    } });
+                    qc.invalidateQueries({ queryKey: ["messages", active.id] });
+                    qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
+                  }}
+                />
+              )}
+
 
               {isRecording ? (
                 <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-2">
