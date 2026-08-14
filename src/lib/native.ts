@@ -14,14 +14,21 @@ export async function initNative(onDeepLink?: (path: string) => void): Promise<v
   try {
     document.documentElement.classList.add("is-native");
 
-    const [{ App }, { StatusBar, Style }, { Keyboard }] = await Promise.all([
+    const [{ App }, { StatusBar, Style }, { Keyboard }, { SplashScreen }] = await Promise.all([
       import("@capacitor/app"),
       import("@capacitor/status-bar"),
       import("@capacitor/keyboard"),
+      import("@capacitor/splash-screen"),
     ]);
 
     await StatusBar.setStyle({ style: Style.Light }).catch(() => {});
     await StatusBar.setBackgroundColor({ color: "#FFFFFF" }).catch(() => {});
+
+    // Esconde a splash só depois do app estar pronto (sensação de app nativo)
+    setTimeout(() => {
+      void SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {});
+    }, 300);
+
 
     Keyboard.addListener("keyboardWillShow", () => {
       document.documentElement.classList.add("keyboard-open");
