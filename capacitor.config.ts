@@ -3,13 +3,15 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "br.com.lupusassessoria.crm",
   appName: "Lupus CRM",
+  // App nativo de verdade: o bundle web fica DENTRO do APK (não é um atalho de navegador).
   webDir: "dist/client",
+  android: {
+    allowMixedContent: false,
+    backgroundColor: "#FFFFFF",
+  },
   server: {
-    // Carrega o app hospedado (hot-reload em produção, sem rebuild do APK a cada deploy).
-    // Para empacotar o build local no APK, comente as 2 linhas abaixo e rode `npm run build`.
-    url: "https://crm.lupusassessoria.com",
-    cleartext: false,
     androidScheme: "https",
+    // Domínios externos que o app pode abrir dentro da webview (OAuth / API).
     allowNavigation: [
       "crm.lupusassessoria.com",
       "thiagaycrm.lovable.app",
@@ -17,13 +19,16 @@ const config: CapacitorConfig = {
       "accounts.google.com",
     ],
   },
-  android: {
-    allowMixedContent: false,
-    backgroundColor: "#FFFFFF",
-  },
   plugins: {
     Keyboard: {
       resize: "native",
+    },
+    SplashScreen: {
+      launchAutoHide: false,
+      backgroundColor: "#FFFFFF",
+      androidSplashResourceName: "splash",
+      androidScaleType: "CENTER_CROP",
+      showSpinner: false,
     },
   },
 };
