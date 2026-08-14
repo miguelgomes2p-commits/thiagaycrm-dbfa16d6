@@ -196,5 +196,21 @@ html.is-native.keyboard-open body {
   padding-bottom: 0;
 }
 
+/* Comportamento de app: sem seleção de texto acidental, sem highlight de toque, sem bounce */
+html.is-native, html.is-native body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+html.is-native :where(div, span, p, h1, h2, h3, h4, button, a, li) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+html.is-native :where(input, textarea, [contenteditable="true"], .selectable) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+
 @utility safe-top { padding-top: var(--safe-top); }
 @utility safe-bottom { padding-bottom: var(--safe-bottom); }
