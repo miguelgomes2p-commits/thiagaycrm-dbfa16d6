@@ -16,6 +16,8 @@ import {
 import {
   FUEL_OPTIONS, TRANSMISSION_OPTIONS, parseBRLNumber, type Vehicle, type VehicleStatus,
 } from "@/lib/vehicles";
+import { useFinancialAccess, useSaveVehicleFinancial, useVehicleFinancial } from "@/hooks/useFinancial";
+import { parseMoney } from "@/lib/financial";
 
 
 type FormState = {
@@ -54,6 +56,18 @@ export function VehicleFormDialog({
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingPhoto[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  // Seção financeira — visível apenas para usuários do beta privado (validado no servidor).
+  const { allowed: financialBeta } = useFinancialAccess();
+  const financialQ = useVehicleFinancial(vehicle?.id, financialBeta && open);
+  const saveFinancial = useSaveVehicleFinancial(vehicle?.id);
+  const [acquisitionCost, setAcquisitionCost] = useState("");
+  const [acquiredAt, setAcquiredAt] = useState("");
+
+  useEffect(() => {
+    const fin = financialQ.data?.financial;
+    setAcquisitionCost(fin?.acquisition_cost != null ? String(fin.acquisition_cost) : "");
+    setAcquiredAt(fin?.acquired_at ?? "");
+  }, [financialQ.data]);
 
   useEffect(() => {
     if (!open) return;
@@ -119,6 +133,18 @@ export function VehicleFormDialog({
       }
       setSaving(false);
       toast.success("Veículo cadastrado");
+    }
+    if (financialBeta && (acquisitionCost.trim() || acquiredAt)) {
+      const targetId = createdId ?? null;
+      try {
+        await saveFinancial.mutateAsync({
+          vehicleId: targetId!,
+          acquisitionCost: parseMoney(acquisitionCost),
+          acquiredAt: acquiredAt || null,
+        });
+      } catch {
+        toast.error("Veículo salvo, mas não foi possível gravar as informações financeiras.");
+      }
     }
     await qc.invalidateQueries({ queryKey: ["vehicles"] });
     qc.invalidateQueries({ queryKey: ["vehicle-covers"] });
