@@ -790,6 +790,24 @@ export type Database = {
           },
         ]
       }
+      financial_beta_users: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       fiscal_documents: {
         Row: {
           access_key: string | null
@@ -2699,6 +2717,172 @@ export type Database = {
           },
         ]
       }
+      vehicle_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          status: string
+          updated_at: string
+          vehicle_id: string
+          workspace_id: string
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          vehicle_id: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          vehicle_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_expenses_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_expenses_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_financial_audit: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          entity: string
+          entity_id: string | null
+          field: string
+          id: string
+          new_value: number | null
+          old_value: number | null
+          vehicle_id: string
+          workspace_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          entity: string
+          entity_id?: string | null
+          field: string
+          id?: string
+          new_value?: number | null
+          old_value?: number | null
+          vehicle_id: string
+          workspace_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          entity?: string
+          entity_id?: string | null
+          field?: string
+          id?: string
+          new_value?: number | null
+          old_value?: number | null
+          vehicle_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      vehicle_financials: {
+        Row: {
+          acquired_at: string | null
+          acquisition_cost: number | null
+          created_at: string
+          created_by: string | null
+          fiscal_document_id: string | null
+          notes: string | null
+          sale_amount: number | null
+          sale_date: string | null
+          sold_by: string | null
+          sold_to_lead_id: string | null
+          updated_at: string
+          vehicle_id: string
+          workspace_id: string
+        }
+        Insert: {
+          acquired_at?: string | null
+          acquisition_cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          fiscal_document_id?: string | null
+          notes?: string | null
+          sale_amount?: number | null
+          sale_date?: string | null
+          sold_by?: string | null
+          sold_to_lead_id?: string | null
+          updated_at?: string
+          vehicle_id: string
+          workspace_id: string
+        }
+        Update: {
+          acquired_at?: string | null
+          acquisition_cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          fiscal_document_id?: string | null
+          notes?: string | null
+          sale_amount?: number | null
+          sale_date?: string | null
+          sold_by?: string | null
+          sold_to_lead_id?: string | null
+          updated_at?: string
+          vehicle_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_financials_sold_to_lead_id_fkey"
+            columns: ["sold_to_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_financials_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: true
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_financials_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_media: {
         Row: {
           created_at: string
@@ -3309,7 +3493,12 @@ export type Database = {
         Args: { _wa_number_id: string; _workspace_id: string }
         Returns: string
       }
+      financial_overview: {
+        Args: { _from: string; _to: string; _workspace_id: string }
+        Returns: Json
+      }
       has_automation_beta: { Args: { _user_id: string }; Returns: boolean }
+      has_financial_beta: { Args: { _user_id: string }; Returns: boolean }
       has_workspace_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
