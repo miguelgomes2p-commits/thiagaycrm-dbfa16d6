@@ -103,9 +103,11 @@ function AppShell() {
   });
   const allNav = [
     ...filteredNav,
+    ...(financialBeta ? [{ to: "/app/financial", label: "Financeiro BETA", icon: Wallet } as NavItem] : []),
     ...(isAutomationBeta ? [{ to: "/app/automations", label: "Automações BETA", icon: Workflow } as NavItem] : []),
     ...(isSuperAdmin ? [{ to: "/app/admin", label: "Admin Global", icon: ShieldAlert } as NavItem] : []),
   ];
+
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
