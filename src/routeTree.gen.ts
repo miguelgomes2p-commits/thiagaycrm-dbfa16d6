@@ -25,6 +25,7 @@ import { Route as AuthenticatedAppPipelineRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppLabelsRouteImport } from './routes/_authenticated/app.labels'
 import { Route as AuthenticatedAppInventoryRouteImport } from './routes/_authenticated/app.inventory'
 import { Route as AuthenticatedAppFiscalRouteImport } from './routes/_authenticated/app.fiscal'
+import { Route as AuthenticatedAppFinancialRouteImport } from './routes/_authenticated/app.financial'
 import { Route as AuthenticatedAppConversationsRouteImport } from './routes/_authenticated/app.conversations'
 import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenticated/app.contacts'
 import { Route as AuthenticatedAppAutomationsRouteImport } from './routes/_authenticated/app.automations'
@@ -124,6 +125,12 @@ const AuthenticatedAppFiscalRoute = AuthenticatedAppFiscalRouteImport.update({
   path: '/fiscal',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppFinancialRoute =
+  AuthenticatedAppFinancialRouteImport.update({
+    id: '/financial',
+    path: '/financial',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppConversationsRoute =
   AuthenticatedAppConversationsRouteImport.update({
     id: '/conversations',
@@ -223,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/app/automations': typeof AuthenticatedAppAutomationsRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
+  '/app/financial': typeof AuthenticatedAppFinancialRoute
   '/app/fiscal': typeof AuthenticatedAppFiscalRoute
   '/app/inventory': typeof AuthenticatedAppInventoryRoute
   '/app/labels': typeof AuthenticatedAppLabelsRoute
@@ -254,6 +262,7 @@ export interface FileRoutesByTo {
   '/app/automations': typeof AuthenticatedAppAutomationsRoute
   '/app/contacts': typeof AuthenticatedAppContactsRoute
   '/app/conversations': typeof AuthenticatedAppConversationsRoute
+  '/app/financial': typeof AuthenticatedAppFinancialRoute
   '/app/fiscal': typeof AuthenticatedAppFiscalRoute
   '/app/inventory': typeof AuthenticatedAppInventoryRoute
   '/app/labels': typeof AuthenticatedAppLabelsRoute
@@ -288,6 +297,7 @@ export interface FileRoutesById {
   '/_authenticated/app/automations': typeof AuthenticatedAppAutomationsRoute
   '/_authenticated/app/contacts': typeof AuthenticatedAppContactsRoute
   '/_authenticated/app/conversations': typeof AuthenticatedAppConversationsRoute
+  '/_authenticated/app/financial': typeof AuthenticatedAppFinancialRoute
   '/_authenticated/app/fiscal': typeof AuthenticatedAppFiscalRoute
   '/_authenticated/app/inventory': typeof AuthenticatedAppInventoryRoute
   '/_authenticated/app/labels': typeof AuthenticatedAppLabelsRoute
@@ -322,6 +332,7 @@ export interface FileRouteTypes {
     | '/app/automations'
     | '/app/contacts'
     | '/app/conversations'
+    | '/app/financial'
     | '/app/fiscal'
     | '/app/inventory'
     | '/app/labels'
@@ -353,6 +364,7 @@ export interface FileRouteTypes {
     | '/app/automations'
     | '/app/contacts'
     | '/app/conversations'
+    | '/app/financial'
     | '/app/fiscal'
     | '/app/inventory'
     | '/app/labels'
@@ -386,6 +398,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/automations'
     | '/_authenticated/app/contacts'
     | '/_authenticated/app/conversations'
+    | '/_authenticated/app/financial'
     | '/_authenticated/app/fiscal'
     | '/_authenticated/app/inventory'
     | '/_authenticated/app/labels'
@@ -540,6 +553,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppFiscalRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/financial': {
+      id: '/_authenticated/app/financial'
+      path: '/financial'
+      fullPath: '/app/financial'
+      preLoaderRoute: typeof AuthenticatedAppFinancialRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/conversations': {
       id: '/_authenticated/app/conversations'
       path: '/conversations'
@@ -654,6 +674,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppAutomationsRoute: typeof AuthenticatedAppAutomationsRoute
   AuthenticatedAppContactsRoute: typeof AuthenticatedAppContactsRoute
   AuthenticatedAppConversationsRoute: typeof AuthenticatedAppConversationsRoute
+  AuthenticatedAppFinancialRoute: typeof AuthenticatedAppFinancialRoute
   AuthenticatedAppFiscalRoute: typeof AuthenticatedAppFiscalRoute
   AuthenticatedAppInventoryRoute: typeof AuthenticatedAppInventoryRoute
   AuthenticatedAppLabelsRoute: typeof AuthenticatedAppLabelsRoute
@@ -671,6 +692,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppAutomationsRoute: AuthenticatedAppAutomationsRoute,
   AuthenticatedAppContactsRoute: AuthenticatedAppContactsRoute,
   AuthenticatedAppConversationsRoute: AuthenticatedAppConversationsRoute,
+  AuthenticatedAppFinancialRoute: AuthenticatedAppFinancialRoute,
   AuthenticatedAppFiscalRoute: AuthenticatedAppFiscalRoute,
   AuthenticatedAppInventoryRoute: AuthenticatedAppInventoryRoute,
   AuthenticatedAppLabelsRoute: AuthenticatedAppLabelsRoute,
