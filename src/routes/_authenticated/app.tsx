@@ -5,8 +5,9 @@ import { useMyWorkspaces, useCurrentProfile, setActiveWorkspaceId } from "@/hook
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, KanbanSquare, MessageSquare, Bot,
-  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu, Workflow, Check, ChevronDown, FileText
+  Settings, LogOut, Search, ChevronsLeft, ChevronsRight, CheckSquare, Phone, Car, Tag, ShieldAlert, Menu, Workflow, Check, ChevronDown, FileText, Wallet
 } from "lucide-react";
+import { useFinancialAccess } from "@/hooks/useFinancial";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -47,6 +48,7 @@ function AppShell() {
   const isSuperAdmin = authUser?.email?.toLowerCase() === "miguelgomes2p@gmail.com";
   const BETA_EMAILS = ["miguelgomes2p@gmail.com", "tj1605123@gmail.com"];
   const isAutomationBeta = !!authUser?.email && BETA_EMAILS.includes(authUser.email.toLowerCase());
+  const { allowed: financialBeta } = useFinancialAccess();
   const qc = useQueryClient();
   const current = workspaces?.[0];
 
@@ -103,9 +105,11 @@ function AppShell() {
   });
   const allNav = [
     ...filteredNav,
+    ...(financialBeta ? [{ to: "/app/financial", label: "Financeiro BETA", icon: Wallet } as NavItem] : []),
     ...(isAutomationBeta ? [{ to: "/app/automations", label: "Automações BETA", icon: Workflow } as NavItem] : []),
     ...(isSuperAdmin ? [{ to: "/app/admin", label: "Admin Global", icon: ShieldAlert } as NavItem] : []),
   ];
+
 
   const [mobileOpen, setMobileOpen] = useState(false);
 

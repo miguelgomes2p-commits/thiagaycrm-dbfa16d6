@@ -16,6 +16,8 @@ import {
 import {
   FUEL_OPTIONS, TRANSMISSION_OPTIONS, parseBRLNumber, type Vehicle, type VehicleStatus,
 } from "@/lib/vehicles";
+import { useFinancialAccess, useSaveVehicleFinancial, useVehicleFinancial } from "@/hooks/useFinancial";
+import { parseMoney } from "@/lib/financial";
 
 
 type FormState = {
@@ -54,6 +56,18 @@ export function VehicleFormDialog({
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingPhoto[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  // Seção financeira — visível apenas para usuários do beta privado (validado no servidor).
+  const { allowed: financialBeta } = useFinancialAccess();
+  const financialQ = useVehicleFinancial(vehicle?.id, financialBeta && open);
+  const saveFinancial = useSaveVehicleFinancial(vehicle?.id);
+  const [acquisitionCost, setAcquisitionCost] = useState("");
+  const [acquiredAt, setAcquiredAt] = useState("");
+
+  useEffect(() => {
+    const fin = financialQ.data?.financial;
+    setAcquisitionCost(fin?.acquisition_cost != null ? String(fin.acquisition_cost) : "");
+    setAcquiredAt(fin?.acquired_at ?? "");
+  }, [financialQ.data]);
 
   useEffect(() => {
     if (!open) return;
@@ -94,6 +108,7 @@ export function VehicleFormDialog({
       featured: form.featured,
     };
 
+    let savedId = createdId;
     if (createdId) {
       const { error } = await supabase.from("vehicles").update(payload as never).eq("id", createdId);
       setSaving(false);
@@ -103,6 +118,7 @@ export function VehicleFormDialog({
       const { data, error } = await supabase.from("vehicles").insert(payload as never).select("id").single();
       if (error) { setSaving(false); toast.error(error.message); return; }
       const newId = (data as { id: string }).id;
+      savedId = newId;
       setCreatedId(newId);
       if (pending.length > 0) {
         setUploadProgress({ done: 0, total: pending.length });
@@ -119,6 +135,17 @@ export function VehicleFormDialog({
       }
       setSaving(false);
       toast.success("Veículo cadastrado");
+    }
+    if (financialBeta && savedId && (acquisitionCost.trim() || acquiredAt)) {
+      try {
+        await saveFinancial.mutateAsync({
+          vehicleId: savedId,
+          acquisitionCost: parseMoney(acquisitionCost),
+          acquiredAt: acquiredAt || null,
+        });
+      } catch {
+        toast.error("Veículo salvo, mas não foi possível gravar as informações financeiras.");
+      }
     }
     await qc.invalidateQueries({ queryKey: ["vehicles"] });
     qc.invalidateQueries({ queryKey: ["vehicle-covers"] });
@@ -186,6 +213,23 @@ export function VehicleFormDialog({
               <Label className="cursor-pointer">Destaque</Label>
             </div>
           </div>
+          {financialBeta && (
+            <div className="rounded-md border border-border p-3 space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Informações financeiras (opcional)
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Valor de aquisição (R$)</Label>
+                  <Input placeholder="R$ 80.000,00" value={acquisitionCost} onChange={(e) => setAcquisitionCost(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Data de aquisição</Label>
+                  <Input type="date" value={acquiredAt} onChange={(e) => setAcquiredAt(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          )}
           <div>
             <Label>Descrição</Label>
             <Textarea rows={3} value={form.description} onChange={(e) => set({ description: e.target.value })} />
