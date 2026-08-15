@@ -14,6 +14,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { listFiscalDocuments } from "@/lib/fiscal.functions";
 import { FISCAL_STATUS_LABEL } from "@/lib/fiscal/types";
 import { IssueNfeDialog } from "@/components/fiscal/IssueNfeDialog";
+import { VehicleFinancialSummary } from "@/components/financial/VehicleFinancialSummary";
+import { useFinancialAccess } from "@/hooks/useFinancial";
 import {
   VEHICLE_STATUS_CLASS, VEHICLE_STATUS_LABEL, findSimilarVehicles, formatBRL, formatKm, formatYear,
   logLeadActivity, vehicleTitle, type Vehicle, type VehicleStatus,
@@ -29,6 +31,7 @@ export function VehicleDetailDialog({
   const [active, setActive] = useState(0);
   const [touchX, setTouchX] = useState<number | null>(null);
   const [nfeOpen, setNfeOpen] = useState(false);
+  const { allowed: financialBeta } = useFinancialAccess();
 
   const similarQ = useQuery({
     enabled: !!vehicle?.id,
@@ -187,6 +190,8 @@ export function VehicleDetailDialog({
                 </ul>
               </div>
             )}
+
+            {financialBeta && <VehicleFinancialSummary vehicle={vehicle} enabled={financialBeta} />}
 
             <div className="pt-2 border-t border-border space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Nota fiscal</p>
