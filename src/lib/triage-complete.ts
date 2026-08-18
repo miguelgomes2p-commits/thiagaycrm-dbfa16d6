@@ -70,6 +70,10 @@ export async function handleTriageComplete(request: Request, pathConversationId?
   const startedAt = Date.now();
   let conversationIdForLog = pathConversationId ?? null;
 
+  const checkpoint = (event: string, data: Record<string, unknown> = {}) => {
+    log(event, { conversation_id: conversationIdForLog, elapsed_ms: Date.now() - startedAt, ...data });
+  };
+
   const respond = (payload: Record<string, unknown>, status = 200) => {
     log("TRIAGE_RESPONSE_RETURNED", {
       conversation_id: conversationIdForLog,
@@ -80,7 +84,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
   };
 
   try {
-    log("TRIAGE_REQUEST_RECEIVED", { conversation_id: conversationIdForLog });
+    checkpoint("01_REQUEST");
 
     const secret = process.env["N8N_INTERNAL_API_SECRET"]?.trim();
     const auth = (request.headers.get("authorization") ?? "").trim();
@@ -112,6 +116,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
         !secret ? 500 : 401,
       );
     }
+    checkpoint("02_AUTH");
 
     let body: TriageBody = {};
     try {
@@ -121,6 +126,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
         conversation_id: conversationIdForLog,
         body_present: raw.length > 0,
       });
+      checkpoint("03_BODY");
     } catch {
       return respond({ success: false, error: "invalid_json" }, 400);
     }
@@ -141,6 +147,59 @@ export async function handleTriageComplete(request: Request, pathConversationId?
       return respond({ success: false, error: "unsupported_event" }, 400);
     }
 
+    // Temporary, bearer-protected diagnostic stages. Removed after the controlled production test.
+    const diagnosticStage = request.headers.get("x-triage-diagnostic-stage");
+    if (diagnosticStage === "route") {
+      checkpoint("10_RESPONSE", { diagnostic_stage: diagnosticStage });
+      return respond({ success: true, status: "diagnostic_ok", conversation_id: conversationId });
+    }
+
+    if (diagnosticStage) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: conversation, error: conversationError } = await supabaseAdmin
+        .from("conversations")
+        .select("id, workspace_id")
+        .eq("id", conversationId)
+        .maybeSingle();
+      if (conversationError) throw conversationError;
+      if (!conversation) return respond({ success: false, error: "conversation_not_found" }, 404);
+      checkpoint("04_CONVERSATION");
+      if (diagnosticStage === "conversation") {
+        checkpoint("10_RESPONSE", { diagnostic_stage: diagnosticStage });
+        return respond({ success: true, status: "conversation_found", conversation_id: conversationId });
+      }
+
+      const { data: workspace, error: workspaceError } = await supabaseAdmin
+        .from("workspaces")
+        .select("id, workspace_mode")
+        .eq("id", conversation.workspace_id)
+        .maybeSingle();
+      if (workspaceError) throw workspaceError;
+      if (!workspace) return respond({ success: false, error: "workspace_not_found" }, 404);
+      checkpoint("05_WORKSPACE", { workspace_id: workspace.id });
+      if (diagnosticStage === "workspace") {
+        checkpoint("10_RESPONSE", { diagnostic_stage: diagnosticStage });
+        return respond({ success: true, status: "workspace_found", conversation_id: conversationId });
+      }
+
+      const { count, error: agentsError } = await supabaseAdmin
+        .from("workspace_members")
+        .select("user_id", { count: "exact", head: true })
+        .eq("workspace_id", workspace.id)
+        .eq("is_active", true)
+        .eq("accepts_new_leads", true)
+        .not("role", "in", "(owner,admin)");
+      if (agentsError) throw agentsError;
+      checkpoint("06_AGENTS", { workspace_id: workspace.id, eligible_agents: count ?? 0 });
+      checkpoint("10_RESPONSE", { diagnostic_stage: diagnosticStage });
+      return respond({
+        success: true,
+        status: "agents_found",
+        conversation_id: conversationId,
+        eligible_agents: count ?? 0,
+      });
+    }
+
     const idempotencyKey = request.headers.get("idempotency-key");
     const aiSummary = typeof body.ai_summary === "string" ? body.ai_summary.slice(0, 4000) : null;
 
@@ -150,7 +209,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
       idempotency_key: idempotencyKey,
     });
 
-    log("TRIAGE_ROUND_ROBIN_STARTED", { conversation_id: conversationId });
+    checkpoint("07_RR_START");
     const rpcStartedAt = Date.now();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.rpc("complete_triage_and_assign", {
@@ -174,6 +233,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
         500,
       );
     }
+    checkpoint("08_RR_DONE", { rpc_duration_ms: Date.now() - rpcStartedAt });
 
     const result = (data ?? {}) as {
       success?: boolean;
@@ -187,6 +247,8 @@ export async function handleTriageComplete(request: Request, pathConversationId?
       log("CONVERSATION_NOT_FOUND", { conversation_id: conversationId });
       return respond({ success: false, error: "conversation_not_found" }, 404);
     }
+
+    checkpoint("09_PERSIST", { status: result.status ?? null });
 
     log("TRIAGE_CONVERSATION_FOUND", { conversation_id: conversationId });
     log("TRIAGE_WORKSPACE_FOUND", {
@@ -224,6 +286,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
     if (result.assigned_agent) payload["assigned_agent"] = result.assigned_agent;
 
     const httpStatus = result.status === "waiting_for_agent" ? 202 : 200;
+    checkpoint("10_RESPONSE", { http_status: httpStatus });
     return respond(payload, httpStatus);
   } catch (error) {
     const caught = error as { name?: string; message?: string; code?: string; stack?: string };
