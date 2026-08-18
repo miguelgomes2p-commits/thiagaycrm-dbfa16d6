@@ -14,6 +14,53 @@ export function extractFirstUrl(text: string): string | null {
   return raw.startsWith("http") ? raw : `https://${raw}`;
 }
 
+// ---- WhatsApp inline formatting (*negrito*, _itálico_, ~riscado~, `mono`) ----
+// O CRM recebe/envia o mesmo texto do WhatsApp; renderizamos a formatação em vez
+// de exibir os marcadores crus para o atendente.
+const WA_MARKS: Array<{ re: RegExp; wrap: (n: React.ReactNode, k: string) => React.ReactNode }> = [
+  {
+    re: /```([\s\S]+?)```/,
+    wrap: (n, k) => (
+      <code key={k} className="rounded bg-black/10 px-1 py-0.5 font-mono text-[0.92em]">{n}</code>
+    ),
+  },
+  {
+    re: /`([^`\n]+?)`/,
+    wrap: (n, k) => (
+      <code key={k} className="rounded bg-black/10 px-1 py-0.5 font-mono text-[0.92em]">{n}</code>
+    ),
+  },
+  { re: /(?<![\w*])\*(?!\s)([^*\n]+?)(?<!\s)\*(?![\w*])/, wrap: (n, k) => <strong key={k} className="font-semibold">{n}</strong> },
+  { re: /(?<![\w_])_(?!\s)([^_\n]+?)(?<!\s)_(?![\w_])/, wrap: (n, k) => <em key={k}>{n}</em> },
+  { re: /(?<![\w~])~(?!\s)([^~\n]+?)(?<!\s)~(?![\w~])/, wrap: (n, k) => <s key={k}>{n}</s> },
+];
+
+function renderFormatted(text: string, keyPrefix: string): React.ReactNode[] {
+  for (let i = 0; i < WA_MARKS.length; i++) {
+    const mark = WA_MARKS[i]!;
+    const m = mark.re.exec(text);
+    if (!m || m.index === undefined) continue;
+    const before = text.slice(0, m.index);
+    const after = text.slice(m.index + m[0].length);
+    return [
+      ...(before ? renderFormatted(before, `${keyPrefix}b${i}`) : []),
+      mark.wrap(renderFormatted(m[1] ?? "", `${keyPrefix}i${i}`), `${keyPrefix}m${i}`),
+      ...(after ? renderFormatted(after, `${keyPrefix}a${i}`) : []),
+    ];
+  }
+  return [text];
+}
+
+/** Remove os marcadores de formatação — útil para previews de uma linha. */
+export function stripWaFormatting(text: string): string {
+  return text
+    .replace(/```([\s\S]+?)```/g, "$1")
+    .replace(/`([^`\n]+?)`/g, "$1")
+    .replace(/(?<![\w*])\*(?!\s)([^*\n]+?)(?<!\s)\*(?![\w*])/g, "$1")
+    .replace(/(?<![\w_])_(?!\s)([^_\n]+?)(?<!\s)_(?![\w_])/g, "$1")
+    .replace(/(?<![\w~])~(?!\s)([^~\n]+?)(?<!\s)~(?![\w~])/g, "$1");
+}
+
 export function LinkifiedText({ text, className }: { text: string; className?: string }) {
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
@@ -23,7 +70,7 @@ export function LinkifiedText({ text, className }: { text: string; className?: s
   while ((match = re.exec(text)) !== null) {
     const start = match.index;
     const raw = match[0];
-    if (start > lastIndex) parts.push(text.slice(lastIndex, start));
+    if (start > lastIndex) parts.push(...renderFormatted(text.slice(lastIndex, start), `t${key}`));
     const href = raw.startsWith("http") ? raw : `https://${raw}`;
     parts.push(
       <a
@@ -38,9 +85,10 @@ export function LinkifiedText({ text, className }: { text: string; className?: s
     );
     lastIndex = start + raw.length;
   }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  if (lastIndex < text.length) parts.push(...renderFormatted(text.slice(lastIndex), `t${key}e`));
   return <div className={cn("whitespace-pre-wrap break-words", className)}>{parts}</div>;
 }
+
 
 // ---- special-case detectors ----
 function parseYouTube(url: string): string | null {
