@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Car, Loader2, Search, Send } from "lucide-react";
+import { LinkifiedText } from "@/components/chat/LinkPreview";
 import { cn } from "@/lib/utils";
 import { useLeadVehicles, useVehicleMedia } from "@/hooks/useVehicles";
 import {
@@ -39,7 +40,13 @@ export function SendVehicleDialog({
   workspaceId: string;
   leadId: string | null;
   sendText: (body: string) => Promise<void>;
-  sendPhoto: (photo: { fileName: string; mimeType: string; base64: string; caption?: string | null }) => Promise<void>;
+  sendPhoto: (photo: {
+    fileName: string;
+    mimeType: string;
+    base64: string;
+    caption?: string | null;
+    withSignature?: boolean;
+  }) => Promise<void>;
 }) {
   const linkedQ = useLeadVehicles(leadId ?? undefined);
   const [term, setTerm] = useState("");
@@ -106,7 +113,10 @@ export function SendVehicleDialog({
             fileName: `${vehicleTitle(picked)} ${i + 1}.jpg`.replace(/\s+/g, "-"),
             mimeType,
             base64,
+            // A ficha (e a assinatura do atendente) vai apenas na primeira foto;
+            // as demais seguem sem legenda para não repetir o texto.
             caption: captionSent ? null : spec,
+            withSignature: !captionSent,
           });
           captionSent = true;
         } catch {
@@ -176,7 +186,7 @@ export function SendVehicleDialog({
         ) : (
           <div className="space-y-3">
             <div className="rounded-lg border border-border bg-muted/40 p-3">
-              <p className="text-xs whitespace-pre-wrap">{vehicleSpecText(picked)}</p>
+              <LinkifiedText text={vehicleSpecText(picked)} className="text-xs" />
             </div>
             {mediaQ.isLoading ? (
               <p className="text-xs text-muted-foreground">Carregando fotos...</p>
