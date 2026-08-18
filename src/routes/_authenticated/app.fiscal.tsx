@@ -119,17 +119,21 @@ function DocumentsPanel({ workspaceId, canManage }: { workspaceId: string; canMa
   const cancelFn = useServerFn(cancelFiscalDocument);
 
   const [status, setStatus] = useState("all");
+  const [direction, setDirection] = useState("all");
+  const [source, setSource] = useState("all");
   const [search, setSearch] = useState("");
   const [cancelDoc, setCancelDoc] = useState<any | null>(null);
   const [reason, setReason] = useState("");
 
   const q = useQuery({
-    queryKey: ["fiscal-documents", workspaceId, status, search],
+    queryKey: ["fiscal-documents", workspaceId, status, direction, source, search],
     queryFn: () =>
       listFn({
         data: {
           workspaceId,
           ...(status !== "all" ? { status } : {}),
+          ...(direction !== "all" ? { direction } : {}),
+          ...(source !== "all" ? { source } : {}),
           ...(search ? { search } : {}),
         },
       }) as Promise<any[]>,
@@ -187,6 +191,22 @@ function DocumentsPanel({ workspaceId, canManage }: { workspaceId: string; canMa
             ))}
           </SelectContent>
         </Select>
+        <Select value={direction} onValueChange={setDirection}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Entradas e saídas</SelectItem>
+            <SelectItem value="entry">Somente entradas</SelectItem>
+            <SelectItem value="exit">Somente saídas</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={source} onValueChange={setSource}>
+          <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Emitidas e recebidas</SelectItem>
+            <SelectItem value="issued">Emitidas pelo CRM</SelectItem>
+            <SelectItem value="imported">Recebidas de fornecedor</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -198,7 +218,15 @@ function DocumentsPanel({ workspaceId, canManage }: { workspaceId: string; canMa
           {rows.map((r) => (
             <div key={r.id} className="p-3 flex flex-wrap items-center gap-3 text-sm">
               <span className="font-medium w-20">#{r.number ?? "—"}</span>
-              <span className="flex-1 min-w-40 truncate">{r.recipient_snapshot?.name ?? "—"}</span>
+              <Badge variant="secondary" className="text-[10px]">
+                {r.direction === "entry" ? "Entrada" : "Saída"}
+                {r.source === "imported" ? " • fornecedor" : ""}
+              </Badge>
+              <span className="flex-1 min-w-40 truncate">
+                {(r.direction === "entry" ? r.supplier_snapshot?.name : r.recipient_snapshot?.name) ??
+                  r.recipient_snapshot?.name ??
+                  "—"}
+              </span>
               <span className="flex-1 min-w-40 truncate text-muted-foreground">{r.vehicle_label ?? "—"}</span>
               <span className="w-28 text-right">
                 {r.total_amount != null
