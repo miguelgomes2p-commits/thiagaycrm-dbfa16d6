@@ -93,8 +93,9 @@ export async function enqueueN8nDelivery(params: EnqueueParams): Promise<"skippe
     const key = findMessageKey(params.payload);
     const waMessageId = key?.id ?? `event:${params.webhookEventId ?? params.requestId ?? crypto.randomUUID()}`;
 
-    // ADITIVO: o payload original da Evolution é preservado; apenas acrescentamos
-    // `crm_context` com o UUID interno da conversation já resolvida pelo CRM.
+    // ADITIVO: o payload original da Evolution é preservado. O UUID interno fica
+    // no nível principal para uso direto no n8n e também em `crm_context` para
+    // manter compatibilidade com workflows que já consomem o objeto aninhado.
     const crmContext: CrmContext | null = params.crmContext
       ? {
           conversation_id: params.crmContext.conversation_id ?? null,
@@ -103,7 +104,13 @@ export async function enqueueN8nDelivery(params: EnqueueParams): Promise<"skippe
         }
       : null;
     const bodyPayload = crmContext && isObj(params.payload)
-      ? { ...(params.payload as Json), crm_context: crmContext }
+      ? {
+          ...(params.payload as Json),
+          conversation_id: crmContext.conversation_id,
+          workspace_id: crmContext.workspace_id,
+          workspace_mode: crmContext.workspace_mode,
+          crm_context: crmContext,
+        }
       : params.payload;
 
     const { error } = await supabaseAdmin.from("n8n_deliveries").insert({
