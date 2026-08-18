@@ -134,6 +134,11 @@ function ConversationsPage() {
   const repairingAudioRef = useRef(new Set<string>());
   const activeIdRef = useRef<string | null>(null);
   const sendChainRef = useRef<Map<string, Promise<void>>>(new Map());
+  // Fila local de mensagens em envio: mantém a ordem exata em que o usuário
+  // enviou, independente de refetch/realtime (Map preserva ordem de inserção).
+  const pendingRef = useRef<Map<string, Record<string, unknown>>>(new Map());
+  const [pendingTick, setPendingTick] = useState(0);
+
 
   const [locationOpen, setLocationOpen] = useState(false);
   const [sendingLocation, setSendingLocation] = useState(false);
