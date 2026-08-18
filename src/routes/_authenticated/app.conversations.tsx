@@ -672,7 +672,7 @@ function ConversationsPage() {
   }, [leadContextQ.data?.lead?.id, active?.id, active?.lead_id]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [visibleMsgs]);
+  }, [msgsQ.data, pendingTick]);
 
   useEffect(() => () => {
     if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
