@@ -134,6 +134,8 @@ function ConversationsPage() {
   const recordingTimerRef = useRef<number | null>(null);
   const repairingAudioRef = useRef(new Set<string>());
   const activeIdRef = useRef<string | null>(null);
+  const sendChainRef = useRef<Map<string, Promise<void>>>(new Map());
+
   const [locationOpen, setLocationOpen] = useState(false);
   const [sendingLocation, setSendingLocation] = useState(false);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
