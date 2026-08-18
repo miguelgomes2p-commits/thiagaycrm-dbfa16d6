@@ -27,6 +27,8 @@ export const Route = createFileRoute("/api/public/internal/conversations/$conver
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request, params }) => {
+       try {
+        log("TRIAGE_COMPLETE_REQUEST_RECEIVED", { conversation_id: params.conversationId });
         const secret = process.env["N8N_INTERNAL_API_SECRET"]?.trim();
         const auth = (request.headers.get("authorization") ?? request.headers.get("Authorization") ?? "").trim();
         const bearerDetected = /^bearer\s+/i.test(auth);
