@@ -708,77 +708,88 @@ function ConversationsPage() {
     return map;
   }, [convsQ.data, convLabelMap]);
 
-  async function sendMessage() {
+  function sendMessage() {
     if (!text.trim() || !active || !ws) return;
     const content = text.trim();
     const isWa = active.channel === "whatsapp";
     const activeIdLocal = active.id;
     const wsId = ws.id;
-    const { data: currentSession } = await supabase.auth.getSession();
-    const currentUserId = currentSession.session?.user.id ?? null;
     setText("");
-    setSending(true);
 
-    // Optimistic message
+    // Optimistic message (input stays free; delivery happens in background)
     const tempId = `temp-${crypto.randomUUID()}`;
     const nowIso = new Date().toISOString();
-    const optimistic = {
-      id: tempId,
-      workspace_id: wsId,
-      conversation_id: activeIdLocal,
-      direction: "outbound",
-      sender_type: "user",
-      sender_user_id: currentUserId,
-      content,
-      created_at: nowIso,
-      delivery_status: "sending",
-      _optimistic: true,
-    } as unknown as Record<string, unknown>;
     const msgsKey = ["messages", activeIdLocal];
-    const prevMsgs = qc.getQueryData<Record<string, unknown>[]>(msgsKey);
-    qc.setQueryData<Record<string, unknown>[]>(msgsKey, [...(prevMsgs ?? []), optimistic]);
-    // Optimistic conversation preview + reorder
     const convsKey = ["conversations", wsId, pageSize];
-    const prevConvs = qc.getQueryData<Record<string, unknown>[]>(convsKey);
-    if (prevConvs) {
-      const updated = prevConvs.map((c) =>
-        (c as { id: string }).id === activeIdLocal
-          ? { ...c, last_message_preview: content.slice(0, 200), last_message_at: nowIso }
-          : c,
-      );
-      updated.sort((a, b) => {
-        const ta = new Date((a as { last_message_at?: string }).last_message_at ?? 0).getTime();
-        const tb = new Date((b as { last_message_at?: string }).last_message_at ?? 0).getTime();
-        return tb - ta;
-      });
-      qc.setQueryData(convsKey, updated);
-    }
 
-    try {
-      if (isWa) {
-        await sendWa({ data: { conversationId: activeIdLocal, body: content } });
-      } else {
-        const { data: u } = await supabase.auth.getSession();
-        await supabase.from("messages").insert({
-          workspace_id: wsId, conversation_id: activeIdLocal, direction: "outbound", sender_type: "user",
-          sender_user_id: u.session?.user?.id, content,
+    const patchOptimistic = (patch: Record<string, unknown> | null) => {
+      qc.setQueryData<Record<string, unknown>[]>(msgsKey, (cur) => {
+        const list = cur ?? [];
+        if (patch === null) return list.filter((m) => (m as { id: string }).id !== tempId);
+        return list.map((m) => ((m as { id: string }).id === tempId ? { ...m, ...patch } : m));
+      });
+    };
+
+    void (async () => {
+      const { data: currentSession } = await supabase.auth.getSession();
+      const currentUserId = currentSession.session?.user.id ?? null;
+      const optimistic = {
+        id: tempId,
+        workspace_id: wsId,
+        conversation_id: activeIdLocal,
+        direction: "outbound",
+        sender_type: "user",
+        sender_user_id: currentUserId,
+        content,
+        created_at: nowIso,
+        delivery_status: "sending",
+        _optimistic: true,
+      } as unknown as Record<string, unknown>;
+      qc.setQueryData<Record<string, unknown>[]>(msgsKey, (cur) => [...(cur ?? []), optimistic]);
+
+      const prevConvs = qc.getQueryData<Record<string, unknown>[]>(convsKey);
+      if (prevConvs) {
+        const updated = prevConvs.map((c) =>
+          (c as { id: string }).id === activeIdLocal
+            ? { ...c, last_message_preview: content.slice(0, 200), last_message_at: nowIso }
+            : c,
+        );
+        updated.sort((a, b) => {
+          const ta = new Date((a as { last_message_at?: string }).last_message_at ?? 0).getTime();
+          const tb = new Date((b as { last_message_at?: string }).last_message_at ?? 0).getTime();
+          return tb - ta;
         });
-        await supabase.from("conversations").update({
-          last_message_preview: content, last_message_at: nowIso,
-        }).eq("id", activeIdLocal);
+        qc.setQueryData(convsKey, updated);
       }
-      qc.invalidateQueries({ queryKey: msgsKey });
-      qc.invalidateQueries({ queryKey: convsKey });
-    } catch (e) {
-      // Roll back optimistic entry
-      qc.setQueryData<Record<string, unknown>[]>(msgsKey, (cur) =>
-        (cur ?? []).filter((m) => (m as { id: string }).id !== tempId),
-      );
-      if (prevConvs) qc.setQueryData(convsKey, prevConvs);
-      toast.error(e instanceof Error ? e.message : "Falha ao enviar");
-      setText(content);
-    } finally { setSending(false); }
+
+      // Serialize actual delivery per conversation to preserve order,
+      // without ever blocking the composer.
+      const chainKey = activeIdLocal;
+      const prevChain = sendChainRef.current.get(chainKey) ?? Promise.resolve();
+      const chain = prevChain.then(async () => {
+        try {
+          if (isWa) {
+            await sendWa({ data: { conversationId: activeIdLocal, body: content } });
+          } else {
+            await supabase.from("messages").insert({
+              workspace_id: wsId, conversation_id: activeIdLocal, direction: "outbound", sender_type: "user",
+              sender_user_id: currentUserId, content,
+            });
+            await supabase.from("conversations").update({
+              last_message_preview: content, last_message_at: nowIso,
+            }).eq("id", activeIdLocal);
+          }
+          qc.invalidateQueries({ queryKey: msgsKey });
+          qc.invalidateQueries({ queryKey: convsKey });
+        } catch (e) {
+          patchOptimistic({ delivery_status: "failed", error_message: e instanceof Error ? e.message : "Falha ao enviar" });
+          toast.error(e instanceof Error ? e.message : "Falha ao enviar");
+        }
+      });
+      sendChainRef.current.set(chainKey, chain);
+    })();
   }
+
 
   function fileToBase64(file: File) {
     return new Promise<string>((resolve, reject) => {
