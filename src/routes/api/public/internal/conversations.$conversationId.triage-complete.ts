@@ -27,6 +27,8 @@ export const Route = createFileRoute("/api/public/internal/conversations/$conver
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request, params }) => {
+       try {
+        log("TRIAGE_COMPLETE_REQUEST_RECEIVED", { conversation_id: params.conversationId });
         const secret = process.env["N8N_INTERNAL_API_SECRET"]?.trim();
         const auth = (request.headers.get("authorization") ?? request.headers.get("Authorization") ?? "").trim();
         const bearerDetected = /^bearer\s+/i.test(auth);
@@ -133,7 +135,22 @@ export const Route = createFileRoute("/api/public/internal/conversations/$conver
         if (result.assigned_agent) payload["assigned_agent"] = result.assigned_agent;
 
         const httpStatus = result.status === "waiting_for_agent" ? 202 : 200;
+        log("TRIAGE_COMPLETE_RESPONSE_SENT", { conversation_id: conversationId, http_status: httpStatus });
         return Response.json(payload, { status: httpStatus, headers: corsHeaders });
+       } catch (err) {
+        const e = err as { name?: string; message?: string; code?: string; stack?: string };
+        log("TRIAGE_COMPLETE_ERROR", {
+          conversation_id: params.conversationId,
+          error_name: e?.name ?? "Error",
+          error_code: e?.code ?? null,
+          error_message: e?.message ?? String(err),
+          stack: e?.stack ?? null,
+        });
+        return Response.json(
+          { success: false, error: "internal_error", code: e?.code ?? "unhandled_exception" },
+          { status: 500, headers: corsHeaders },
+        );
+       }
       },
     },
   },
