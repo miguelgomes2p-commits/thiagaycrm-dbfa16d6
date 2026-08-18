@@ -804,11 +804,12 @@ function ConversationsPage() {
    * pendentes na ordem exata de envio. Nada é reordenado depois de exibido.
    */
   const visibleMsgs = useMemo(() => {
-    const base = (msgsQ.data ?? []) as Record<string, unknown>[];
+    type MsgRow = NonNullable<typeof msgsQ.data>[number];
+    const base = (msgsQ.data ?? []) as MsgRow[];
     void pendingTick;
     const pend = [...pendingRef.current.values()].filter(
       (m) => (m as { conversation_id?: string }).conversation_id === activeId,
-    );
+    ) as unknown as MsgRow[];
     if (!pend.length) return base;
     const persisted = new Set(
       base
@@ -822,6 +823,7 @@ function ConversationsPage() {
     );
     return [...base, ...filtered];
   }, [msgsQ.data, activeId, pendingTick]);
+
 
 
 
