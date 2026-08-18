@@ -568,6 +568,8 @@ export const listFiscalDocuments = createServerFn({ method: "POST" })
         status: z.string().max(20).optional(),
         search: z.string().max(120).optional(),
         vehicleId: z.string().uuid().optional(),
+        direction: z.enum(["entry", "exit"]).optional(),
+        source: z.enum(["issued", "imported"]).optional(),
         from: z.string().max(30).optional(),
         to: z.string().max(30).optional(),
         limit: z.number().int().min(1).max(200).optional(),
@@ -578,13 +580,15 @@ export const listFiscalDocuments = createServerFn({ method: "POST" })
     let q = context.supabase
       .from("fiscal_documents")
       .select(
-        "id, status, environment, number, series, access_key, total_amount, created_at, authorized_at, rejection_message, vehicle_id, lead_id, recipient_snapshot, xml_storage_path, danfe_storage_path, cancel_reason",
+        "id, status, environment, number, series, access_key, total_amount, created_at, authorized_at, rejection_message, vehicle_id, lead_id, recipient_snapshot, supplier_snapshot, direction, source, self_issued, operation_key, xml_storage_path, danfe_storage_path, cancel_reason",
       )
       .eq("workspace_id", data.workspaceId)
       .order("created_at", { ascending: false })
       .limit(data.limit ?? 100);
     if (data.status) q = q.eq("status", data.status);
     if (data.vehicleId) q = q.eq("vehicle_id", data.vehicleId);
+    if (data.direction) q = q.eq("direction", data.direction);
+    if (data.source) q = q.eq("source", data.source);
     if (data.from) q = q.gte("created_at", data.from);
     if (data.to) q = q.lte("created_at", data.to);
     const { data: rows, error } = await q;
