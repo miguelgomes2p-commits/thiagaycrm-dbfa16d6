@@ -34,7 +34,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
-import { LinkifiedText, LinkPreview, extractFirstUrl } from "@/components/chat/LinkPreview";
+import { LinkifiedText, LinkPreview, extractFirstUrl, stripWaFormatting } from "@/components/chat/LinkPreview";
 import { CameraCaptureDialog } from "@/components/chat/CameraCaptureDialog";
 import { LocationMessageCard, parseLocationMetadata } from "@/components/chat/LocationMessageCard";
 import { LocationPickerDialog } from "@/components/chat/LocationPickerDialog";
@@ -1240,7 +1240,7 @@ function ConversationsPage() {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground truncate">{c.last_message_preview ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground truncate">{c.last_message_preview ? stripWaFormatting(c.last_message_preview) : "—"}</div>
                       <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
                         <Icon className="h-3 w-3" /> {c.channel}
                         {agent ? (
