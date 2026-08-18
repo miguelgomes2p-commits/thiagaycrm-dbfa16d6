@@ -67,10 +67,20 @@ function json(payload: Record<string, unknown>, status = 200) {
 }
 
 export async function handleTriageComplete(request: Request, pathConversationId?: string) {
+  const startedAt = Date.now();
   let conversationIdForLog = pathConversationId ?? null;
 
+  const respond = (payload: Record<string, unknown>, status = 200) => {
+    log("TRIAGE_RESPONSE_RETURNED", {
+      conversation_id: conversationIdForLog,
+      http_status: status,
+      duration_ms: Date.now() - startedAt,
+    });
+    return json(payload, status);
+  };
+
   try {
-    log("TRIAGE_COMPLETE_REQUEST_RECEIVED", { conversation_id: conversationIdForLog });
+    log("TRIAGE_REQUEST_RECEIVED", { conversation_id: conversationIdForLog });
 
     const secret = process.env["N8N_INTERNAL_API_SECRET"]?.trim();
     const auth = (request.headers.get("authorization") ?? "").trim();
@@ -87,7 +97,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
         expected_token_length: secret?.length ?? 0,
         host: request.headers.get("host"),
       });
-      return json(
+      return respond(
         {
           success: false,
           error: !secret ? "server_secret_not_configured" : "unauthorized",
@@ -107,23 +117,28 @@ export async function handleTriageComplete(request: Request, pathConversationId?
     try {
       const raw = await request.text();
       if (raw) body = JSON.parse(raw) as TriageBody;
+      log("TRIAGE_BODY_PARSED", {
+        conversation_id: conversationIdForLog,
+        body_present: raw.length > 0,
+      });
     } catch {
-      return json({ success: false, error: "invalid_json" }, 400);
+      return respond({ success: false, error: "invalid_json" }, 400);
     }
 
     const conversationId = pathConversationId?.trim() || readConversationId(body);
     conversationIdForLog = conversationId;
+    log("TRIAGE_CONVERSATION_ID", { conversation_id: conversationId });
     if (!conversationId) {
       log("MISSING_CONVERSATION_ID", { source: body.source ?? null });
-      return json({ success: false, error: "missing_conversation_id" }, 400);
+      return respond({ success: false, error: "missing_conversation_id" }, 400);
     }
     if (!UUID_RE.test(conversationId)) {
       log("INVALID_CONVERSATION_ID", { conversation_id: conversationId });
-      return json({ success: false, error: "invalid_conversation_id" }, 400);
+      return respond({ success: false, error: "invalid_conversation_id" }, 400);
     }
 
     if (body.event && body.event !== "triage_completed") {
-      return json({ success: false, error: "unsupported_event" }, 400);
+      return respond({ success: false, error: "unsupported_event" }, 400);
     }
 
     const idempotencyKey = request.headers.get("idempotency-key");
@@ -135,6 +150,8 @@ export async function handleTriageComplete(request: Request, pathConversationId?
       idempotency_key: idempotencyKey,
     });
 
+    log("TRIAGE_ROUND_ROBIN_STARTED", { conversation_id: conversationId });
+    const rpcStartedAt = Date.now();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.rpc("complete_triage_and_assign", {
       _conversation_id: conversationId,
@@ -143,8 +160,19 @@ export async function handleTriageComplete(request: Request, pathConversationId?
     });
 
     if (error) {
-      log("RPC_ERROR", { conversation_id: conversationId, error: error.message });
-      return json({ success: false, error: "internal_error" }, 500);
+      log("TRIAGE_ERROR", {
+        conversation_id: conversationId,
+        error_name: error.name ?? "DatabaseError",
+        error_message: error.message,
+        error_code: error.code ?? null,
+        stack: null,
+        duration_ms: Date.now() - startedAt,
+        rpc_duration_ms: Date.now() - rpcStartedAt,
+      });
+      return respond(
+        { success: false, code: "ROUND_ROBIN_ERROR", error: error.message },
+        500,
+      );
     }
 
     const result = (data ?? {}) as {
@@ -157,8 +185,20 @@ export async function handleTriageComplete(request: Request, pathConversationId?
 
     if (result.error === "conversation_not_found") {
       log("CONVERSATION_NOT_FOUND", { conversation_id: conversationId });
-      return json({ success: false, error: "conversation_not_found" }, 404);
+      return respond({ success: false, error: "conversation_not_found" }, 404);
     }
+
+    log("TRIAGE_CONVERSATION_FOUND", { conversation_id: conversationId });
+    log("TRIAGE_WORKSPACE_FOUND", {
+      conversation_id: conversationId,
+      workspace_id: result.workspace_id ?? null,
+    });
+    log("TRIAGE_ROUND_ROBIN_FINISHED", {
+      conversation_id: conversationId,
+      workspace_id: result.workspace_id ?? null,
+      status: result.status ?? null,
+      rpc_duration_ms: Date.now() - rpcStartedAt,
+    });
 
     const eventName =
       result.status === "assigned"
@@ -184,18 +224,18 @@ export async function handleTriageComplete(request: Request, pathConversationId?
     if (result.assigned_agent) payload["assigned_agent"] = result.assigned_agent;
 
     const httpStatus = result.status === "waiting_for_agent" ? 202 : 200;
-    log("TRIAGE_COMPLETE_RESPONSE_SENT", { conversation_id: conversationId, http_status: httpStatus });
-    return json(payload, httpStatus);
+    return respond(payload, httpStatus);
   } catch (error) {
     const caught = error as { name?: string; message?: string; code?: string; stack?: string };
-    log("TRIAGE_COMPLETE_ERROR", {
+    log("TRIAGE_ERROR", {
       conversation_id: conversationIdForLog,
       error_name: caught.name ?? "Error",
       error_code: caught.code ?? null,
       error_message: caught.message ?? String(error),
       stack: caught.stack ?? null,
+      duration_ms: Date.now() - startedAt,
     });
-    return json(
+    return respond(
       { success: false, error: "internal_error", code: caught.code ?? "unhandled_exception" },
       500,
     );
