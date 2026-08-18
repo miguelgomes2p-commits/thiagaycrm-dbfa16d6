@@ -819,16 +819,21 @@ export type Database = {
           created_by: string | null
           danfe_storage_path: string | null
           danfe_url: string | null
+          direction: string
           document_type: string
           environment: string
           fiscal_profile_id: string | null
           id: string
           idempotency_key: string
+          issue_date: string | null
           issued_at: string | null
           issuer_snapshot: Json
+          issuer_type: string
           items_snapshot: Json
           lead_id: string | null
           number: string | null
+          operation_key: string | null
+          operation_snapshot: Json
           owner_user_id: string | null
           protocol: string | null
           provider: string
@@ -836,12 +841,16 @@ export type Database = {
           recipient_snapshot: Json
           rejection_code: string | null
           rejection_message: string | null
+          self_issued: boolean
           series: string | null
+          source: string
           status: string
+          supplier_snapshot: Json
           tax_snapshot: Json
           total_amount: number | null
           updated_at: string
           vehicle_id: string | null
+          vehicle_snapshot: Json
           workspace_id: string
           xml_storage_path: string | null
           xml_url: string | null
@@ -856,16 +865,21 @@ export type Database = {
           created_by?: string | null
           danfe_storage_path?: string | null
           danfe_url?: string | null
+          direction?: string
           document_type?: string
           environment?: string
           fiscal_profile_id?: string | null
           id?: string
           idempotency_key: string
+          issue_date?: string | null
           issued_at?: string | null
           issuer_snapshot?: Json
+          issuer_type?: string
           items_snapshot?: Json
           lead_id?: string | null
           number?: string | null
+          operation_key?: string | null
+          operation_snapshot?: Json
           owner_user_id?: string | null
           protocol?: string | null
           provider?: string
@@ -873,12 +887,16 @@ export type Database = {
           recipient_snapshot?: Json
           rejection_code?: string | null
           rejection_message?: string | null
+          self_issued?: boolean
           series?: string | null
+          source?: string
           status?: string
+          supplier_snapshot?: Json
           tax_snapshot?: Json
           total_amount?: number | null
           updated_at?: string
           vehicle_id?: string | null
+          vehicle_snapshot?: Json
           workspace_id: string
           xml_storage_path?: string | null
           xml_url?: string | null
@@ -893,16 +911,21 @@ export type Database = {
           created_by?: string | null
           danfe_storage_path?: string | null
           danfe_url?: string | null
+          direction?: string
           document_type?: string
           environment?: string
           fiscal_profile_id?: string | null
           id?: string
           idempotency_key?: string
+          issue_date?: string | null
           issued_at?: string | null
           issuer_snapshot?: Json
+          issuer_type?: string
           items_snapshot?: Json
           lead_id?: string | null
           number?: string | null
+          operation_key?: string | null
+          operation_snapshot?: Json
           owner_user_id?: string | null
           protocol?: string | null
           provider?: string
@@ -910,12 +933,16 @@ export type Database = {
           recipient_snapshot?: Json
           rejection_code?: string | null
           rejection_message?: string | null
+          self_issued?: boolean
           series?: string | null
+          source?: string
           status?: string
+          supplier_snapshot?: Json
           tax_snapshot?: Json
           total_amount?: number | null
           updated_at?: string
           vehicle_id?: string | null
+          vehicle_snapshot?: Json
           workspace_id?: string
           xml_storage_path?: string | null
           xml_url?: string | null
@@ -1014,54 +1041,84 @@ export type Database = {
       }
       fiscal_profiles: {
         Row: {
+          accountant_validated: boolean
+          accountant_validated_at: string | null
+          accountant_validated_by: string | null
           active: boolean
           additional_information: string | null
           cest: string | null
           cfop: string | null
+          cfop_interstate: string | null
           created_at: string
+          direction: string
+          document_model: string
           id: string
           is_default: boolean
           name: string
           natureza_operacao: string | null
           ncm: string | null
+          operation_key: string | null
           operation_type: string
           product_origin: string | null
+          self_issued: boolean
           tax_configuration: Json
           updated_at: string
+          valid_from: string | null
+          valid_to: string | null
           workspace_id: string
         }
         Insert: {
+          accountant_validated?: boolean
+          accountant_validated_at?: string | null
+          accountant_validated_by?: string | null
           active?: boolean
           additional_information?: string | null
           cest?: string | null
           cfop?: string | null
+          cfop_interstate?: string | null
           created_at?: string
+          direction?: string
+          document_model?: string
           id?: string
           is_default?: boolean
           name: string
           natureza_operacao?: string | null
           ncm?: string | null
+          operation_key?: string | null
           operation_type?: string
           product_origin?: string | null
+          self_issued?: boolean
           tax_configuration?: Json
           updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
           workspace_id: string
         }
         Update: {
+          accountant_validated?: boolean
+          accountant_validated_at?: string | null
+          accountant_validated_by?: string | null
           active?: boolean
           additional_information?: string | null
           cest?: string | null
           cfop?: string | null
+          cfop_interstate?: string | null
           created_at?: string
+          direction?: string
+          document_model?: string
           id?: string
           is_default?: boolean
           name?: string
           natureza_operacao?: string | null
           ncm?: string | null
+          operation_key?: string | null
           operation_type?: string
           product_origin?: string | null
+          self_issued?: boolean
           tax_configuration?: Json
           updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -2933,6 +2990,8 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          acquisition_details: Json
+          acquisition_source: string | null
           brand: string
           category: string | null
           chassis: string | null
@@ -2950,6 +3009,7 @@ export type Database = {
           metadata: Json
           mileage: number | null
           model: string
+          ownership_type: string
           plate: string | null
           price: number | null
           renavam: string | null
@@ -2959,6 +3019,7 @@ export type Database = {
           sold_to_lead_id: string | null
           status: Database["public"]["Enums"]["vehicle_status"]
           stock_code: string | null
+          trade_in_for_vehicle_id: string | null
           transmission: string | null
           updated_at: string
           version: string | null
@@ -2967,6 +3028,8 @@ export type Database = {
           year_model: number | null
         }
         Insert: {
+          acquisition_details?: Json
+          acquisition_source?: string | null
           brand: string
           category?: string | null
           chassis?: string | null
@@ -2984,6 +3047,7 @@ export type Database = {
           metadata?: Json
           mileage?: number | null
           model: string
+          ownership_type?: string
           plate?: string | null
           price?: number | null
           renavam?: string | null
@@ -2993,6 +3057,7 @@ export type Database = {
           sold_to_lead_id?: string | null
           status?: Database["public"]["Enums"]["vehicle_status"]
           stock_code?: string | null
+          trade_in_for_vehicle_id?: string | null
           transmission?: string | null
           updated_at?: string
           version?: string | null
@@ -3001,6 +3066,8 @@ export type Database = {
           year_model?: number | null
         }
         Update: {
+          acquisition_details?: Json
+          acquisition_source?: string | null
           brand?: string
           category?: string | null
           chassis?: string | null
@@ -3018,6 +3085,7 @@ export type Database = {
           metadata?: Json
           mileage?: number | null
           model?: string
+          ownership_type?: string
           plate?: string | null
           price?: number | null
           renavam?: string | null
@@ -3027,6 +3095,7 @@ export type Database = {
           sold_to_lead_id?: string | null
           status?: Database["public"]["Enums"]["vehicle_status"]
           stock_code?: string | null
+          trade_in_for_vehicle_id?: string | null
           transmission?: string | null
           updated_at?: string
           version?: string | null
@@ -3054,6 +3123,13 @@ export type Database = {
             columns: ["sold_to_lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_trade_in_for_vehicle_id_fkey"
+            columns: ["trade_in_for_vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
           {
