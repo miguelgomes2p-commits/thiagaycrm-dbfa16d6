@@ -50,7 +50,9 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
   const q = useQuery({
     queryKey: key,
     queryFn: () =>
-      statusFn({ data: { workspaceId: vehicle.workspace_id, vehicleId: vehicle.id } }) as Promise<any>,
+      statusFn({
+        data: { workspaceId: vehicle.workspace_id, vehicleId: vehicle.id },
+      }) as Promise<any>,
   });
 
   const issue = useMutation({
@@ -80,7 +82,9 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
       }) as Promise<any>;
     },
     onSuccess: (r) => {
-      toast.success(r?.duplicated ? "XML já importado anteriormente." : "XML do fornecedor importado.");
+      toast.success(
+        r?.duplicated ? "XML já importado anteriormente." : "XML do fornecedor importado.",
+      );
       qc.invalidateQueries({ queryKey: key });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -92,7 +96,10 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
         data: { workspaceId: vehicle.workspace_id, documentId },
       })) as { xmlUrl?: string | null; danfeUrl?: string | null };
       const url = kind === "xml" ? links.xmlUrl : links.danfeUrl;
-      if (!url) { toast.error("Arquivo ainda não disponível."); return; }
+      if (!url) {
+        toast.error("Arquivo ainda não disponível.");
+        return;
+      }
       window.open(url, "_blank", "noopener");
     } catch (e) {
       toast.error((e as Error).message);
@@ -132,7 +139,8 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
 
       {data?.divergence && (
         <p className="text-xs text-amber-600">
-          ⚠ Divergência: NF-e {fmt(data.divergence.fiscal)} × financeiro {fmt(data.divergence.financial)}.
+          ⚠ Divergência: NF-e {fmt(data.divergence.fiscal)} × financeiro{" "}
+          {fmt(data.divergence.financial)}.
         </p>
       )}
 
@@ -168,7 +176,9 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium truncate">
                   {FISCAL_DIRECTION_LABEL[d.direction as "entry" | "exit"] ?? d.direction}
-                  {d.number ? ` • NF-e ${d.number}${d.series ? `/${d.series}` : ""}` : " • sem número"}
+                  {d.number
+                    ? ` • NF-e ${d.number}${d.series ? `/${d.series}` : ""}`
+                    : " • sem número"}
                 </span>
                 <Badge variant="secondary" className="text-[10px] shrink-0">
                   {FISCAL_STATUS_LABEL[d.status as keyof typeof FISCAL_STATUS_LABEL] ?? d.status}
@@ -190,7 +200,11 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
                     disabled={issue.isPending}
                     onClick={() => issue.mutate(d.id)}
                   >
-                    {issue.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <FileText className="h-3 w-3 mr-1" />}
+                    {issue.isPending ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <FileText className="h-3 w-3 mr-1" />
+                    )}
                     Emitir
                   </Button>
                 )}
@@ -256,7 +270,12 @@ function OperationRow({
       </div>
       <div className="flex gap-1.5 shrink-0">
         {ctx.supports_self_issue ? (
-          <Button size="sm" variant="outline" className="h-7 text-[11px] cursor-pointer" onClick={onDraft}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px] cursor-pointer"
+            onClick={onDraft}
+          >
             <FileText className="h-3 w-3 mr-1" /> Gerar rascunho
           </Button>
         ) : onImport ? (
@@ -267,7 +286,11 @@ function OperationRow({
             disabled={importing}
             onClick={onImport}
           >
-            {importing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+            {importing ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Upload className="h-3 w-3 mr-1" />
+            )}
             Importar XML
           </Button>
         ) : (

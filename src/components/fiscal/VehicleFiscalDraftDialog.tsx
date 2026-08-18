@@ -2,11 +2,23 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import {
   createVehicleFiscalDraft,
@@ -36,8 +48,21 @@ type Counterparty = {
 };
 
 const EMPTY: Counterparty = {
-  person_type: "PF", name: "", cpf: "", cnpj: "", ie: "", email: "", phone: "",
-  zipcode: "", street: "", number: "", complement: "", district: "", city: "", ibge: "", uf: "",
+  person_type: "PF",
+  name: "",
+  cpf: "",
+  cnpj: "",
+  ie: "",
+  email: "",
+  phone: "",
+  zipcode: "",
+  street: "",
+  number: "",
+  complement: "",
+  district: "",
+  city: "",
+  ibge: "",
+  uf: "",
   taxpayer_indicator: "non_contributor",
 };
 
@@ -93,7 +118,10 @@ export function VehicleFiscalDraftDialog({
   const validationQ = useQuery({
     enabled: open && (parseMoney(amount) ?? 0) > 0,
     queryKey: ["vehicle-fiscal-validate", vehicle.id, transactionType, amount, JSON.stringify(cp)],
-    queryFn: () => validateFn({ data: payload() }) as Promise<{ issues: Array<{ field: string; message: string }> }>,
+    queryFn: () =>
+      validateFn({ data: payload() }) as Promise<{
+        issues: Array<{ field: string; message: string }>;
+      }>,
   });
 
   const create = useMutation({
@@ -112,15 +140,22 @@ export function VehicleFiscalDraftDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {transactionType === "purchase" ? "Rascunho de NF-e de entrada" : "Rascunho de NF-e de venda"}
+            {transactionType === "purchase"
+              ? "Rascunho de NF-e de entrada"
+              : "Rascunho de NF-e de venda"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label>Tipo de pessoa</Label>
-              <Select value={cp.person_type} onValueChange={(v) => set({ person_type: v as "PF" | "PJ" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={cp.person_type}
+                onValueChange={(v) => set({ person_type: v as "PF" | "PJ" })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PF">Pessoa física</SelectItem>
                   <SelectItem value="PJ">Pessoa jurídica</SelectItem>
@@ -134,52 +169,101 @@ export function VehicleFiscalDraftDialog({
           </div>
           <div className="grid grid-cols-3 gap-3">
             {cp.person_type === "PF" ? (
-              <div><Label>CPF</Label><Input value={cp.cpf} onChange={(e) => set({ cpf: e.target.value })} /></div>
+              <div>
+                <Label>CPF</Label>
+                <Input value={cp.cpf} onChange={(e) => set({ cpf: e.target.value })} />
+              </div>
             ) : (
               <>
-                <div><Label>CNPJ</Label><Input value={cp.cnpj} onChange={(e) => set({ cnpj: e.target.value })} /></div>
-                <div><Label>Inscrição Estadual</Label><Input value={cp.ie} onChange={(e) => set({ ie: e.target.value })} /></div>
+                <div>
+                  <Label>CNPJ</Label>
+                  <Input value={cp.cnpj} onChange={(e) => set({ cnpj: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Inscrição Estadual</Label>
+                  <Input value={cp.ie} onChange={(e) => set({ ie: e.target.value })} />
+                </div>
               </>
             )}
             <div>
               <Label>Indicador de IE</Label>
               <Select
                 value={cp.taxpayer_indicator}
-                onValueChange={(v) => set({ taxpayer_indicator: v as Counterparty["taxpayer_indicator"] })}
+                onValueChange={(v) =>
+                  set({ taxpayer_indicator: v as Counterparty["taxpayer_indicator"] })
+                }
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {Object.entries(TAXPAYER_INDICATOR_LABEL).map(([k, l]) => (
-                    <SelectItem key={k} value={k}>{l}</SelectItem>
+                    <SelectItem key={k} value={k}>
+                      {l}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div className="grid grid-cols-4 gap-3">
-            <div><Label>CEP</Label><Input value={cp.zipcode} onChange={(e) => set({ zipcode: e.target.value })} /></div>
-            <div className="col-span-2"><Label>Logradouro</Label><Input value={cp.street} onChange={(e) => set({ street: e.target.value })} /></div>
-            <div><Label>Número</Label><Input value={cp.number} onChange={(e) => set({ number: e.target.value })} /></div>
+            <div>
+              <Label>CEP</Label>
+              <Input value={cp.zipcode} onChange={(e) => set({ zipcode: e.target.value })} />
+            </div>
+            <div className="col-span-2">
+              <Label>Logradouro</Label>
+              <Input value={cp.street} onChange={(e) => set({ street: e.target.value })} />
+            </div>
+            <div>
+              <Label>Número</Label>
+              <Input value={cp.number} onChange={(e) => set({ number: e.target.value })} />
+            </div>
           </div>
           <div className="grid grid-cols-4 gap-3">
-            <div><Label>Bairro</Label><Input value={cp.district} onChange={(e) => set({ district: e.target.value })} /></div>
-            <div><Label>Município</Label><Input value={cp.city} onChange={(e) => set({ city: e.target.value })} /></div>
-            <div><Label>Código IBGE</Label><Input value={cp.ibge} onChange={(e) => set({ ibge: e.target.value })} /></div>
-            <div><Label>UF</Label><Input maxLength={2} value={cp.uf} onChange={(e) => set({ uf: e.target.value })} /></div>
+            <div>
+              <Label>Bairro</Label>
+              <Input value={cp.district} onChange={(e) => set({ district: e.target.value })} />
+            </div>
+            <div>
+              <Label>Município</Label>
+              <Input value={cp.city} onChange={(e) => set({ city: e.target.value })} />
+            </div>
+            <div>
+              <Label>Código IBGE</Label>
+              <Input value={cp.ibge} onChange={(e) => set({ ibge: e.target.value })} />
+            </div>
+            <div>
+              <Label>UF</Label>
+              <Input maxLength={2} value={cp.uf} onChange={(e) => set({ uf: e.target.value })} />
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>E-mail</Label><Input value={cp.email} onChange={(e) => set({ email: e.target.value })} /></div>
-            <div><Label>Telefone</Label><Input value={cp.phone} onChange={(e) => set({ phone: e.target.value })} /></div>
-            <div><Label>Valor da operação (R$)</Label><Input value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+            <div>
+              <Label>E-mail</Label>
+              <Input value={cp.email} onChange={(e) => set({ email: e.target.value })} />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input value={cp.phone} onChange={(e) => set({ phone: e.target.value })} />
+            </div>
+            <div>
+              <Label>Valor da operação (R$)</Label>
+              <Input value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Presença do comprador</Label>
               <Select value={presence} onValueChange={setPresence}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {BUYER_PRESENCE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                    <SelectItem key={o.value} value={String(o.value)}>
+                      {o.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -190,13 +274,17 @@ export function VehicleFiscalDraftDialog({
             <div className="rounded-md border border-amber-300 bg-amber-50 p-2 space-y-1">
               <p className="text-[11px] font-semibold uppercase text-amber-700">Pendências</p>
               <ul className="list-disc pl-4 text-xs text-amber-800">
-                {issues.map((i, idx) => <li key={`${i.field}-${idx}`}>{i.message}</li>)}
+                {issues.map((i, idx) => (
+                  <li key={`${i.field}-${idx}`}>{i.message}</li>
+                ))}
               </ul>
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" className="cursor-pointer" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" className="cursor-pointer" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
           <Button
             className="cursor-pointer"
             disabled={create.isPending || issues.length > 0 || !(parseMoney(amount) ?? 0)}

@@ -1,6 +1,12 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ACQUISITION_SOURCE_OPTIONS,
   OWNERSHIP_TYPE_OPTIONS,
@@ -66,12 +72,18 @@ export function VehicleOriginSection({
           <Label>Origem da aquisição</Label>
           <Select
             value={src || undefined}
-            onValueChange={(v) => onChange({ ...value, acquisition_source: v as AcquisitionSource })}
+            onValueChange={(v) =>
+              onChange({ ...value, acquisition_source: v as AcquisitionSource })
+            }
           >
-            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
             <SelectContent>
               {ACQUISITION_SOURCE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -82,10 +94,14 @@ export function VehicleOriginSection({
             value={value.ownership_type}
             onValueChange={(v) => onChange({ ...value, ownership_type: v as OwnershipType })}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {OWNERSHIP_TYPE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -100,7 +116,9 @@ export function VehicleOriginSection({
             {field("seller_cpf", "CPF")}
             {field("seller_phone", "Telefone")}
           </div>
-          <div className="grid grid-cols-4 gap-3">{ADDRESS_FIELDS.map(([k, l]) => field(k, l))}</div>
+          <div className="grid grid-cols-4 gap-3">
+            {ADDRESS_FIELDS.map(([k, l]) => field(k, l))}
+          </div>
           <div className="grid grid-cols-2 gap-3">{field("seller_email", "E-mail")}</div>
         </div>
       )}
@@ -108,7 +126,8 @@ export function VehicleOriginSection({
       {src === "company" && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Dados do fornecedor. Nesta operação o fornecedor é o emitente da NF-e — o CRM importa o documento.
+            Dados do fornecedor. Nesta operação o fornecedor é o emitente da NF-e — o CRM importa o
+            documento.
           </p>
           <div className="grid grid-cols-3 gap-3">
             {field("supplier_name", "Razão social")}
@@ -150,7 +169,9 @@ export function VehicleOriginSection({
             {field("commission", "Comissão/margem")}
             {field("consignment_date", "Data de entrada")}
           </div>
-          <div className="grid grid-cols-2 gap-3">{field("contract_ref", "Contrato/referência")}</div>
+          <div className="grid grid-cols-2 gap-3">
+            {field("contract_ref", "Contrato/referência")}
+          </div>
         </div>
       )}
     </div>
