@@ -161,14 +161,19 @@ export async function handleTriageComplete(request: Request, pathConversationId?
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const rpcAbortController = new AbortController();
     const rpcTimeout = setTimeout(() => rpcAbortController.abort(), 2_500);
-    const { data, error } = await supabaseAdmin
-      .rpc("complete_triage_and_assign", {
-        _conversation_id: conversationId,
-        _ai_summary: aiSummary ?? undefined,
-        _idempotency_key: idempotencyKey ?? undefined,
-      })
-      .abortSignal(rpcAbortController.signal)
-      .finally(() => clearTimeout(rpcTimeout));
+    let rpcResult;
+    try {
+      rpcResult = await supabaseAdmin
+        .rpc("complete_triage_and_assign", {
+          _conversation_id: conversationId,
+          _ai_summary: aiSummary ?? undefined,
+          _idempotency_key: idempotencyKey ?? undefined,
+        })
+        .abortSignal(rpcAbortController.signal);
+    } finally {
+      clearTimeout(rpcTimeout);
+    }
+    const { data, error } = rpcResult;
 
     if (error) {
       log("TRIAGE_ERROR", {
