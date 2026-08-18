@@ -18,6 +18,7 @@ import {
 } from "@/lib/vehicles";
 import { useFinancialAccess, useSaveVehicleFinancial, useVehicleFinancial } from "@/hooks/useFinancial";
 import { parseMoney } from "@/lib/financial";
+import { VehicleOriginSection, EMPTY_ORIGIN, type VehicleOriginState } from "@/components/vehicles/VehicleOriginSection";
 
 
 type FormState = {
@@ -62,6 +63,8 @@ export function VehicleFormDialog({
   const saveFinancial = useSaveVehicleFinancial(vehicle?.id);
   const [acquisitionCost, setAcquisitionCost] = useState("");
   const [acquiredAt, setAcquiredAt] = useState("");
+  // Origem/propriedade — base do motor de decisão fiscal automotivo.
+  const [origin, setOrigin] = useState<VehicleOriginState>(EMPTY_ORIGIN);
 
   useEffect(() => {
     const fin = financialQ.data?.financial;
@@ -72,6 +75,16 @@ export function VehicleFormDialog({
   useEffect(() => {
     if (!open) return;
     setForm(vehicle ? fromVehicle(vehicle) : EMPTY);
+    const v = vehicle as unknown as Record<string, unknown> | null | undefined;
+    setOrigin(
+      v
+        ? {
+            acquisition_source: (v['acquisition_source'] as VehicleOriginState["acquisition_source"]) ?? "",
+            ownership_type: (v['ownership_type'] as VehicleOriginState["ownership_type"]) ?? "owned",
+            details: (v['acquisition_details'] as Record<string, string>) ?? {},
+          }
+        : EMPTY_ORIGIN,
+    );
     setCreatedId(vehicle?.id ?? null);
     setPending([]);
     setUploadProgress(null);
@@ -106,6 +119,9 @@ export function VehicleFormDialog({
       description: form.description.trim() || null,
       status: form.status,
       featured: form.featured,
+      acquisition_source: origin.acquisition_source || null,
+      ownership_type: origin.ownership_type,
+      acquisition_details: origin.details,
     };
 
     let savedId = createdId;
@@ -213,6 +229,7 @@ export function VehicleFormDialog({
               <Label className="cursor-pointer">Destaque</Label>
             </div>
           </div>
+          <VehicleOriginSection value={origin} onChange={setOrigin} />
           {financialBeta && (
             <div className="rounded-md border border-border p-3 space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
