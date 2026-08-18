@@ -1471,7 +1471,7 @@ function ConversationsPage() {
             )}
 
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-chat">
-              {msgsQ.data?.map((m) => {
+              {visibleMsgs.map((m) => {
                 const status = (m as { delivery_status?: string }).delivery_status;
                 const err = (m as { error_message?: string | null }).error_message;
                 const mediaUrl = (m as { media_url?: string | null }).media_url;
