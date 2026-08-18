@@ -288,11 +288,21 @@ function ConversationsPage() {
         // Retenção server-side (pg_cron purge_old_messages_daily) já cuida da
         // janela de 45 dias — não aplicamos filtro extra aqui pra não esconder
         // convs cujo histórico está entre 30 e 45 dias.
-        const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }).order("id", { ascending: true }).limit(300).abortSignal(timed.signal);
+        // Busca as mensagens mais recentes, não as 300 mais antigas. A consulta
+        // anterior usava ordem crescente + LIMIT, então conversas longas paravam
+        // de exibir qualquer mensagem nova enviada fora do CRM.
+        const { data, error } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(300)
+          .abortSignal(timed.signal);
 
         console.info(JSON.stringify({ scope: "frontend_messages", event: "loaded", conversation_id: conversationId, rows: data?.length ?? 0, duration_ms: Math.round(performance.now() - startedAt) }));
         if (error) throw error;
-      return data ?? [];
+        return (data ?? []).reverse();
       } finally {
         timed.cleanup();
       }
