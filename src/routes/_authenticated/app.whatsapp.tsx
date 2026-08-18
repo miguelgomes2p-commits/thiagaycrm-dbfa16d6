@@ -204,7 +204,7 @@ function WhatsappPage() {
   // Webhook DEVE apontar sempre para URL pública estável de produção.
   // Preview URLs (id-preview--*, lovableproject.com, localhost) mudam a cada
   // commit e fazem os webhooks pararem de chegar após redeploys.
-  const PRODUCTION_ORIGIN = "https://thiagaycrm.lovable.app";
+  const PRODUCTION_ORIGIN = "https://crm.lupusassessoria.com";
   const origin = PRODUCTION_ORIGIN;
 
 

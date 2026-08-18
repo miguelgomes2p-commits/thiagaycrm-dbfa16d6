@@ -239,7 +239,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
         .eq("id", data.id);
 
       if (state === "open") {
-        const webhookOrigin = "https://thiagaycrm.lovable.app";
+        const webhookOrigin = "https://crm.lupusassessoria.com";
         const webhookUrl = `${webhookOrigin}/api/public/webhooks/evolution/${data.id}`;
         try {
           const { evolutionFetchInstance } = await import("@/lib/evolution.server");
@@ -474,7 +474,7 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
           const state = (await evolutionConnectionState(num.provider_base_url!, num.provider_api_key!, num.instance_name!)).instance?.state ?? "close";
           if (state === "open") {
             await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: "connected" }).eq("id", num.id);
-            const webhookUrl = `https://thiagaycrm.lovable.app/api/public/webhooks/evolution/${num.id}`;
+            const webhookUrl = `https://crm.lupusassessoria.com/api/public/webhooks/evolution/${num.id}`;
             await evolutionSetWebhook(num.provider_base_url!, num.provider_api_key!, num.instance_name!, webhookUrl).catch((webhookError) =>
               logEvolutionError({
                 workspaceId: data.workspaceId,
