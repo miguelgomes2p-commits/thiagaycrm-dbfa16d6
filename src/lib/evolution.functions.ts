@@ -4,6 +4,15 @@ import { z } from "zod";
 import { logEvolutionError } from "@/lib/evolution-logging.server";
 
 /**
+ * Origem fixa dos webhooks da Evolution.
+ * NÃO usar o domínio customizado (crm.lupusassessoria.com): o servidor da
+ * Evolution não consegue entregar POSTs nele, e thiagaycrm.lovable.app
+ * responde 307 para o domínio customizado (POST perde o corpo no redirect).
+ * Esta URL estável do projeto responde 200 direto.
+ */
+const WEBHOOK_ORIGIN = "https://project--3f03414f-c100-4861-aba8-30bf563c6c65.lovable.app";
+
+/**
  * Cria e conecta uma instância na Evolution API, salvando o número aqui e
  * retornando o QR Code para escaneamento com o app oficial do WhatsApp.
  */
@@ -76,7 +85,7 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const webhookUrl = `${data.webhookOrigin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${inserted.id}`;
+    const webhookUrl = `${WEBHOOK_ORIGIN}/api/public/webhooks/evolution/${inserted.id}`;
 
     const { evolutionCreateInstance, evolutionConnect, evolutionSetWebhook } = await import("@/lib/evolution.server");
 
@@ -239,7 +248,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
         .eq("id", data.id);
 
       if (state === "open") {
-        const webhookOrigin = "https://crm.lupusassessoria.com";
+        const webhookOrigin = WEBHOOK_ORIGIN;
         const webhookUrl = `${webhookOrigin}/api/public/webhooks/evolution/${data.id}`;
         try {
           const { evolutionFetchInstance } = await import("@/lib/evolution.server");
@@ -334,7 +343,7 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
     if (num.provider !== "evolution" || !num.provider_base_url || !num.provider_api_key || !num.instance_name) {
       throw new Error("Este número não é uma instância Evolution");
     }
-    const webhookUrl = `${data.webhookOrigin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${data.id}`;
+    const webhookUrl = `${WEBHOOK_ORIGIN}/api/public/webhooks/evolution/${data.id}`;
     try {
       const { evolutionSetWebhook } = await import("@/lib/evolution.server");
       await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl);
