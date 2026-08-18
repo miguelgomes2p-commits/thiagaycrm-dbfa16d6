@@ -70,6 +70,10 @@ export async function handleTriageComplete(request: Request, pathConversationId?
   const startedAt = Date.now();
   let conversationIdForLog = pathConversationId ?? null;
 
+  const checkpoint = (event: string, data: Record<string, unknown> = {}) => {
+    log(event, { conversation_id: conversationIdForLog, elapsed_ms: Date.now() - startedAt, ...data });
+  };
+
   const respond = (payload: Record<string, unknown>, status = 200) => {
     log("TRIAGE_RESPONSE_RETURNED", {
       conversation_id: conversationIdForLog,
@@ -80,7 +84,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
   };
 
   try {
-    log("TRIAGE_REQUEST_RECEIVED", { conversation_id: conversationIdForLog });
+    checkpoint("01_REQUEST");
 
     const secret = process.env["N8N_INTERNAL_API_SECRET"]?.trim();
     const auth = (request.headers.get("authorization") ?? "").trim();
@@ -112,6 +116,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
         !secret ? 500 : 401,
       );
     }
+    checkpoint("02_AUTH");
 
     let body: TriageBody = {};
     try {
@@ -121,6 +126,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
         conversation_id: conversationIdForLog,
         body_present: raw.length > 0,
       });
+      checkpoint("03_BODY");
     } catch {
       return respond({ success: false, error: "invalid_json" }, 400);
     }
@@ -150,14 +156,24 @@ export async function handleTriageComplete(request: Request, pathConversationId?
       idempotency_key: idempotencyKey,
     });
 
-    log("TRIAGE_ROUND_ROBIN_STARTED", { conversation_id: conversationId });
+    checkpoint("07_RR_START");
     const rpcStartedAt = Date.now();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.rpc("complete_triage_and_assign", {
-      _conversation_id: conversationId,
-      _ai_summary: aiSummary ?? undefined,
-      _idempotency_key: idempotencyKey ?? undefined,
-    });
+    const rpcAbortController = new AbortController();
+    const rpcTimeout = setTimeout(() => rpcAbortController.abort(), 2_500);
+    let rpcResult;
+    try {
+      rpcResult = await supabaseAdmin
+        .rpc("complete_triage_and_assign", {
+          _conversation_id: conversationId,
+          _ai_summary: aiSummary ?? undefined,
+          _idempotency_key: idempotencyKey ?? undefined,
+        })
+        .abortSignal(rpcAbortController.signal);
+    } finally {
+      clearTimeout(rpcTimeout);
+    }
+    const { data, error } = rpcResult;
 
     if (error) {
       log("TRIAGE_ERROR", {
@@ -174,6 +190,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
         500,
       );
     }
+    checkpoint("08_RR_DONE", { rpc_duration_ms: Date.now() - rpcStartedAt });
 
     const result = (data ?? {}) as {
       success?: boolean;
@@ -187,6 +204,8 @@ export async function handleTriageComplete(request: Request, pathConversationId?
       log("CONVERSATION_NOT_FOUND", { conversation_id: conversationId });
       return respond({ success: false, error: "conversation_not_found" }, 404);
     }
+
+    checkpoint("09_PERSIST", { status: result.status ?? null });
 
     log("TRIAGE_CONVERSATION_FOUND", { conversation_id: conversationId });
     log("TRIAGE_WORKSPACE_FOUND", {
@@ -224,6 +243,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
     if (result.assigned_agent) payload["assigned_agent"] = result.assigned_agent;
 
     const httpStatus = result.status === "waiting_for_agent" ? 202 : 200;
+    checkpoint("10_RESPONSE", { http_status: httpStatus });
     return respond(payload, httpStatus);
   } catch (error) {
     const caught = error as { name?: string; message?: string; code?: string; stack?: string };
