@@ -85,7 +85,7 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const webhookUrl = `${data.webhookOrigin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${inserted.id}`;
+    const webhookUrl = `${WEBHOOK_ORIGIN}/api/public/webhooks/evolution/${inserted.id}`;
 
     const { evolutionCreateInstance, evolutionConnect, evolutionSetWebhook } = await import("@/lib/evolution.server");
 
@@ -248,7 +248,7 @@ export const checkEvolutionStatus = createServerFn({ method: "POST" })
         .eq("id", data.id);
 
       if (state === "open") {
-        const webhookOrigin = "https://crm.lupusassessoria.com";
+        const webhookOrigin = WEBHOOK_ORIGIN;
         const webhookUrl = `${webhookOrigin}/api/public/webhooks/evolution/${data.id}`;
         try {
           const { evolutionFetchInstance } = await import("@/lib/evolution.server");
@@ -343,7 +343,7 @@ export const syncEvolutionWebhook = createServerFn({ method: "POST" })
     if (num.provider !== "evolution" || !num.provider_base_url || !num.provider_api_key || !num.instance_name) {
       throw new Error("Este número não é uma instância Evolution");
     }
-    const webhookUrl = `${data.webhookOrigin.replace(/\/+$/, "")}/api/public/webhooks/evolution/${data.id}`;
+    const webhookUrl = `${WEBHOOK_ORIGIN}/api/public/webhooks/evolution/${data.id}`;
     try {
       const { evolutionSetWebhook } = await import("@/lib/evolution.server");
       await evolutionSetWebhook(num.provider_base_url, num.provider_api_key, num.instance_name, webhookUrl);
