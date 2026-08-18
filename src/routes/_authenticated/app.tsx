@@ -119,30 +119,33 @@ function AppShell() {
       return <div className="text-[11px] text-muted-foreground truncate">{current?.name ?? "—"}</div>;
     }
     return (
-      <div className="relative group/ws">
-        <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer max-w-full">
-          <span className="truncate">{current?.name ?? "—"}</span>
-          <ChevronDown className="h-3 w-3 shrink-0" />
-        </button>
-        <div className="absolute left-0 top-full mt-1 w-60 card-elevated p-1 z-50 opacity-0 invisible group-hover/ws:opacity-100 group-hover/ws:visible transition-all max-h-72 overflow-y-auto">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer max-w-full">
+            <span className="truncate">{current?.name ?? "—"}</span>
+            <ChevronDown className="h-3 w-3 shrink-0" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-60 max-h-72 overflow-y-auto z-[60]">
           {workspaces.map((w) => (
-            <button
+            <DropdownMenuItem
               key={w.id}
-              onClick={() => {
+              onSelect={() => {
                 setActiveWorkspaceId(w.id);
                 qc.invalidateQueries();
                 onPick?.();
               }}
-              className="w-full flex items-center gap-2 px-2 py-2 text-xs rounded hover:bg-accent/10 text-left cursor-pointer"
+              className="flex items-center gap-2 text-xs cursor-pointer"
             >
               <Check className={cn("h-3.5 w-3.5 shrink-0", w.id === current?.id ? "text-primary" : "opacity-0")} />
               <span className="truncate flex-1">{w.name}</span>
               <span className="text-[10px] uppercase text-muted-foreground">{w.role}</span>
-            </button>
+            </DropdownMenuItem>
           ))}
-        </div>
-      </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
+
   };
 
   const NavList = ({ dense = false, onNavigate }: { dense?: boolean; onNavigate?: () => void }) => (
