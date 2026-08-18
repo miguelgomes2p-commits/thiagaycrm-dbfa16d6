@@ -80,11 +80,14 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
-      POST: async () => {
+      POST: async ({ request }) => {
         const requestId = crypto.randomUUID();
         const startedAt = Date.now();
+        const requestedKind = new URL(request.url).searchParams.get("kind");
+        const drainRealtime = requestedKind !== "history";
+        const drainHistory = requestedKind !== "realtime";
         const supabaseAdmin = await getAdmin();
-        logDrain("start", { request_id: requestId });
+        logDrain("start", { request_id: requestId, requested_kind: requestedKind ?? "all" });
 
         // Reabre eventos travados há mais tempo do que LOCK_TIMEOUT_MS.
         const staleCutoff = new Date(Date.now() - LOCK_TIMEOUT_MS).toISOString();
@@ -203,21 +206,25 @@ export const Route = createFileRoute("/api/public/hooks/drain-webhook-queue")({
         };
 
         // FASE A: drena tempo-real com concorrência alta (nunca compete com histórico).
-        for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
-          const batch = await claim("realtime", BATCH_SIZE);
-          if (batch.length === 0) break;
-          await processBatch(batch, REALTIME_CONCURRENCY);
-          totalProcessed += batch.length;
-          if (batch.length < BATCH_SIZE) break;
+        if (drainRealtime) {
+          for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
+            const batch = await claim("realtime", BATCH_SIZE);
+            if (batch.length === 0) break;
+            await processBatch(batch, REALTIME_CONCURRENCY);
+            totalProcessed += batch.length;
+            if (batch.length < BATCH_SIZE) break;
+          }
         }
 
         // FASE B: drena histórico com concorrência baixa (não trava tempo real).
-        for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
-          const batch = await claim("history", Math.max(20, Math.floor(BATCH_SIZE / 2)));
-          if (batch.length === 0) break;
-          await processBatch(batch, HISTORY_CONCURRENCY);
-          totalProcessed += batch.length;
-          if (batch.length < Math.max(20, Math.floor(BATCH_SIZE / 2))) break;
+        if (drainHistory) {
+          for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
+            const batch = await claim("history", Math.max(20, Math.floor(BATCH_SIZE / 2)));
+            if (batch.length === 0) break;
+            await processBatch(batch, HISTORY_CONCURRENCY);
+            totalProcessed += batch.length;
+            if (batch.length < Math.max(20, Math.floor(BATCH_SIZE / 2))) break;
+          }
         }
 
         // FASE C: entrega ao n8n o que acabou de ser enfileirado (baixa latência).
