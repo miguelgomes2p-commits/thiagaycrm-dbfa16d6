@@ -106,7 +106,6 @@ function ConversationsPage() {
     if (deepLinkConversationId) setActiveId(deepLinkConversationId);
   }, [deepLinkConversationId]);
   const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [vehicleSendOpen, setVehicleSendOpen] = useState(false);
@@ -872,7 +871,7 @@ function ConversationsPage() {
   }
 
   async function startAudioRecording() {
-    if (!active || sending || uploading || isRecording) return;
+    if (!active || uploading || isRecording) return;
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       toast.error("Gravação de áudio não é suportada neste navegador.");
       return;
@@ -1621,7 +1620,7 @@ function ConversationsPage() {
                       type="button"
                       variant="outline"
                       size="icon"
-                      disabled={sending || uploading || !active}
+                      disabled={uploading || !active}
                       onClick={() => setCameraOpen(true)}
                       title="Tirar foto"
                     >
@@ -1632,7 +1631,7 @@ function ConversationsPage() {
                     type="button"
                     variant="outline"
                     size="icon"
-                    disabled={sending || uploading}
+                    disabled={uploading}
                     onClick={() => fileInputRef.current?.click()}
                     title="Anexar arquivo"
                   >
@@ -1642,7 +1641,7 @@ function ConversationsPage() {
                     type="button"
                     variant="outline"
                     size="icon"
-                    disabled={sending || uploading || !active}
+                    disabled={uploading || !active}
                     onClick={startAudioRecording}
                     title="Gravar áudio"
                   >
@@ -1652,7 +1651,7 @@ function ConversationsPage() {
                     type="button"
                     variant="outline"
                     size="icon"
-                    disabled={sending || uploading || sendingLocation || !active}
+                    disabled={uploading || sendingLocation || !active}
                     onClick={() => setLocationOpen(true)}
                     title="Enviar localização"
                   >
@@ -1662,7 +1661,7 @@ function ConversationsPage() {
                     type="button"
                     variant="outline"
                     size="icon"
-                    disabled={sending || uploading || !active}
+                    disabled={uploading || !active}
                     onClick={() => setVehicleSendOpen(true)}
                     title="Enviar veículo"
                   >
@@ -1674,9 +1673,9 @@ function ConversationsPage() {
                     value={text} onChange={(e) => setText(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                     placeholder="Digite uma mensagem..."
-                    disabled={sending || uploading}
+                    disabled={uploading}
                   />
-                  <Button onClick={sendMessage} disabled={sending || uploading} className="gradient-brand text-primary-foreground border-0">
+                  <Button onClick={sendMessage} disabled={uploading} className="gradient-brand text-primary-foreground border-0">
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
