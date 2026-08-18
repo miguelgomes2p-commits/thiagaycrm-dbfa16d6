@@ -14,6 +14,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { listFiscalDocuments } from "@/lib/fiscal.functions";
 import { FISCAL_STATUS_LABEL } from "@/lib/fiscal/types";
 import { IssueNfeDialog } from "@/components/fiscal/IssueNfeDialog";
+import { VehicleFiscalPanel } from "@/components/fiscal/VehicleFiscalPanel";
 import { VehicleFinancialSummary } from "@/components/financial/VehicleFinancialSummary";
 import { useFinancialAccess } from "@/hooks/useFinancial";
 import {
@@ -193,28 +194,7 @@ export function VehicleDetailDialog({
 
             {financialBeta && <VehicleFinancialSummary vehicle={vehicle} enabled={financialBeta} />}
 
-            <div className="pt-2 border-t border-border space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Nota fiscal</p>
-              {vehicle.status === "sold" ? (
-                nfeQ.data?.[0] ? (
-                  <p className="text-xs">
-                    NF-e {nfeQ.data[0].number ?? ""}{" "}
-                    <Badge variant="secondary" className="text-[10px]">
-                      {FISCAL_STATUS_LABEL[nfeQ.data[0].status as keyof typeof FISCAL_STATUS_LABEL] ?? nfeQ.data[0].status}
-                    </Badge>
-                  </p>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-amber-600">⚠ Pendente</span>
-                    <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => setNfeOpen(true)}>
-                      <FileText className="h-4 w-4 mr-1.5" /> Emitir NF-e
-                    </Button>
-                  </div>
-                )
-              ) : (
-                <p className="text-xs text-muted-foreground">Disponível após marcar o veículo como vendido.</p>
-              )}
-            </div>
+            <VehicleFiscalPanel vehicle={vehicle} />
 
             <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => onEdit(vehicle)}>
               <Pencil className="h-4 w-4 mr-1.5" /> Editar veículo
