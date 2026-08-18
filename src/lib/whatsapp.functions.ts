@@ -336,6 +336,9 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
       mimeType: z.string().min(3).max(120),
       base64: z.string().min(4).max(25_000_000),
       caption: z.string().max(1024).optional().nullable(),
+      // Em envios em lote (ex.: ficha de veículo com várias fotos) a assinatura
+      // do atendente vai apenas na primeira mídia, evitando texto repetido.
+      withSignature: z.boolean().optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -380,7 +383,11 @@ export const sendWhatsappAttachment = createServerFn({ method: "POST" })
     // Assinatura do atendente na legenda enviada ao cliente.
     const { resolveSenderName } = await import("@/lib/sender-name.server");
     const senderName = await resolveSenderName(supabaseAdmin, context.userId);
-    const outgoingCaption = `*${senderName} - Atendimento*${data.caption ? `\n${data.caption}` : ""}`;
+    const withSignature = data.withSignature !== false;
+    const signature = `*${senderName} - Atendimento*`;
+    const outgoingCaption = withSignature
+      ? `${signature}${data.caption ? `\n${data.caption}` : ""}`
+      : data.caption || undefined;
 
 
     const cleanBase64 = data.base64.includes(",") ? data.base64.split(",").pop()! : data.base64;
