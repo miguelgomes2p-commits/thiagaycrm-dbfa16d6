@@ -147,59 +147,6 @@ export async function handleTriageComplete(request: Request, pathConversationId?
       return respond({ success: false, error: "unsupported_event" }, 400);
     }
 
-    // Temporary, bearer-protected diagnostic stages. Removed after the controlled production test.
-    const diagnosticStage = request.headers.get("x-triage-diagnostic-stage");
-    if (diagnosticStage === "route") {
-      checkpoint("10_RESPONSE", { diagnostic_stage: diagnosticStage });
-      return respond({ success: true, status: "diagnostic_ok", conversation_id: conversationId });
-    }
-
-    if (diagnosticStage) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: conversation, error: conversationError } = await supabaseAdmin
-        .from("conversations")
-        .select("id, workspace_id")
-        .eq("id", conversationId)
-        .maybeSingle();
-      if (conversationError) throw conversationError;
-      if (!conversation) return respond({ success: false, error: "conversation_not_found" }, 404);
-      checkpoint("04_CONVERSATION");
-      if (diagnosticStage === "conversation") {
-        checkpoint("10_RESPONSE", { diagnostic_stage: diagnosticStage });
-        return respond({ success: true, status: "conversation_found", conversation_id: conversationId });
-      }
-
-      const { data: workspace, error: workspaceError } = await supabaseAdmin
-        .from("workspaces")
-        .select("id, workspace_mode")
-        .eq("id", conversation.workspace_id)
-        .maybeSingle();
-      if (workspaceError) throw workspaceError;
-      if (!workspace) return respond({ success: false, error: "workspace_not_found" }, 404);
-      checkpoint("05_WORKSPACE", { workspace_id: workspace.id });
-      if (diagnosticStage === "workspace") {
-        checkpoint("10_RESPONSE", { diagnostic_stage: diagnosticStage });
-        return respond({ success: true, status: "workspace_found", conversation_id: conversationId });
-      }
-
-      const { count, error: agentsError } = await supabaseAdmin
-        .from("workspace_members")
-        .select("user_id", { count: "exact", head: true })
-        .eq("workspace_id", workspace.id)
-        .eq("is_active", true)
-        .eq("accepts_new_leads", true)
-        .not("role", "in", "(owner,admin)");
-      if (agentsError) throw agentsError;
-      checkpoint("06_AGENTS", { workspace_id: workspace.id, eligible_agents: count ?? 0 });
-      checkpoint("10_RESPONSE", { diagnostic_stage: diagnosticStage });
-      return respond({
-        success: true,
-        status: "agents_found",
-        conversation_id: conversationId,
-        eligible_agents: count ?? 0,
-      });
-    }
-
     const idempotencyKey = request.headers.get("idempotency-key");
     const aiSummary = typeof body.ai_summary === "string" ? body.ai_summary.slice(0, 4000) : null;
 
@@ -212,11 +159,16 @@ export async function handleTriageComplete(request: Request, pathConversationId?
     checkpoint("07_RR_START");
     const rpcStartedAt = Date.now();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.rpc("complete_triage_and_assign", {
-      _conversation_id: conversationId,
-      _ai_summary: aiSummary ?? undefined,
-      _idempotency_key: idempotencyKey ?? undefined,
-    });
+    const rpcAbortController = new AbortController();
+    const rpcTimeout = setTimeout(() => rpcAbortController.abort(), 2_500);
+    const { data, error } = await supabaseAdmin
+      .rpc("complete_triage_and_assign", {
+        _conversation_id: conversationId,
+        _ai_summary: aiSummary ?? undefined,
+        _idempotency_key: idempotencyKey ?? undefined,
+      })
+      .abortSignal(rpcAbortController.signal)
+      .finally(() => clearTimeout(rpcTimeout));
 
     if (error) {
       log("TRIAGE_ERROR", {
