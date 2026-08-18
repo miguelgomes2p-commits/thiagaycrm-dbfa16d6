@@ -135,7 +135,22 @@ export const Route = createFileRoute("/api/public/internal/conversations/$conver
         if (result.assigned_agent) payload["assigned_agent"] = result.assigned_agent;
 
         const httpStatus = result.status === "waiting_for_agent" ? 202 : 200;
+        log("TRIAGE_COMPLETE_RESPONSE_SENT", { conversation_id: conversationId, http_status: httpStatus });
         return Response.json(payload, { status: httpStatus, headers: corsHeaders });
+       } catch (err) {
+        const e = err as { name?: string; message?: string; code?: string; stack?: string };
+        log("TRIAGE_COMPLETE_ERROR", {
+          conversation_id: params.conversationId,
+          error_name: e?.name ?? "Error",
+          error_code: e?.code ?? null,
+          error_message: e?.message ?? String(err),
+          stack: e?.stack ?? null,
+        });
+        return Response.json(
+          { success: false, error: "internal_error", code: e?.code ?? "unhandled_exception" },
+          { status: 500, headers: corsHeaders },
+        );
+       }
       },
     },
   },
