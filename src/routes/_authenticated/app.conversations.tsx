@@ -134,6 +134,11 @@ function ConversationsPage() {
   const repairingAudioRef = useRef(new Set<string>());
   const activeIdRef = useRef<string | null>(null);
   const sendChainRef = useRef<Map<string, Promise<void>>>(new Map());
+  // Fila local de mensagens em envio: mantém a ordem exata em que o usuário
+  // enviou, independente de refetch/realtime (Map preserva ordem de inserção).
+  const pendingRef = useRef<Map<string, Record<string, unknown>>>(new Map());
+  const [pendingTick, setPendingTick] = useState(0);
+
 
   const [locationOpen, setLocationOpen] = useState(false);
   const [sendingLocation, setSendingLocation] = useState(false);
@@ -667,7 +672,7 @@ function ConversationsPage() {
   }, [leadContextQ.data?.lead?.id, active?.id, active?.lead_id]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [msgsQ.data]);
+  }, [msgsQ.data, pendingTick]);
 
   useEffect(() => () => {
     if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
@@ -717,36 +722,37 @@ function ConversationsPage() {
     const wsId = ws.id;
     setText("");
 
-    // Optimistic message (input stays free; delivery happens in background)
     const tempId = `temp-${crypto.randomUUID()}`;
     const nowIso = new Date().toISOString();
     const msgsKey = ["messages", activeIdLocal];
     const convsKey = ["conversations", wsId, pageSize];
 
-    const patchOptimistic = (patch: Record<string, unknown> | null) => {
-      qc.setQueryData<Record<string, unknown>[]>(msgsKey, (cur) => {
-        const list = cur ?? [];
-        if (patch === null) return list.filter((m) => (m as { id: string }).id !== tempId);
-        return list.map((m) => ((m as { id: string }).id === tempId ? { ...m, ...patch } : m));
-      });
+    // Entra imediatamente na fila local (sempre no fim, ordem preservada).
+    pendingRef.current.set(tempId, {
+      id: tempId,
+      workspace_id: wsId,
+      conversation_id: activeIdLocal,
+      direction: "outbound",
+      sender_type: "user",
+      sender_user_id: null,
+      content,
+      created_at: nowIso,
+      delivery_status: "sending",
+      _optimistic: true,
+    });
+    setPendingTick((t) => t + 1);
+
+    const patchPending = (patch: Record<string, unknown>) => {
+      const cur = pendingRef.current.get(tempId);
+      if (!cur) return;
+      pendingRef.current.set(tempId, { ...cur, ...patch });
+      setPendingTick((t) => t + 1);
     };
 
     void (async () => {
       const { data: currentSession } = await supabase.auth.getSession();
       const currentUserId = currentSession.session?.user.id ?? null;
-      const optimistic = {
-        id: tempId,
-        workspace_id: wsId,
-        conversation_id: activeIdLocal,
-        direction: "outbound",
-        sender_type: "user",
-        sender_user_id: currentUserId,
-        content,
-        created_at: nowIso,
-        delivery_status: "sending",
-        _optimistic: true,
-      } as unknown as Record<string, unknown>;
-      qc.setQueryData<Record<string, unknown>[]>(msgsKey, (cur) => [...(cur ?? []), optimistic]);
+      patchPending({ sender_user_id: currentUserId });
 
       const prevConvs = qc.getQueryData<Record<string, unknown>[]>(convsKey);
       if (prevConvs) {
@@ -763,8 +769,8 @@ function ConversationsPage() {
         qc.setQueryData(convsKey, updated);
       }
 
-      // Serialize actual delivery per conversation to preserve order,
-      // without ever blocking the composer.
+      // Serializa a entrega por conversa para preservar a ordem,
+      // sem nunca bloquear o composer.
       const chainKey = activeIdLocal;
       const prevChain = sendChainRef.current.get(chainKey) ?? Promise.resolve();
       const chain = prevChain.then(async () => {
@@ -780,16 +786,45 @@ function ConversationsPage() {
               last_message_preview: content, last_message_at: nowIso,
             }).eq("id", activeIdLocal);
           }
-          qc.invalidateQueries({ queryKey: msgsKey });
+          await qc.invalidateQueries({ queryKey: msgsKey });
           qc.invalidateQueries({ queryKey: convsKey });
+          pendingRef.current.delete(tempId);
+          setPendingTick((t) => t + 1);
         } catch (e) {
-          patchOptimistic({ delivery_status: "failed", error_message: e instanceof Error ? e.message : "Falha ao enviar" });
+          patchPending({ delivery_status: "failed", error_message: e instanceof Error ? e.message : "Falha ao enviar" });
           toast.error(e instanceof Error ? e.message : "Falha ao enviar");
         }
       });
       sendChainRef.current.set(chainKey, chain);
     })();
   }
+
+  /**
+   * Lista renderizada: mensagens persistidas (ordem do servidor) seguidas das
+   * pendentes na ordem exata de envio. Nada é reordenado depois de exibido.
+   */
+  const visibleMsgs = useMemo(() => {
+    type MsgRow = NonNullable<typeof msgsQ.data>[number];
+    const base = (msgsQ.data ?? []) as MsgRow[];
+    void pendingTick;
+    const pend = [...pendingRef.current.values()].filter(
+      (m) => (m as { conversation_id?: string }).conversation_id === activeId,
+    ) as unknown as MsgRow[];
+    if (!pend.length) return base;
+    const persisted = new Set(
+      base
+        .filter((m) => (m as { direction?: string }).direction === "outbound")
+        .map((m) => String((m as { content?: string | null }).content ?? "")),
+    );
+    const filtered = pend.filter(
+      (m) =>
+        (m as { delivery_status?: string }).delivery_status === "failed" ||
+        !persisted.has(String((m as { content?: string | null }).content ?? "")),
+    );
+    return [...base, ...filtered];
+  }, [msgsQ.data, activeId, pendingTick]);
+
+
 
 
   function fileToBase64(file: File) {
@@ -1438,7 +1473,7 @@ function ConversationsPage() {
             )}
 
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-chat">
-              {msgsQ.data?.map((m) => {
+              {visibleMsgs.map((m) => {
                 const status = (m as { delivery_status?: string }).delivery_status;
                 const err = (m as { error_message?: string | null }).error_message;
                 const mediaUrl = (m as { media_url?: string | null }).media_url;
