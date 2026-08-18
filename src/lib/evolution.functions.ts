@@ -483,7 +483,10 @@ export const syncWorkspaceEvolutionMessages = createServerFn({ method: "POST" })
           const state = (await evolutionConnectionState(num.provider_base_url!, num.provider_api_key!, num.instance_name!)).instance?.state ?? "close";
           if (state === "open") {
             await supabaseAdmin.from("whatsapp_numbers").update({ connection_status: "connected" }).eq("id", num.id);
-            const webhookUrl = `https://crm.lupusassessoria.com/api/public/webhooks/evolution/${num.id}`;
+            // Nunca reapontar para o domínio customizado: ele redireciona POSTs e
+            // faz a Evolution perder o corpo/evento. O auto-sync estava desfazendo
+            // a correção aplicada pelo botão "Sincronizar webhook".
+            const webhookUrl = `${WEBHOOK_ORIGIN}/api/public/webhooks/evolution/${num.id}`;
             await evolutionSetWebhook(num.provider_base_url!, num.provider_api_key!, num.instance_name!, webhookUrl).catch((webhookError) =>
               logEvolutionError({
                 workspaceId: data.workspaceId,
