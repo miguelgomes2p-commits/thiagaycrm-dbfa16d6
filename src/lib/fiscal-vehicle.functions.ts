@@ -370,9 +370,9 @@ export const issueVehicleFiscalDocument = createServerFn({ method: "POST" })
       cfg: cfg!,
       profile: ctx.profile!,
       vehicle: vehicle!,
-      counterparty,
+      counterparty: counterparty as any,
       amount: Number(doc.total_amount),
-      direction: doc.direction,
+      direction,
       operationKey: ctx.operationKey as FiscalOperationKey,
       ...(counterparty.buyer_presence != null ? { buyerPresence: counterparty.buyer_presence } : {}),
     });
@@ -407,11 +407,11 @@ export const issueVehicleFiscalDocument = createServerFn({ method: "POST" })
     if (updated?.status === "authorized") {
       await auto.emitVehicleFiscalEvent(supabaseAdmin, {
         workspaceId: data.workspaceId,
-        vehicleId: doc.vehicle_id,
+        vehicleId,
         documentId: doc.id,
         actorUserId: context.userId,
         eventType:
-          doc.direction === "entry"
+          direction === "entry"
             ? "vehicle.fiscal_entry_authorized"
             : "vehicle.sale_fiscal_authorized",
         payload: { number: updated.number ?? null, access_key: updated.access_key ?? null },
