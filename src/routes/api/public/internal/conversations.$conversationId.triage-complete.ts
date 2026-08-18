@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { handleTriageComplete, TRIAGE_CORS_HEADERS } from "@/lib/triage-complete.server";
+import { handleTriageComplete, TRIAGE_CORS_HEADERS } from "@/lib/triage-complete";
 
 export const Route = createFileRoute("/api/public/internal/conversations/$conversationId/triage-complete")({
   server: {
