@@ -4,6 +4,15 @@ import { z } from "zod";
 import { logEvolutionError } from "@/lib/evolution-logging.server";
 
 /**
+ * Origem fixa dos webhooks da Evolution.
+ * NÃO usar o domínio customizado (crm.lupusassessoria.com): o servidor da
+ * Evolution não consegue entregar POSTs nele, e thiagaycrm.lovable.app
+ * responde 307 para o domínio customizado (POST perde o corpo no redirect).
+ * Esta URL estável do projeto responde 200 direto.
+ */
+const WEBHOOK_ORIGIN = "https://project--3f03414f-c100-4861-aba8-30bf563c6c65.lovable.app";
+
+/**
  * Cria e conecta uma instância na Evolution API, salvando o número aqui e
  * retornando o QR Code para escaneamento com o app oficial do WhatsApp.
  */
