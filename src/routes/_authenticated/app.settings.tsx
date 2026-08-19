@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { listWorkspaceMembers, inviteMemberByEmail, listWorkspaceInvitations, updateMemberRole, removeMember, updateMemberQueueSettings } from "@/lib/workspace.functions";
 import { Switch } from "@/components/ui/switch";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
+
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
   component: SettingsPage,
