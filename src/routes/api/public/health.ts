@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// Audited source revision. The runtime environment may override this when the
-// deployment provider exposes an exact commit SHA.
-const AUDITED_SOURCE_SHA = "5a79bd1352ab62bf10ae10fda8529b3c659d2693";
+declare const __LUPUS_BUILD_SHA__: string;
 
 // Minimal health endpoint. The CRM runs on Cloudflare Workers (serverless) —
 // there is no persistent process memory to report; each request is isolated.
@@ -12,11 +10,7 @@ export const Route = createFileRoute("/api/public/health")({
     handlers: {
       GET: async () => {
         const started = Date.now();
-        const build =
-          process.env["GITHUB_SHA"] ??
-          process.env["COMMIT_SHA"] ??
-          process.env["CF_PAGES_COMMIT_SHA"] ??
-          AUDITED_SOURCE_SHA;
+        const build = __LUPUS_BUILD_SHA__;
         let dbOk = false;
         let dbLatencyMs: number | null = null;
         let dbError: string | null = null;
