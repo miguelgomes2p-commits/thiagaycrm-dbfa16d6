@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+declare const __LUPUS_BUILD_SHA__: string;
+
 // Minimal health endpoint. The CRM runs on Cloudflare Workers (serverless) —
 // there is no persistent process memory to report; each request is isolated.
 // We surface DB reachability + latency, which is what actually matters here.
@@ -8,6 +10,7 @@ export const Route = createFileRoute("/api/public/health")({
     handlers: {
       GET: async () => {
         const started = Date.now();
+        const build = __LUPUS_BUILD_SHA__;
         let dbOk = false;
         let dbLatencyMs: number | null = null;
         let dbError: string | null = null;
@@ -21,13 +24,22 @@ export const Route = createFileRoute("/api/public/health")({
         } catch (e) {
           dbError = e instanceof Error ? e.message : String(e);
         }
-        return Response.json({
-          ok: dbOk,
-          runtime: "cloudflare-workers",
-          ts: new Date().toISOString(),
-          totalMs: Date.now() - started,
-          db: { ok: dbOk, latencyMs: dbLatencyMs, error: dbError },
-        }, { headers: { "cache-control": "no-store" } });
+        return Response.json(
+          {
+            ok: dbOk,
+            runtime: "cloudflare-workers",
+            build,
+            ts: new Date().toISOString(),
+            totalMs: Date.now() - started,
+            db: { ok: dbOk, latencyMs: dbLatencyMs, error: dbError },
+          },
+          {
+            headers: {
+              "cache-control": "no-store",
+              "x-lupus-build": build,
+            },
+          },
+        );
       },
     },
   },
