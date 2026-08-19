@@ -7,7 +7,24 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { execFileSync } from "node:child_process";
 
-const buildSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+function resolveBuildSha(): string {
+  const envSha =
+    process.env["LOVABLE_BUILD_SHA"] ??
+    process.env["VERCEL_GIT_COMMIT_SHA"] ??
+    process.env["CF_PAGES_COMMIT_SHA"] ??
+    process.env["GITHUB_SHA"];
+  if (envSha) return envSha.trim();
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+const buildSha = resolveBuildSha();
 
 export default defineConfig({
   vite: {
