@@ -157,6 +157,8 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <Toaster position="top-right" richColors closeButton />
+      <PwaLayer />
+
     </QueryClientProvider>
   );
 }
