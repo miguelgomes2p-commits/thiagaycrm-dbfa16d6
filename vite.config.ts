@@ -6,6 +6,8 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { execFileSync } from "node:child_process";
+import { VitePWA } from "vite-plugin-pwa";
+
 
 function resolveBuildSha(): string {
   const envSha =
