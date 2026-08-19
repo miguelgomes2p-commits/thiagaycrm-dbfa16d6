@@ -21,6 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { initNative } from "@/lib/native";
 import { Toaster } from "@/components/ui/sonner";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
+import { PwaLayer } from "@/components/pwa/PwaLayer";
+
 
 
 function NotFoundComponent() {
