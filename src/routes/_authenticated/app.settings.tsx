@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { listWorkspaceMembers, inviteMemberByEmail, listWorkspaceInvitations, updateMemberRole, removeMember, updateMemberQueueSettings } from "@/lib/workspace.functions";
 import { Switch } from "@/components/ui/switch";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
+
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
   component: SettingsPage,
@@ -108,10 +110,14 @@ function SettingsPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-sm text-muted-foreground">Gerencie seu workspace, equipe e permissões.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
+          <p className="text-sm text-muted-foreground">Gerencie seu workspace, equipe e permissões.</p>
+        </div>
+        <InstallAppButton />
       </div>
+
 
       <section className="card-elevated p-6">
         <div className="flex items-center gap-3 mb-4">

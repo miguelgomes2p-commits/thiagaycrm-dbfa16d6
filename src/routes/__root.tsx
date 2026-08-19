@@ -21,6 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { initNative } from "@/lib/native";
 import { Toaster } from "@/components/ui/sonner";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
+import { PwaLayer } from "@/components/pwa/PwaLayer";
+
 
 
 function NotFoundComponent() {
@@ -85,9 +87,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#FFFFFF" },
       { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "Lupus CRM" },
+      { name: "application-name", content: "Lupus CRM" },
       { title: "Lupus CRM — CRM conversacional com IA" },
       { name: "description", content: "CRM moderno, multi-tenant, com pipeline visual, inbox omnichannel e assistente IA para vendas e atendimento." },
       { name: "author", content: "Lupus" },
+
       { property: "og:title", content: "Lupus CRM — CRM conversacional com IA" },
       { property: "og:description", content: "CRM moderno, multi-tenant, com pipeline visual, inbox omnichannel e assistente IA para vendas e atendimento." },
       { property: "og:type", content: "website" },
@@ -100,8 +107,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
-
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
+
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -148,6 +157,8 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <Toaster position="top-right" richColors closeButton />
+      <PwaLayer />
+
     </QueryClientProvider>
   );
 }
