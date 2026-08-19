@@ -15,7 +15,9 @@ export function PwaLayer() {
   const [iosHint, setIosHint] = useState(false);
 
   useEffect(() => {
+    if (isStandalone()) document.documentElement.classList.add("is-pwa");
     void registerPwa((update) => setUpdateFn(() => update));
+
 
     const sync = () => setOffline(!navigator.onLine);
     sync();
