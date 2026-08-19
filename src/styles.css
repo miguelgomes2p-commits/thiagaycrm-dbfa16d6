@@ -211,6 +211,18 @@ html.is-native :where(input, textarea, [contenteditable="true"], .selectable) {
   user-select: text;
 }
 
+/* ---- PWA instalada (standalone) — mesmas safe areas do app nativo ---- */
+html.is-pwa body {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  overscroll-behavior-y: none;
+}
+/* Evita corte de viewport no Safari/iOS (100vh) */
+html.is-pwa .h-screen { height: 100dvh; }
+html.is-pwa .min-h-screen { min-height: 100dvh; }
+
 
 @utility safe-top { padding-top: var(--safe-top); }
 @utility safe-bottom { padding-bottom: var(--safe-bottom); }
