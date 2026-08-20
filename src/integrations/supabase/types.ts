@@ -3592,6 +3592,8 @@ export type Database = {
         Returns: boolean
       }
       purge_old_messages: { Args: never; Returns: undefined }
+      purge_old_net_responses: { Args: never; Returns: undefined }
+      purge_old_operational_logs: { Args: never; Returns: undefined }
       purge_old_webhook_events: { Args: never; Returns: undefined }
       renave_seed_endpoints: {
         Args: { _workspace_id: string }
