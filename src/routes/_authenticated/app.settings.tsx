@@ -19,8 +19,9 @@ export const Route = createFileRoute("/_authenticated/app/settings")({
   component: SettingsPage,
 });
 
-type Role = "owner" | "admin" | "manager" | "agent";
+type Role = "owner" | "admin" | "manager" | "agent" | "support";
 const ROLE_LABELS: Record<Role, string> = {
+  support: "Suporte (equipe da plataforma)",
   owner: "Owner (dono)",
   admin: "Admin (gerencia tudo, exceto excluir workspace)",
   manager: "Manager (gerencia leads, conversas, equipe operacional)",
@@ -192,7 +193,7 @@ function SettingsPage() {
                 <div className="text-xs text-muted-foreground truncate">{m.email ?? m.user_id}</div>
               </div>
               <div className="flex items-center gap-2">
-                {canManage && m.role !== "owner" ? (
+                {canManage && m.role !== "owner" && m.role !== "support" ? (
                   <Select
                     value={m.role}
                     onValueChange={(v) => updM.mutate({ userId: m.user_id, role: v as Role })}
@@ -209,7 +210,7 @@ function SettingsPage() {
                     <Shield className="h-3 w-3" />{m.role}
                   </span>
                 )}
-                {canManage && isShared && m.role !== "owner" && m.role !== "admin" && (
+                {canManage && isShared && m.role !== "owner" && m.role !== "admin" && m.role !== "support" && (
                   <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                     <Switch
                       checked={m.accepts_new_leads !== false}
@@ -218,7 +219,7 @@ function SettingsPage() {
                     Recebe leads
                   </label>
                 )}
-                {canManage && m.role !== "owner" && (
+                {canManage && m.role !== "owner" && m.role !== "support" && (
                   <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => confirm(`Remover ${m.email ?? m.full_name} do workspace?`) && rmM.mutate(m.user_id)}>
                     <Trash2 className="h-4 w-4" />
