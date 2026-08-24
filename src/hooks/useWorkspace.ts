@@ -92,25 +92,9 @@ export function useMyWorkspaces() {
         })
         .filter(Boolean) as WorkspaceWithRole[];
 
-      const { data: support } = await supabase
-        .from("support_staff")
-        .select("enabled")
-        .eq("user_id", uid)
-        .maybeSingle();
-
-      if (!support?.enabled) return own;
-
-      const { data: all } = await supabase
-        .from("workspaces")
-        .select("id, name, slug, logo_url, feature_renave, feature_ai, workspace_mode")
-        .order("created_at", { ascending: true });
-
-      const roleById = new Map(own.map((w) => [w.id, w.role]));
-      return (all ?? []).map((w) => ({
-        ...w,
-        workspace_mode: (w.workspace_mode ?? "individual") as WorkspaceMode,
-        role: roleById.get(w.id) ?? "support",
-      }));
+      // Suporte já possui associação `support` em todos os workspaces
+      // (sincronizada no backend), então a lista acima cobre o acesso global.
+      return own;
     },
   });
 
