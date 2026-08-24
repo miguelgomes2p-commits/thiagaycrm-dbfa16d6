@@ -4,13 +4,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById, updateWorkspaceFeatures, joinWorkspaceAsSuperAdmin, leaveWorkspaceAsSuperAdmin } from "@/lib/admin.functions";
+import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById, updateWorkspaceFeatures, joinWorkspaceAsSuperAdmin, leaveWorkspaceAsSuperAdmin, setSupportStaff } from "@/lib/admin.functions";
 import { setActiveWorkspaceId } from "@/hooks/useWorkspace";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldAlert, Trash2, Search, Users, Building2, LogIn, DoorOpen } from "lucide-react";
+import { ShieldAlert, Trash2, Search, Users, Building2, LogIn, DoorOpen, Headset } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -37,6 +37,7 @@ function AdminPage() {
   const updateFeaturesFn = useServerFn(updateWorkspaceFeatures);
   const joinWsFn = useServerFn(joinWorkspaceAsSuperAdmin);
   const leaveWsFn = useServerFn(leaveWorkspaceAsSuperAdmin);
+  const setSupportFn = useServerFn(setSupportStaff);
   const navigate = useNavigate();
 
   // Entra no workspace como owner e passa a navegar nele em todo o CRM.
@@ -77,6 +78,17 @@ function AdminPage() {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
       setConfirmUser(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const supportM = useMutation({
+    mutationFn: (p: { userId: string; enabled: boolean }) => setSupportFn({ data: p }),
+    onSuccess: (_r, p) => {
+      toast.success(p.enabled ? "Usuário promovido a Suporte" : "Acesso de Suporte removido");
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+      qc.invalidateQueries({ queryKey: ["is-support-staff"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -217,6 +229,9 @@ function AdminPage() {
                       {u.email?.toLowerCase() === SUPER_ADMIN_EMAIL && (
                         <span className="ml-2 text-[10px] uppercase px-2 py-0.5 rounded bg-primary/15 text-primary">Super Admin</span>
                       )}
+                      {u.is_support && (
+                        <span className="ml-2 text-[10px] uppercase px-2 py-0.5 rounded bg-accent/20 text-accent-foreground">Suporte</span>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground truncate">{u.email ?? u.id}</div>
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -235,6 +250,18 @@ function AdminPage() {
                     </div>
 
                   </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                  {u.email?.toLowerCase() !== SUPER_ADMIN_EMAIL && (
+                    <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <Headset className="h-3.5 w-3.5" />
+                      Suporte
+                      <Switch
+                        checked={u.is_support}
+                        disabled={supportM.isPending}
+                        onCheckedChange={(v) => supportM.mutate({ userId: u.id, enabled: v })}
+                      />
+                    </label>
+                  )}
                   <Button
                     variant="ghost" size="sm"
                     disabled={u.email?.toLowerCase() === SUPER_ADMIN_EMAIL || delUserM.isPending}
@@ -243,6 +270,7 @@ function AdminPage() {
                   >
                     <Trash2 className="h-4 w-4 mr-1" /> Excluir
                   </Button>
+                  </div>
                 </div>
               ))}
               {!usersQ.isLoading && filteredUsers.length === 0 && (

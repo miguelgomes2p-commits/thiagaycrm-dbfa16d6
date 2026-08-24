@@ -44,7 +44,7 @@ export type FiscalPermission =
 
 /** owner/admin têm tudo; manager visualiza e baixa; agent apenas visualiza os próprios. */
 export function fiscalPermissionsForRole(role: string | undefined): FiscalPermission[] {
-  if (role === "owner" || role === "admin")
+  if (role === "owner" || role === "admin" || role === "support")
     return ["fiscal.view", "fiscal.issue", "fiscal.cancel", "fiscal.configure", "fiscal.download"];
   if (role === "manager") return ["fiscal.view", "fiscal.download"];
   return ["fiscal.view"];

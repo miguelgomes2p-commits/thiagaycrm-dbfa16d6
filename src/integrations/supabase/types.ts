@@ -2701,6 +2701,30 @@ export type Database = {
           },
         ]
       }
+      support_staff: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -3583,6 +3607,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_support_staff: { Args: { _user_id: string }; Returns: boolean }
       is_workspace_admin: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
@@ -3603,6 +3628,7 @@ export type Database = {
         Args: { _mode: string; _workspace_id: string }
         Returns: string
       }
+      sync_support_memberships: { Args: never; Returns: undefined }
       transfer_conversation: {
         Args: { _conversation_id: string; _reason?: string; _to_user: string }
         Returns: string
@@ -3613,7 +3639,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "admin" | "manager" | "agent"
+      app_role: "owner" | "admin" | "manager" | "agent" | "support"
       channel_type:
         | "whatsapp"
         | "instagram"
@@ -3769,7 +3795,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "admin", "manager", "agent"],
+      app_role: ["owner", "admin", "manager", "agent", "support"],
       channel_type: [
         "whatsapp",
         "instagram",

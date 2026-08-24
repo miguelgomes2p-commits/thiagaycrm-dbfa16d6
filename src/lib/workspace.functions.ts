@@ -261,6 +261,19 @@ export const completeWorkspaceInviteWithPassword = createServerFn({ method: "POS
     return { ok: true as const, email };
   });
 
+/** Membros de Suporte são geridos apenas pelo admin global. */
+async function assertNotSupportMember(supabaseAdmin: any, workspaceId: string, userId: string) {
+  const { data } = await supabaseAdmin
+    .from("workspace_members")
+    .select("role")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (data?.role === "support") {
+    throw new Error("Membro de Suporte é gerenciado pelo administrador da plataforma.");
+  }
+}
+
 export const updateMemberRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspaceId: string; userId: string; role: Role }) => d)
@@ -268,6 +281,7 @@ export const updateMemberRole = createServerFn({ method: "POST" })
     if (!isWorkspaceRole(data.role)) throw new Error("Papel inválido.");
     await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertNotSupportMember(supabaseAdmin, data.workspaceId, data.userId);
     const { error } = await supabaseAdmin.from("workspace_members")
       .update({ role: data.role })
       .eq("workspace_id", data.workspaceId).eq("user_id", data.userId);
@@ -282,6 +296,7 @@ export const removeMember = createServerFn({ method: "POST" })
     await assertWorkspaceAdmin(context.supabase, data.workspaceId, context.userId);
     if (data.userId === context.userId) throw new Error("Você não pode remover a si mesmo.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertNotSupportMember(supabaseAdmin, data.workspaceId, data.userId);
     const { error } = await supabaseAdmin.from("workspace_members")
       .delete().eq("workspace_id", data.workspaceId).eq("user_id", data.userId);
     if (error) throw new Error(error.message);

@@ -54,7 +54,7 @@ export const createEvolutionInstance = createServerFn({ method: "POST" })
         .eq("workspace_id", data.workspaceId)
         .eq("user_id", context.userId)
         .maybeSingle();
-      if (!member || (member.role !== "owner" && member.role !== "admin")) {
+      if (!member || (member.role !== "owner" && member.role !== "admin" && member.role !== "support")) {
         throw new Error("Neste workspace o WhatsApp é compartilhado — apenas owner/admin pode conectar.");
       }
       const { count } = await context.supabase
