@@ -107,7 +107,7 @@ export const updateN8nForwarding = createServerFn({ method: "POST" })
       .eq("workspace_id", row.workspace_id)
       .eq("user_id", context.userId)
       .maybeSingle();
-    if (!member || (member.role !== "owner" && member.role !== "admin")) {
+    if (!member || (member.role !== "owner" && member.role !== "admin" && member.role !== "support")) {
       throw new Error("Apenas administradores podem alterar o webhook do N8N");
     }
     const { error } = await supabaseAdmin
@@ -835,7 +835,7 @@ export const syncWhatsappTemplates = createServerFn({ method: "POST" })
       .eq("workspace_id", num.workspace_id)
       .eq("user_id", context.userId)
       .maybeSingle();
-    if (!member || (member.role !== "owner" && member.role !== "admin")) throw new Error("Apenas admins podem sincronizar templates.");
+    if (!member || (member.role !== "owner" && member.role !== "admin" && member.role !== "support")) throw new Error("Apenas admins podem sincronizar templates.");
     if (!num.waba_id || !num.access_token) throw new Error("Este número não usa Cloud API.");
 
     const { listWaTemplates } = await import("@/lib/whatsapp.server");
@@ -881,7 +881,7 @@ export const subscribeWhatsappWebhook = createServerFn({ method: "POST" })
       .eq("workspace_id", num.workspace_id)
       .eq("user_id", context.userId)
       .maybeSingle();
-    if (!member || (member.role !== "owner" && member.role !== "admin")) throw new Error("Apenas admins podem assinar a WABA.");
+    if (!member || (member.role !== "owner" && member.role !== "admin" && member.role !== "support")) throw new Error("Apenas admins podem assinar a WABA.");
     if (!num.waba_id || !num.access_token) throw new Error("Este número não usa Cloud API.");
 
     const { subscribeWabaToMessages, listWabaSubscriptions } = await import("@/lib/whatsapp.server");
