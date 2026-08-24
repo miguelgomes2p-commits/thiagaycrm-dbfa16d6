@@ -3573,6 +3573,10 @@ export type Database = {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_all_workspace: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: boolean
+      }
       complete_triage_and_assign: {
         Args: {
           _ai_summary?: string

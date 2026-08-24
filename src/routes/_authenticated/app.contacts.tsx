@@ -31,7 +31,7 @@ type Contact = {
 function ContactsPage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
-  const isAdmin = ws?.role === "owner" || ws?.role === "admin" || ws?.role === "support";
+  const isAdmin = ws?.role === "owner" || ws?.role === "admin" || ws?.role === "support" || ws?.role === "manager";
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
