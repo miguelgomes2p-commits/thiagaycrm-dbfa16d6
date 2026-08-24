@@ -99,7 +99,7 @@ function withTimeoutSignal(parent: AbortSignal | undefined, timeoutMs: number) {
 function ConversationsPage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
-  const isAdmin = ws?.role === "owner" || ws?.role === "admin" || ws?.role === "support";
+  const isAdmin = ws?.role === "owner" || ws?.role === "admin" || ws?.role === "support" || ws?.role === "manager";
   const { c: deepLinkConversationId } = Route.useSearch();
   const [activeId, setActiveId] = useState<string | null>(deepLinkConversationId ?? null);
   useEffect(() => {
