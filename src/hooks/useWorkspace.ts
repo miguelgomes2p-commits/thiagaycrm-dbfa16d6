@@ -43,9 +43,30 @@ export function useActiveWorkspaceId(): string | null {
   return useSyncExternalStore(subscribe, getActiveWorkspaceId, () => null);
 }
 
+/** Indica se o usuário logado pertence à equipe de Suporte (acesso global). */
+export function useIsSupportStaff() {
+  return useQuery({
+    queryKey: ["is-support-staff"],
+    queryFn: async (): Promise<boolean> => {
+      const { data: s } = await supabase.auth.getSession();
+      const uid = s.session?.user?.id;
+      if (!uid) return false;
+      const { data } = await supabase
+        .from("support_staff")
+        .select("enabled")
+        .eq("user_id", uid)
+        .maybeSingle();
+      return !!data?.enabled;
+    },
+  });
+}
+
 /**
  * Lista os workspaces do usuário. O workspace ativo (escolhido no seletor)
  * é sempre retornado na primeira posição — todas as telas usam `[0]`.
+ *
+ * Equipe de Suporte: enxerga TODOS os workspaces (papel `support`, com
+ * permissões de admin exceto gerenciamento de equipe).
  */
 export function useMyWorkspaces() {
   const activeId = useActiveWorkspaceId();
@@ -55,19 +76,41 @@ export function useMyWorkspaces() {
       const { data: s } = await supabase.auth.getSession();
       const uid = s.session?.user?.id;
       if (!uid) return [];
-      const { data, error } = await supabase
+
+      const { data: members, error } = await supabase
         .from("workspace_members")
-        .select("role, workspaces:workspace_id(id, name, slug, logo_url, feature_renave, feature_ai, workspace_mode)")
+        .select("workspace_id, role, workspaces:workspace_id(id, name, slug, logo_url, feature_renave, feature_ai, workspace_mode)")
         .eq("user_id", uid)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? [])
+
+      const own = (members ?? [])
         .map((r) => {
           if (!r.workspaces) return null;
           const w = r.workspaces as unknown as Omit<WorkspaceWithRole, "role" | "workspace_mode"> & { workspace_mode?: WorkspaceMode | null };
           return { ...w, workspace_mode: w.workspace_mode ?? "individual", role: r.role };
         })
         .filter(Boolean) as WorkspaceWithRole[];
+
+      const { data: support } = await supabase
+        .from("support_staff")
+        .select("enabled")
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      if (!support?.enabled) return own;
+
+      const { data: all } = await supabase
+        .from("workspaces")
+        .select("id, name, slug, logo_url, feature_renave, feature_ai, workspace_mode")
+        .order("created_at", { ascending: true });
+
+      const roleById = new Map(own.map((w) => [w.id, w.role]));
+      return (all ?? []).map((w) => ({
+        ...w,
+        workspace_mode: (w.workspace_mode ?? "individual") as WorkspaceMode,
+        role: roleById.get(w.id) ?? "support",
+      }));
     },
   });
 
