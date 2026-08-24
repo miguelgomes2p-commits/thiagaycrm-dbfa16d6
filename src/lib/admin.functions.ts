@@ -20,6 +20,10 @@ export const listAllUsers = createServerFn({ method: "GET" })
     const { data: memberships } = await supabaseAdmin
       .from("workspace_members")
       .select("user_id, role, workspaces:workspace_id(id, name)");
+    const { data: support } = await supabaseAdmin
+      .from("support_staff")
+      .select("user_id, enabled");
+    const supportSet = new Set((support ?? []).filter((s) => s.enabled).map((s) => s.user_id));
     const byUser = new Map<string, { id: string; name: string; role: string }[]>();
     for (const m of memberships ?? []) {
       const w = m.workspaces as unknown as { id: string; name: string } | null;
@@ -35,7 +39,37 @@ export const listAllUsers = createServerFn({ method: "GET" })
       last_sign_in_at: u.last_sign_in_at ?? null,
       full_name: (u.user_metadata?.full_name as string | undefined) ?? null,
       workspaces: byUser.get(u.id) ?? [],
+      is_support: supportSet.has(u.id),
     }));
+  });
+
+/**
+ * Marca/desmarca um usuário como equipe de Suporte.
+ * Suporte enxerga todos os workspaces e age como admin neles,
+ * exceto gerenciamento de usuários/equipe.
+ */
+export const setSupportStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { userId: string; enabled: boolean }) => data)
+  .handler(async ({ data, context }) => {
+    assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (data.enabled) {
+      const { error } = await supabaseAdmin
+        .from("support_staff")
+        .upsert(
+          { user_id: data.userId, enabled: true, created_by: context.userId },
+          { onConflict: "user_id" },
+        );
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin
+        .from("support_staff")
+        .delete()
+        .eq("user_id", data.userId);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true as const };
   });
 
 
