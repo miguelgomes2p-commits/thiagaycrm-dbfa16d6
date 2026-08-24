@@ -2701,6 +2701,30 @@ export type Database = {
           },
         ]
       }
+      support_staff: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -3583,6 +3607,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_support_staff: { Args: { _user_id: string }; Returns: boolean }
       is_workspace_admin: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
