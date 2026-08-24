@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/app/settings")({
 });
 
 type Role = "owner" | "admin" | "manager" | "agent" | "support";
+type AssignableRole = "admin" | "manager" | "agent";
 const ROLE_LABELS: Record<Role, string> = {
   support: "Suporte (equipe da plataforma)",
   owner: "Owner (dono)",
@@ -50,7 +51,7 @@ function SettingsPage() {
   const canManage = ws?.role === "owner" || ws?.role === "admin";
   const isShared = ws?.workspace_mode === "shared";
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("agent");
+  const [role, setRole] = useState<AssignableRole>("agent");
   const [lastInviteLink, setLastInviteLink] = useState("");
 
   const invitationsQ = useQuery({
@@ -81,7 +82,7 @@ function SettingsPage() {
   }
 
   const updM = useMutation({
-    mutationFn: (p: { userId: string; role: Role }) =>
+    mutationFn: (p: { userId: string; role: AssignableRole }) =>
       updFn({ data: { workspaceId: ws!.id, ...p } }),
     onSuccess: () => {
       toast.success("Papel atualizado");
@@ -155,10 +156,10 @@ function SettingsPage() {
             </div>
             <div className="sm:w-56">
               <Label className="text-xs">Papel</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+              <Select value={role} onValueChange={(v) => setRole(v as AssignableRole)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(["admin", "manager", "agent"] as Role[]).map((r) => (
+                  {(["admin", "manager", "agent"] as AssignableRole[]).map((r) => (
                     <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
                   ))}
                 </SelectContent>
@@ -196,11 +197,11 @@ function SettingsPage() {
                 {canManage && m.role !== "owner" && m.role !== "support" ? (
                   <Select
                     value={m.role}
-                    onValueChange={(v) => updM.mutate({ userId: m.user_id, role: v as Role })}
+                    onValueChange={(v) => updM.mutate({ userId: m.user_id, role: v as AssignableRole })}
                   >
                     <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(["admin", "manager", "agent"] as Role[]).map((r) => (
+                      {(["admin", "manager", "agent"] as AssignableRole[]).map((r) => (
                         <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
                       ))}
                     </SelectContent>
