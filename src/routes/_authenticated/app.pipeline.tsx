@@ -45,7 +45,7 @@ const priorityColor: Record<string, string> = {
 function PipelinePage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
-  const isAdmin = ws?.role === "owner" || ws?.role === "admin";
+  const isAdmin = ws?.role === "owner" || ws?.role === "admin" || ws?.role === "support";
   const qc = useQueryClient();
   const [dragging, setDragging] = useState<string | null>(null);
   const [open, setOpen] = useState(false);

@@ -14,7 +14,7 @@ export const listWhatsappNumbers = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!member) throw new Error("Workspace não encontrado");
 
-    const isAdmin = member.role === "owner" || member.role === "admin";
+    const isAdmin = member.role === "owner" || member.role === "admin" || member.role === "support";
     const { data: wsRow } = await context.supabase
       .from("workspaces")
       .select("workspace_mode")

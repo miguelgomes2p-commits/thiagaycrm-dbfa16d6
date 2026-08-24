@@ -7,8 +7,8 @@ import type { FiscalOperationKey } from "./fiscal/operations";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-const ADMIN = ["owner", "admin"];
-const VIEWERS = ["owner", "admin", "manager", "agent"];
+const ADMIN = ["owner", "admin", "support"];
+const VIEWERS = ["owner", "admin", "support", "manager", "agent"];
 
 async function assertRole(supabase: any, workspaceId: string, roles: string[]) {
   const { data } = await supabase

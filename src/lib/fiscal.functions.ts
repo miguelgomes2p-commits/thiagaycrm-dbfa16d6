@@ -16,7 +16,7 @@ async function assertRole(supabase: any, workspaceId: string, roles: string[]) {
   return data.role as string;
 }
 
-const ADMIN = ["owner", "admin"];
+const ADMIN = ["owner", "admin", "support"];
 
 /* ============================ CONFIG ============================ */
 

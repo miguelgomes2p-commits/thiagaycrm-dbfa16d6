@@ -52,7 +52,7 @@ const STATUS_STYLE: Record<string, string> = {
 function FiscalPage() {
   const { data: workspaces } = useMyWorkspaces();
   const ws = workspaces?.[0];
-  const isAdmin = ws?.role === "owner" || ws?.role === "admin";
+  const isAdmin = ws?.role === "owner" || ws?.role === "admin" || ws?.role === "support";
 
   const cfgFn = useServerFn(getFiscalConfig);
   const cfgQ = useQuery({
