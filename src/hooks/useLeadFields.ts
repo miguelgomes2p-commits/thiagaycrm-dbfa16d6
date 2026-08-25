@@ -85,8 +85,12 @@ export function useWorkspaceLocations(workspaceId?: string | null) {
       if (error) throw error;
       return (data ?? []) as {
         id: string; workspace_id: string; name: string; address: string | null;
+        street: string | null; number: string | null; complement: string | null;
+        neighborhood: string | null; city: string | null; state: string | null;
+        postal_code: string | null; country: string | null;
         latitude: number; longitude: number; is_active: boolean; is_default: boolean;
       }[];
+
     },
   });
 }

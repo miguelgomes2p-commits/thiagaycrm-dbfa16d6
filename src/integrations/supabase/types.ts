@@ -3478,6 +3478,9 @@ export type Database = {
       workspace_locations: {
         Row: {
           address: string | null
+          city: string | null
+          complement: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -3486,11 +3489,19 @@ export type Database = {
           latitude: number
           longitude: number
           name: string
+          neighborhood: string | null
+          number: string | null
+          postal_code: string | null
+          state: string | null
+          street: string | null
           updated_at: string
           workspace_id: string
         }
         Insert: {
           address?: string | null
+          city?: string | null
+          complement?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3499,11 +3510,19 @@ export type Database = {
           latitude: number
           longitude: number
           name: string
+          neighborhood?: string | null
+          number?: string | null
+          postal_code?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           workspace_id: string
         }
         Update: {
           address?: string | null
+          city?: string | null
+          complement?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3512,6 +3531,11 @@ export type Database = {
           latitude?: number
           longitude?: number
           name?: string
+          neighborhood?: string | null
+          number?: string | null
+          postal_code?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           workspace_id?: string
         }

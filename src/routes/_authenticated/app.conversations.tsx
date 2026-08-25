@@ -864,17 +864,23 @@ function ConversationsPage() {
     }
   }
 
-  async function sendLocation(loc: { latitude: number; longitude: number; name?: string | null; address?: string | null }) {
+  async function sendLocation(args: { locationId?: string; preview: { latitude: number; longitude: number; name?: string | null; address?: string | null } }) {
+    const loc = args.preview;
+
     if (!active || !ws) return;
     setSendingLocation(true);
     try {
-      await sendWaLocation({ data: {
-        conversationId: active.id,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        name: loc.name ?? null,
-        address: loc.address ?? null,
-      }});
+      await sendWaLocation({ data: args.locationId
+        ? { conversationId: active.id, locationId: args.locationId }
+        : {
+            conversationId: active.id,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            name: loc.name ?? null,
+            address: loc.address ?? null,
+          },
+      });
+
       setLocationOpen(false);
       qc.invalidateQueries({ queryKey: ["messages", active.id] });
       qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
@@ -1604,7 +1610,9 @@ function ConversationsPage() {
                 onOpenChange={setLocationOpen}
                 workspaceId={ws?.id ?? null}
                 sending={sendingLocation}
-                onSend={(loc) => sendLocation(loc)}
+                canManage={isAdmin}
+                onSend={(args) => sendLocation(args)}
+
               />
               {ws?.id && (
                 <SendVehicleDialog

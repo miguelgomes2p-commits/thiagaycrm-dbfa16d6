@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { listWorkspaceMembers, inviteMemberByEmail, listWorkspaceInvitations, updateMemberRole, removeMember, updateMemberQueueSettings } from "@/lib/workspace.functions";
 import { Switch } from "@/components/ui/switch";
 import { InstallAppButton } from "@/components/pwa/InstallAppButton";
+import { WorkspaceLocationsSection } from "@/components/settings/WorkspaceLocationsSection";
+
 
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
@@ -138,6 +140,10 @@ function SettingsPage() {
           </div>
         </dl>
       </section>
+
+      <WorkspaceLocationsSection workspaceId={ws?.id ?? null} canManage={canManage} />
+
+
 
       <section className="card-elevated p-6">
         <div className="flex items-center gap-3 mb-4">
