@@ -4,13 +4,20 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById, updateWorkspaceFeatures, joinWorkspaceAsSuperAdmin, leaveWorkspaceAsSuperAdmin, setSupportStaff } from "@/lib/admin.functions";
+import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById, updateWorkspaceFeatures, joinWorkspaceAsSuperAdmin, leaveWorkspaceAsSuperAdmin, setSupportStaff, createWorkspaceAsSuperAdmin } from "@/lib/admin.functions";
 import { setActiveWorkspaceId } from "@/hooks/useWorkspace";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldAlert, Trash2, Search, Users, Building2, LogIn, DoorOpen, Headset } from "lucide-react";
+import { ShieldAlert, Trash2, Search, Users, Building2, LogIn, DoorOpen, Headset, Plus, Loader2 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -70,6 +77,38 @@ function AdminPage() {
 
   const usersQ = useQuery({ queryKey: ["admin-users"], queryFn: () => listUsersFn() });
   const wsQ = useQuery({ queryKey: ["admin-workspaces"], queryFn: () => listWsFn() });
+
+  // Criação de workspace pelo admin global
+  const createWsFn = useServerFn(createWorkspaceAsSuperAdmin);
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newSlug, setNewSlug] = useState("");
+  const [newMode, setNewMode] = useState<"individual" | "shared">("individual");
+  const [newOwner, setNewOwner] = useState<string>("me");
+
+  const createWsM = useMutation({
+    mutationFn: () =>
+      createWsFn({
+        data: {
+          name: newName,
+          slug: newSlug || undefined,
+          mode: newMode,
+          ownerUserId: newOwner === "me" ? undefined : newOwner,
+        },
+      }),
+    onSuccess: async (res) => {
+      setNewOpen(false);
+      setNewName(""); setNewSlug(""); setNewMode("individual"); setNewOwner("me");
+      await qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
+      await qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+      toast.success("Workspace criado");
+      if (newOwner === "me" && res?.workspaceId) {
+        setActiveWorkspaceId(res.workspaceId);
+        navigate({ to: "/app" });
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const delUserM = useMutation({
     mutationFn: (userId: string) => delUserFn({ data: { userId } }),
@@ -137,6 +176,11 @@ function AdminPage() {
         </TabsList>
 
         <TabsContent value="workspaces" className="mt-4">
+          <div className="flex justify-end mb-3">
+            <Button size="sm" className="cursor-pointer" onClick={() => setNewOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Criar workspace
+            </Button>
+          </div>
           <div className="card-elevated p-4">
             {wsQ.isLoading && <div className="text-sm text-muted-foreground">Carregando...</div>}
             <div className="divide-y divide-border">
@@ -322,6 +366,66 @@ function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar workspace</DialogTitle>
+            <DialogDescription>
+              Cria um novo workspace com pipeline padrão. Usuários comuns continuam limitados a um workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="ws-name">Nome</Label>
+              <Input id="ws-name" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Lupus Assessoria IA" autoFocus />
+            </div>
+            <div>
+              <Label htmlFor="ws-slug">Slug (opcional)</Label>
+              <Input id="ws-slug" value={newSlug} onChange={(e) => setNewSlug(e.target.value)} placeholder="gerado a partir do nome" />
+            </div>
+            <div>
+              <Label>Modo de atendimento</Label>
+              <Select value={newMode} onValueChange={(v) => setNewMode(v as "individual" | "shared")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual / multi-WhatsApp</SelectItem>
+                  <SelectItem value="shared">Compartilhado / WhatsApp único</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Dono</Label>
+              <Select value={newOwner} onValueChange={setNewOwner}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="me">Eu (admin global)</SelectItem>
+                  {(usersQ.data ?? [])
+                    .filter((u) => u.email?.toLowerCase() !== SUPER_ADMIN_EMAIL)
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name ?? u.email ?? u.id}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Se o usuário escolhido já pertencer a outro workspace, a criação será bloqueada pela trava de workspace único.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="cursor-pointer" onClick={() => setNewOpen(false)}>Cancelar</Button>
+            <Button
+              className="cursor-pointer"
+              disabled={!newName.trim() || createWsM.isPending}
+              onClick={() => createWsM.mutate()}
+            >
+              {createWsM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Criar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
