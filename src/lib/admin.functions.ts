@@ -87,6 +87,44 @@ export const deleteUserById = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+function slugifyName(s: string) {
+  return (
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+      .slice(0, 40) || "empresa"
+  );
+}
+
+/**
+ * Cria um novo workspace pelo painel Admin Global.
+ * O dono pode ser o próprio super admin ou qualquer usuário existente
+ * (a trava de "um workspace por usuário comum" continua valendo no banco).
+ */
+export const createWorkspaceAsSuperAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { name: string; slug?: string; mode?: "individual" | "shared"; ownerUserId?: string }) => data)
+  .handler(async ({ data, context }) => {
+    assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
+    const name = data.name?.trim();
+    if (!name) throw new Error("Informe o nome do workspace.");
+    const base = slugifyName(data.slug?.trim() || name);
+    const slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    const ownerId = data.ownerUserId || context.userId;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: id, error } = await supabaseAdmin.rpc("create_workspace_with_mode", {
+      _name: name,
+      _slug: slug,
+      _user_id: ownerId,
+      _mode: data.mode ?? "individual",
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const, workspaceId: id as unknown as string, slug };
+  });
+
 export const listAllWorkspaces = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
