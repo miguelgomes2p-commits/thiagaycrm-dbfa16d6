@@ -139,6 +139,10 @@ function SettingsPage() {
         </dl>
       </section>
 
+      <WorkspaceLocationsSection workspaceId={ws?.id ?? null} canManage={canManage} />
+
+
+
       <section className="card-elevated p-6">
         <div className="flex items-center gap-3 mb-4">
           <Users className="h-5 w-5 text-primary" />
