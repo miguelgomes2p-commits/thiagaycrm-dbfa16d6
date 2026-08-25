@@ -870,13 +870,17 @@ function ConversationsPage() {
     if (!active || !ws) return;
     setSendingLocation(true);
     try {
-      await sendWaLocation({ data: {
-        conversationId: active.id,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        name: loc.name ?? null,
-        address: loc.address ?? null,
-      }});
+      await sendWaLocation({ data: args.locationId
+        ? { conversationId: active.id, locationId: args.locationId }
+        : {
+            conversationId: active.id,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            name: loc.name ?? null,
+            address: loc.address ?? null,
+          },
+      });
+
       setLocationOpen(false);
       qc.invalidateQueries({ queryKey: ["messages", active.id] });
       qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
