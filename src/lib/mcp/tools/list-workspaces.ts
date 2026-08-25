@@ -13,14 +13,14 @@ export default defineTool({
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase
       .from("workspace_members")
-      .select("role, workspaces(id, name, slug, mode)")
+      .select("role, workspaces(id, name, slug, workspace_mode)")
       .eq("user_id", ctx.getUserId() ?? "");
     if (error) return errorResult(error.message);
     const items = (data ?? []).map((row) => ({
       id: row.workspaces?.id,
       name: row.workspaces?.name,
       slug: row.workspaces?.slug,
-      mode: row.workspaces?.mode,
+      mode: row.workspaces?.workspace_mode,
       my_role: row.role,
     }));
     return jsonResult({ count: items.length, workspaces: items });
