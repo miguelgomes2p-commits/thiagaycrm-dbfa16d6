@@ -81,7 +81,7 @@ export function useMyWorkspaces() {
 
       const { data: members, error } = await supabase
         .from("workspace_members")
-        .select("workspace_id, role, workspaces:workspace_id(id, name, slug, logo_url, feature_renave, feature_ai, workspace_mode)")
+        .select("workspace_id, role, workspaces:workspace_id(id, name, slug, logo_url, feature_renave, feature_ai, feature_inventory, feature_fiscal, workspace_mode)")
         .eq("user_id", uid)
         .order("created_at", { ascending: true });
       if (error) throw error;
