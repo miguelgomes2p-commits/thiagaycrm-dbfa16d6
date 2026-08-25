@@ -12,6 +12,8 @@ export type WorkspaceWithRole = {
   role: string;
   feature_renave: boolean;
   feature_ai: boolean;
+  feature_inventory: boolean;
+  feature_fiscal: boolean;
   workspace_mode: WorkspaceMode;
 };
 
