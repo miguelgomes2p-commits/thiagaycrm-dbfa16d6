@@ -32,15 +32,33 @@ function newChallenge() {
 }
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: { invite?: unknown }): { invite?: string } => ({
+  validateSearch: (search: { invite?: unknown; next?: unknown }): { invite?: string; next?: string } => ({
     invite: typeof search.invite === "string" ? search.invite : undefined,
+    next:
+      typeof search.next === "string" && search.next.startsWith("/") && !search.next.startsWith("//")
+        ? search.next
+        : undefined,
   }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { invite } = Route.useSearch();
+  const { invite, next } = Route.useSearch();
+
+  // Preserva o destino (ex.: tela de consentimento OAuth) em todos os fluxos de login.
+  const returnQuery = [
+    invite ? `invite=${encodeURIComponent(invite)}` : "",
+    next ? `next=${encodeURIComponent(next)}` : "",
+  ].filter(Boolean).join("&");
+  const authReturnUrl = window.location.origin + "/auth" + (returnQuery ? `?${returnQuery}` : "");
+  function goAfterAuth() {
+    if (next) {
+      window.location.replace(next);
+      return;
+    }
+    goAfterAuth();
+  }
   const acceptInvite = useServerFn(acceptWorkspaceInvitation);
   const completeInviteWithPassword = useServerFn(completeWorkspaceInviteWithPassword);
   const [loading, setLoading] = useState(false);
@@ -67,7 +85,7 @@ function AuthPage() {
       try {
         await acceptInviteIfNeeded();
       } catch {}
-      navigate({ to: "/app" });
+      goAfterAuth();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -87,7 +105,7 @@ function AuthPage() {
   async function handleGoogle() {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/auth" + (invite ? `?invite=${encodeURIComponent(invite)}` : ""),
+      redirect_uri: authReturnUrl,
     });
     if (result.error) {
       toast.error("Falha no login com Google");
@@ -97,7 +115,7 @@ function AuthPage() {
     if (result.redirected) return;
     try {
       await acceptInviteIfNeeded();
-      navigate({ to: "/app" });
+      goAfterAuth();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao aceitar convite");
       setLoading(false);
@@ -126,13 +144,13 @@ function AuthPage() {
           if (signInError) throw signInError;
           toast.success("Conta criada e convite aceito.");
           setFailCount(0);
-          navigate({ to: "/app" });
+          goAfterAuth();
           return;
         }
         const { data, error } = await supabase.auth.signUp({
           email, password,
           options: {
-            emailRedirectTo: window.location.origin + "/auth" + (invite ? `?invite=${encodeURIComponent(invite)}` : ""),
+            emailRedirectTo: authReturnUrl,
             data: { full_name: fullName },
           },
         });
@@ -149,7 +167,7 @@ function AuthPage() {
       }
       setFailCount(0);
       await acceptInviteIfNeeded();
-      navigate({ to: "/app" });
+      goAfterAuth();
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Erro na autenticação";
       toast.error(translateAuthError(raw));
@@ -175,7 +193,7 @@ function AuthPage() {
       if (signInError) throw signInError;
       setInviteAccepted(true);
       toast.success("Senha definida e convite aceito.");
-      navigate({ to: "/app" });
+      goAfterAuth();
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Erro ao finalizar convite";
       toast.error(translateAuthError(raw));
