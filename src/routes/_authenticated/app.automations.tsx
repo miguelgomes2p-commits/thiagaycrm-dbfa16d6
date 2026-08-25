@@ -173,6 +173,17 @@ const TEMPLATES: Template[] = [
       actions: [{ id: "a1", type: "notify", config: { title: "Veículo vendido 🎉", body: "{{vehicle.brand}} {{vehicle.model}} foi marcado como vendido." } }],
     },
   },
+  {
+    id: "birthday",
+    name: "Mensagem de aniversário",
+    icon: Sparkles,
+    pitch: "Todo ano, no dia do aniversário do contato, ele recebe uma mensagem no WhatsApp às 09h.",
+    definition: {
+      trigger: { type: "contact.birthday", config: {} },
+      conditions: { match: "all", rules: [] },
+      actions: [{ id: "a1", type: "send_whatsapp", config: { message: BIRTHDAY_DEFAULT_MESSAGE } }],
+    },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
