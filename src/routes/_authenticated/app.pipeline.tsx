@@ -542,3 +542,40 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function BirthdateNotice({ contactId, onSaved }: { contactId: string; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!value) return;
+    setSaving(true);
+    const { error } = await supabase.from("contacts").update({ birthdate: value }).eq("id", contactId);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Data de nascimento salva");
+    onSaved();
+  }
+
+  return (
+    <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Sem data de nascimento cadastrada — a automação de aniversário não roda para este contato.
+        </p>
+        {!open && (
+          <Button size="sm" variant="ghost" className="cursor-pointer shrink-0" onClick={() => setOpen(true)}>
+            <Pencil className="h-3.5 w-3.5 mr-1" /> Preencher
+          </Button>
+        )}
+      </div>
+      {open && (
+        <div className="mt-2 flex items-center gap-2">
+          <Input type="date" value={value} onChange={(e) => setValue(e.target.value)} className="h-8 max-w-[170px]" />
+          <Button size="sm" className="cursor-pointer" disabled={!value || saving} onClick={save}>Salvar</Button>
+        </div>
+      )}
+    </div>
+  );
+}
