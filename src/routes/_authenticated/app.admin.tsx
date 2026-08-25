@@ -366,6 +366,66 @@ function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar workspace</DialogTitle>
+            <DialogDescription>
+              Cria um novo workspace com pipeline padrão. Usuários comuns continuam limitados a um workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="ws-name">Nome</Label>
+              <Input id="ws-name" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Lupus Assessoria IA" autoFocus />
+            </div>
+            <div>
+              <Label htmlFor="ws-slug">Slug (opcional)</Label>
+              <Input id="ws-slug" value={newSlug} onChange={(e) => setNewSlug(e.target.value)} placeholder="gerado a partir do nome" />
+            </div>
+            <div>
+              <Label>Modo de atendimento</Label>
+              <Select value={newMode} onValueChange={(v) => setNewMode(v as "individual" | "shared")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual / multi-WhatsApp</SelectItem>
+                  <SelectItem value="shared">Compartilhado / WhatsApp único</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Dono</Label>
+              <Select value={newOwner} onValueChange={setNewOwner}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="me">Eu (admin global)</SelectItem>
+                  {(usersQ.data ?? [])
+                    .filter((u) => u.email?.toLowerCase() !== SUPER_ADMIN_EMAIL)
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name ?? u.email ?? u.id}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Se o usuário escolhido já pertencer a outro workspace, a criação será bloqueada pela trava de workspace único.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="cursor-pointer" onClick={() => setNewOpen(false)}>Cancelar</Button>
+            <Button
+              className="cursor-pointer"
+              disabled={!newName.trim() || createWsM.isPending}
+              onClick={() => createWsM.mutate()}
+            >
+              {createWsM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Criar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
