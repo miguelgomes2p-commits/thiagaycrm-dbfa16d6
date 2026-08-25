@@ -3593,6 +3593,8 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           feature_ai: boolean
+          feature_fiscal: boolean
+          feature_inventory: boolean
           feature_renave: boolean
           id: string
           logo_url: string | null
@@ -3606,6 +3608,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           feature_ai?: boolean
+          feature_fiscal?: boolean
+          feature_inventory?: boolean
           feature_renave?: boolean
           id?: string
           logo_url?: string | null
@@ -3619,6 +3623,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           feature_ai?: boolean
+          feature_fiscal?: boolean
+          feature_inventory?: boolean
           feature_renave?: boolean
           id?: string
           logo_url?: string | null
