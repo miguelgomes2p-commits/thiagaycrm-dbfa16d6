@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.tg_workspace_locations_single_default() FROM PUBLIC, anon, authenticated;

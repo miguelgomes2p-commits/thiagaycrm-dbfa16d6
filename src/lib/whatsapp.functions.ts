@@ -515,11 +515,17 @@ export const sendWhatsappLocation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       conversationId: z.string().uuid(),
-      latitude: z.number().min(-90).max(90),
-      longitude: z.number().min(-180).max(180),
+      /** Local cadastrado do workspace. Quando informado, as coordenadas são
+       * lidas do banco e qualquer lat/lng vindo do frontend é ignorado. */
+      locationId: z.string().uuid().optional().nullable(),
+      latitude: z.number().min(-90).max(90).optional(),
+      longitude: z.number().min(-180).max(180).optional(),
       name: z.string().max(160).optional().nullable(),
       address: z.string().max(400).optional().nullable(),
-    }).parse(d),
+    }).refine(
+      (v) => !!v.locationId || (typeof v.latitude === "number" && typeof v.longitude === "number"),
+      { message: "Informe um local cadastrado ou coordenadas válidas." },
+    ).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: conv, error: cerr } = await context.supabase
@@ -541,9 +547,33 @@ export const sendWhatsappLocation = createServerFn({ method: "POST" })
       .single();
     if (nerr || !num) throw new Error("Número WhatsApp não encontrado");
 
-    const locName = (data.name ?? "").trim() || "Localização";
-    const locAddress = (data.address ?? "").trim() || `${data.latitude}, ${data.longitude}`;
+    // Fonte da verdade: quando vem `locationId`, busca no banco validando o workspace.
+    let lat = data.latitude as number;
+    let lng = data.longitude as number;
+    let rawName = data.name ?? null;
+    let rawAddress = data.address ?? null;
+    if (data.locationId) {
+      const { data: loc, error: lerr } = await context.supabase
+        .from("workspace_locations")
+        .select("id, name, address, latitude, longitude, is_active")
+        .eq("id", data.locationId)
+        .eq("workspace_id", conv.workspace_id)
+        .maybeSingle();
+      if (lerr) throw new Error(lerr.message);
+      if (!loc || loc.is_active === false) throw new Error("Local não encontrado neste workspace.");
+      lat = Number(loc.latitude);
+      lng = Number(loc.longitude);
+      rawName = loc.name;
+      rawAddress = loc.address;
+    }
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      throw new Error("Coordenadas inválidas.");
+    }
+
+    const locName = (rawName ?? "").trim() || "Localização";
+    const locAddress = (rawAddress ?? "").trim() || `${lat}, ${lng}`;
     const preview = `📍 ${locName}`;
+
     const nowIso = new Date().toISOString();
 
     const { data: pendingMsg, error: pendingErr } = await context.supabase
@@ -560,12 +590,14 @@ export const sendWhatsappLocation = createServerFn({ method: "POST" })
         created_at: nowIso,
         metadata: {
           location: {
-            latitude: data.latitude,
-            longitude: data.longitude,
+            latitude: lat,
+            longitude: lng,
             name: locName,
             address: locAddress,
+            location_id: data.locationId ?? null,
           },
         },
+
       })
       .select()
       .single();
@@ -588,12 +620,24 @@ export const sendWhatsappLocation = createServerFn({ method: "POST" })
         num.provider_api_key,
         num.instance_name,
         conv.wa_contact_wa_id,
-        data.latitude,
-        data.longitude,
+        lat,
+        lng,
+
         locName,
         locAddress,
       );
       const waId = resp.key?.id ?? null;
+      console.info("location_sent", {
+        workspace_id: conv.workspace_id,
+        conversation_id: conv.id,
+        location_id: data.locationId ?? null,
+        user_id: context.userId,
+        provider: num.provider,
+        whatsapp_message_id: waId,
+        status: "sent",
+        created_at: nowIso,
+      });
+
       const { data: msg, error: merr } = await context.supabase
         .from("messages")
         .update({ wa_message_id: waId, delivery_status: "sent" })
@@ -618,6 +662,16 @@ export const sendWhatsappLocation = createServerFn({ method: "POST" })
       return msg;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
+      console.error("location_send_failed", {
+        workspace_id: conv.workspace_id,
+        conversation_id: conv.id,
+        location_id: data.locationId ?? null,
+        user_id: context.userId,
+        provider: num.provider,
+        status: "failed",
+        error: errorMessage,
+      });
+
       await context.supabase.from("messages").update({
         delivery_status: "failed",
         error_message: errorMessage,
