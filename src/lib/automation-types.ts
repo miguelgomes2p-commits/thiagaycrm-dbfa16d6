@@ -7,13 +7,15 @@ export type TriggerType =
   | "lead.created"
   | "lead.stage_changed"
   | "vehicle.status_changed"
-  | "lead_vehicle.linked";
+  | "lead_vehicle.linked"
+  | "contact.birthday";
 
 export const TRIGGER_LABEL: Record<TriggerType, string> = {
   "lead.created": "Lead criado",
   "lead.stage_changed": "Lead mudou de etapa",
   "vehicle.status_changed": "Veículo mudou de status",
   "lead_vehicle.linked": "Veículo vinculado a um lead",
+  "contact.birthday": "Aniversário do contato",
 };
 
 export type ConditionOp =
@@ -71,7 +73,7 @@ export const EMPTY_DEFINITION: AutomationDefinition = {
 /** Campos disponíveis para condições e variáveis de mensagem. */
 export const CONTEXT_FIELDS = [
   "lead.title", "lead.value", "lead.source", "lead.priority", "lead.stage_id", "lead.owner_id",
-  "contact.name", "contact.phone", "contact.city",
+  "contact.name", "contact.phone", "contact.city", "contact.birthdate",
   "vehicle.brand", "vehicle.model", "vehicle.price", "vehicle.status", "vehicle.year_model",
 ] as const;
 

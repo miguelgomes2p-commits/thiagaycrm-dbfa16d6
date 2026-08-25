@@ -63,8 +63,10 @@ export async function buildContext(event: Pick<CrmEvent, "entity_type" | "entity
   const ctx: EngineContext = {};
   let leadId: string | null = null;
   let vehicleId: string | null = null;
+  let contactId: string | null = null;
 
   if (event.entity_type === "lead") leadId = event.entity_id;
+  if (event.entity_type === "contact") contactId = event.entity_id;
   if (event.entity_type === "vehicle") vehicleId = event.entity_id;
   const payloadLead = (event.payload as { lead_id?: string } | null)?.lead_id;
   if (!leadId && payloadLead) leadId = payloadLead;
@@ -77,6 +79,18 @@ export async function buildContext(event: Pick<CrmEvent, "entity_type" | "entity
       .eq("is_primary", true)
       .maybeSingle();
     leadId = data?.lead_id ?? null;
+  }
+
+  // Evento de contato (ex.: aniversário): usa o lead mais recente do contato, se houver.
+  if (contactId && !leadId) {
+    const { data } = await supabaseAdmin
+      .from("leads")
+      .select("id")
+      .eq("contact_id", contactId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    leadId = data?.id ?? null;
   }
 
   if (leadId) {
@@ -93,16 +107,22 @@ export async function buildContext(event: Pick<CrmEvent, "entity_type" | "entity
       ctx["lead.priority"] = lead.priority;
       ctx["lead.stage_id"] = lead.stage_id;
       ctx["lead.owner_id"] = lead.owner_id ?? null;
-      if (lead.contact_id) {
-        const { data: contact } = await supabaseAdmin
-          .from("contacts")
-          .select("name, phone, city")
-          .eq("id", lead.contact_id)
-          .maybeSingle();
-        ctx["contact.name"] = contact?.name ?? null;
-        ctx["contact.phone"] = contact?.phone ?? null;
-        ctx["contact.city"] = contact?.city ?? null;
-      }
+      if (lead.contact_id && !contactId) contactId = lead.contact_id;
+    }
+  }
+
+  if (contactId) {
+    const { data: contact } = await supabaseAdmin
+      .from("contacts")
+      .select("id, name, phone, city, birthdate")
+      .eq("id", contactId)
+      .maybeSingle();
+    if (contact) {
+      ctx["contact.id"] = contact.id;
+      ctx["contact.name"] = contact.name ?? null;
+      ctx["contact.phone"] = contact.phone ?? null;
+      ctx["contact.city"] = contact.city ?? null;
+      ctx["contact.birthdate"] = contact.birthdate ?? null;
     }
   }
 
@@ -126,7 +146,7 @@ export async function buildContext(event: Pick<CrmEvent, "entity_type" | "entity
     ctx[`event.${k}`] = typeof val === "object" ? JSON.stringify(val) : (val as string | number | null);
   }
 
-  return { ctx, leadId, vehicleId };
+  return { ctx, leadId, vehicleId, contactId };
 }
 
 type StepResult = { status: "ok" | "skipped" | "error"; result?: Record<string, unknown>; error?: string };
