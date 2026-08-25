@@ -50,6 +50,7 @@ const TRIGGER_HELP: Record<TriggerType, string> = {
   "lead.stage_changed": "Dispara quando alguém arrasta o card do lead para outra etapa do funil.",
   "vehicle.status_changed": "Dispara quando um veículo muda de situação (disponível, reservado, vendido...).",
   "lead_vehicle.linked": "Dispara quando um veículo do estoque é marcado como interesse de um lead.",
+  "contact.birthday": "Roda 1x por dia, às 09h (horário de Brasília), e dispara para cada contato que faz aniversário no dia. Só funciona para contatos com data de nascimento cadastrada.",
 };
 
 const ACTION_HELP: Record<ActionType, string> = {
@@ -82,6 +83,7 @@ const FIELD_LABEL: Record<string, string> = {
   "contact.name": "Nome do contato",
   "contact.phone": "Telefone do contato",
   "contact.city": "Cidade do contato",
+  "contact.birthdate": "Data de nascimento do contato",
   "vehicle.brand": "Marca do veículo",
   "vehicle.model": "Modelo do veículo",
   "vehicle.price": "Preço do veículo",
@@ -95,6 +97,9 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
   paused: { label: "Pausada", className: "bg-warning/20 text-warning" },
   archived: { label: "Arquivada", className: "bg-muted text-muted-foreground" },
 };
+
+const BIRTHDAY_DEFAULT_MESSAGE =
+  "Feliz aniversário, {{contact.name}}! 🎉 A equipe da City Car deseja a você um ano incrível. Aproveite condições especiais essa semana!";
 
 function actionSummary(a: ActionNode): string {
   const cfg = a.config ?? {};
@@ -413,12 +418,29 @@ function AutomationStudioPage() {
                   <StepCard icon={Zap} tone="primary" step="1" title="Quando isso acontecer"
                     summary={TRIGGER_LABEL[def.trigger.type]} help={TRIGGER_HELP[def.trigger.type]}>
                     <Select value={def.trigger.type}
-                      onValueChange={(v) => setDef({ ...def, trigger: { type: v as TriggerType, config: {} } })}>
+                      onValueChange={(v) => {
+                        const type = v as TriggerType;
+                        const next: AutomationDefinition = { ...def, trigger: { type, config: {} } };
+                        if (type === "contact.birthday" && next.actions.length === 0) {
+                          next.actions = [{
+                            id: `a${Date.now()}`,
+                            type: "send_whatsapp",
+                            config: { message: BIRTHDAY_DEFAULT_MESSAGE },
+                          }];
+                        }
+                        setDef(next);
+                      }}>
                       <SelectTrigger className="w-full sm:max-w-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(TRIGGER_LABEL).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    {def.trigger.type === "contact.birthday" && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Este gatilho roda automaticamente 1x por dia, às 09h (horário de Brasília), e depende de o
+                        contato ter a data de nascimento cadastrada no cadastro de contatos.
+                      </p>
+                    )}
                   </StepCard>
 
                   <StepCard icon={Filter} tone="muted" step="2" title="Só se (opcional)"
