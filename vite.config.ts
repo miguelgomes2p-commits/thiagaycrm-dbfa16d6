@@ -7,6 +7,7 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { execFileSync } from "node:child_process";
 import { VitePWA } from "vite-plugin-pwa";
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 
 
 function resolveBuildSha(): string {
@@ -34,6 +35,7 @@ export default defineConfig({
       __LUPUS_BUILD_SHA__: JSON.stringify(buildSha),
     },
     plugins: [
+      mcpPlugin(),
       VitePWA({
         strategies: "generateSW",
         registerType: "autoUpdate",
