@@ -51,13 +51,14 @@ function AuthPage() {
     invite ? `invite=${encodeURIComponent(invite)}` : "",
     next ? `next=${encodeURIComponent(next)}` : "",
   ].filter(Boolean).join("&");
-  const authReturnUrl = window.location.origin + "/auth" + (returnQuery ? `?${returnQuery}` : "");
+  const authReturnUrl = () =>
+    window.location.origin + "/auth" + (returnQuery ? `?${returnQuery}` : "");
   function goAfterAuth() {
     if (next) {
       window.location.replace(next);
       return;
     }
-    goAfterAuth();
+    navigate({ to: "/app" });
   }
   const acceptInvite = useServerFn(acceptWorkspaceInvitation);
   const completeInviteWithPassword = useServerFn(completeWorkspaceInviteWithPassword);
