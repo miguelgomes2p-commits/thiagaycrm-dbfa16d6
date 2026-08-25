@@ -864,7 +864,9 @@ function ConversationsPage() {
     }
   }
 
-  async function sendLocation(loc: { latitude: number; longitude: number; name?: string | null; address?: string | null }) {
+  async function sendLocation(args: { locationId?: string; preview: { latitude: number; longitude: number; name?: string | null; address?: string | null } }) {
+    const loc = args.preview;
+
     if (!active || !ws) return;
     setSendingLocation(true);
     try {
