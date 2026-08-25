@@ -132,7 +132,7 @@ export const listAllWorkspaces = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: workspaces, error } = await supabaseAdmin
       .from("workspaces")
-      .select("id, name, slug, created_at, feature_renave, feature_ai")
+      .select("id, name, slug, created_at, feature_renave, feature_ai, feature_inventory, feature_fiscal")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const { data: members } = await supabaseAdmin
