@@ -198,7 +198,31 @@ function AdminPage() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-wrap justify-end">
+                      <label className="flex items-center gap-2 text-xs">
+                        Estoque
+                        <Switch
+                          checked={w.feature_inventory !== false}
+                          onCheckedChange={async (v) => {
+                            await updateFeaturesFn({ data: { workspaceId: w.id, feature_inventory: v } });
+                            qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
+                            qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+                            toast.success("Atualizado");
+                          }}
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-xs">
+                        Fiscal
+                        <Switch
+                          checked={w.feature_fiscal !== false}
+                          onCheckedChange={async (v) => {
+                            await updateFeaturesFn({ data: { workspaceId: w.id, feature_fiscal: v } });
+                            qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
+                            qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+                            toast.success("Atualizado");
+                          }}
+                        />
+                      </label>
                       <label className="flex items-center gap-2 text-xs">
                         RENAVE
                         <Switch
