@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.tg_enforce_single_workspace() FROM PUBLIC, anon, authenticated;
