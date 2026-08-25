@@ -78,6 +78,38 @@ function AdminPage() {
   const usersQ = useQuery({ queryKey: ["admin-users"], queryFn: () => listUsersFn() });
   const wsQ = useQuery({ queryKey: ["admin-workspaces"], queryFn: () => listWsFn() });
 
+  // Criação de workspace pelo admin global
+  const createWsFn = useServerFn(createWorkspaceAsSuperAdmin);
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newSlug, setNewSlug] = useState("");
+  const [newMode, setNewMode] = useState<"individual" | "shared">("individual");
+  const [newOwner, setNewOwner] = useState<string>("me");
+
+  const createWsM = useMutation({
+    mutationFn: () =>
+      createWsFn({
+        data: {
+          name: newName,
+          slug: newSlug || undefined,
+          mode: newMode,
+          ownerUserId: newOwner === "me" ? undefined : newOwner,
+        },
+      }),
+    onSuccess: async (res) => {
+      setNewOpen(false);
+      setNewName(""); setNewSlug(""); setNewMode("individual"); setNewOwner("me");
+      await qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
+      await qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+      toast.success("Workspace criado");
+      if (newOwner === "me" && res?.workspaceId) {
+        setActiveWorkspaceId(res.workspaceId);
+        navigate({ to: "/app" });
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const delUserM = useMutation({
     mutationFn: (userId: string) => delUserFn({ data: { userId } }),
     onSuccess: () => {
