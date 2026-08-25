@@ -32,7 +32,8 @@ type Lead = {
   id: string; title: string; value: number | null; stage_id: string; priority: string;
   source: string | null; tags: string[] | null; created_at: string; last_interaction_at: string | null;
   notes: string | null; custom_fields: Record<string, string> | null; owner_id: string | null;
-  contacts?: { name: string; company_name: string | null; phone?: string | null } | null;
+  contact_id?: string | null;
+  contacts?: { name: string; company_name: string | null; phone?: string | null; birthdate?: string | null } | null;
 };
 
 const priorityColor: Record<string, string> = {
@@ -112,7 +113,7 @@ function PipelinePage() {
       if (!pipe) return { pipe: null, stages: [] as Stage[], leads: [] as Lead[], owners: new Map<string, string>() };
       const [{ data: stages, error: stagesError }, { data: leads, error: leadsError }] = await Promise.all([
         supabase.from("pipeline_stages").select("id, name, color, type, position").eq("pipeline_id", pipe.id).order("position"),
-        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, owner_id, contacts:contact_id(name, company_name, phone)").eq("pipeline_id", pipe.id).order("position"),
+        supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, owner_id, contact_id, contacts:contact_id(name, company_name, phone, birthdate)").eq("pipeline_id", pipe.id).order("position"),
       ]);
       if (stagesError) throw stagesError;
       if (leadsError) throw leadsError;
@@ -185,6 +186,12 @@ function PipelinePage() {
       owner_id: user.session?.user?.id,
     });
     if (error) { toast.error(error.message); return; }
+    const contactId = String(fd.get("contact_id") || "");
+    const birthdate = String(fd.get("contact_birthdate") || "");
+    if (contactId && birthdate) {
+      await supabase.from("contacts").update({ birthdate }).eq("id", contactId);
+      qc.invalidateQueries({ queryKey: ["contacts"] });
+    }
     toast.success("Lead criado");
     qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
     qc.invalidateQueries({ queryKey: ["dashboard", ws.id] });
@@ -239,6 +246,13 @@ function PipelinePage() {
                     {contactsQ.data?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label>Data de nascimento do contato (opcional)</Label>
+                <Input name="contact_birthdate" type="date" />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Usada na automação de aniversário. É salva no cadastro do contato selecionado.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Etapa</Label>
@@ -397,7 +411,19 @@ function PipelinePage() {
                 <InfoRow label="Agente" value={(infoLead.owner_id && pipelineQ.data?.owners.get(infoLead.owner_id)) || "—"} />
                 {infoLead.contacts?.phone && <InfoRow label="Telefone" value={infoLead.contacts.phone} />}
                 {infoLead.contacts?.company_name && <InfoRow label="Empresa" value={infoLead.contacts.company_name} />}
+                {infoLead.contacts?.birthdate && (
+                  <InfoRow label="Nascimento" value={new Date(`${infoLead.contacts.birthdate}T12:00:00`).toLocaleDateString("pt-BR")} />
+                )}
               </div>
+              {infoLead.contact_id && !infoLead.contacts?.birthdate && (
+                <BirthdateNotice
+                  contactId={infoLead.contact_id}
+                  onSaved={() => {
+                    qc.invalidateQueries({ queryKey: ["pipeline", ws?.id] });
+                    setInfoLead(null);
+                  }}
+                />
+              )}
               {infoLead.custom_fields && Object.keys(infoLead.custom_fields).length > 0 && (
                 <div className="pt-2 border-t border-border">
                   <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Qualificação</h4>
