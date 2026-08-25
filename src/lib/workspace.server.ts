@@ -16,10 +16,13 @@ export async function assertWorkspaceAdmin(supabase: any, workspaceId: string, u
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (!data || (data.role !== "owner" && data.role !== "admin")) {
-    throw new Error("Apenas owner/admin do workspace pode gerenciar membros.");
-  }
+  if (data && (data.role === "owner" || data.role === "admin" || data.role === "support")) return;
+  // Suporte global (equipe da plataforma) também pode gerenciar membros
+  const { data: isSupport } = await supabase.rpc("is_support_staff", { _user_id: userId });
+  if (isSupport === true) return;
+  throw new Error("Apenas owner/admin do workspace pode gerenciar membros.");
 }
+
 
 export function normalizeInviteEmail(email: string) {
   const value = email.trim().toLowerCase();

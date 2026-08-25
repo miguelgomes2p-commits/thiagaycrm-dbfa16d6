@@ -48,7 +48,7 @@ function SettingsPage() {
     queryFn: () => listFn({ data: { workspaceId: ws!.id } }),
   });
 
-  const canManage = ws?.role === "owner" || ws?.role === "admin";
+  const canManage = ws?.role === "owner" || ws?.role === "admin" || ws?.role === "support";
   const isShared = ws?.workspace_mode === "shared";
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AssignableRole>("agent");

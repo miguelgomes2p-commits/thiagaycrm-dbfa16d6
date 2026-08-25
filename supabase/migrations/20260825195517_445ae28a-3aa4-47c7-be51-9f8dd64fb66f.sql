@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.is_support_staff(uuid) TO authenticated;
