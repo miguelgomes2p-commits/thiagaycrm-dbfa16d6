@@ -31,6 +31,7 @@ import { Route as AuthenticatedAppContactsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppAutomationsRouteImport } from './routes/_authenticated/app.automations'
 import { Route as AuthenticatedAppAiRouteImport } from './routes/_authenticated/app.ai'
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app.admin'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicWebhooksFocusNfeRouteImport } from './routes/api/public/webhooks/focus-nfe'
 import { Route as ApiPublicWebhooksEvolutionRouteImport } from './routes/api/public/webhooks/evolution'
 import { Route as ApiPublicHooksRunRecurringAutomationsRouteImport } from './routes/api/public/hooks/run-recurring-automations'
@@ -161,6 +162,11 @@ const AuthenticatedAppAdminRoute = AuthenticatedAppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWebhooksFocusNfeRoute =
   ApiPublicWebhooksFocusNfeRouteImport.update({
     id: '/api/public/webhooks/focus-nfe',
@@ -239,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/app': typeof AuthenticatedAppRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/ai': typeof AuthenticatedAppAiRoute
   '/app/automations': typeof AuthenticatedAppAutomationsRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/ai': typeof AuthenticatedAppAiRoute
   '/app/automations': typeof AuthenticatedAppAutomationsRoute
@@ -310,6 +318,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/app/admin': typeof AuthenticatedAppAdminRoute
   '/_authenticated/app/ai': typeof AuthenticatedAppAiRoute
   '/_authenticated/app/automations': typeof AuthenticatedAppAutomationsRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/app'
     | '/onboarding'
+    | '/.lovable/oauth/consent'
     | '/app/admin'
     | '/app/ai'
     | '/app/automations'
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/onboarding'
+    | '/.lovable/oauth/consent'
     | '/app/admin'
     | '/app/ai'
     | '/app/automations'
@@ -417,6 +428,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/app'
     | '/_authenticated/onboarding'
+    | '/.lovable/oauth/consent'
     | '/_authenticated/app/admin'
     | '/_authenticated/app/ai'
     | '/_authenticated/app/automations'
@@ -452,6 +464,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicHooksDrainAutomationsRoute: typeof ApiPublicHooksDrainAutomationsRoute
@@ -623,6 +636,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAdminRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/focus-nfe': {
       id: '/api/public/webhooks/focus-nfe'
       path: '/api/public/webhooks/focus-nfe'
@@ -781,6 +801,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiAiChatRoute: ApiAiChatRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicHooksDrainAutomationsRoute: ApiPublicHooksDrainAutomationsRoute,
