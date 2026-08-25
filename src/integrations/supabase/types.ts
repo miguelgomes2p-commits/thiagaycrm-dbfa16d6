@@ -387,6 +387,48 @@ export type Database = {
           },
         ]
       }
+      contact_birthday_sends: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          sent_at: string
+          workspace_id: string
+          year: number
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          sent_at?: string
+          workspace_id: string
+          year: number
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          sent_at?: string
+          workspace_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_birthday_sends_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_birthday_sends_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           address: string | null

@@ -34,6 +34,7 @@ import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticat
 import { Route as ApiPublicWebhooksFocusNfeRouteImport } from './routes/api/public/webhooks/focus-nfe'
 import { Route as ApiPublicWebhooksEvolutionRouteImport } from './routes/api/public/webhooks/evolution'
 import { Route as ApiPublicHooksRunRecurringAutomationsRouteImport } from './routes/api/public/hooks/run-recurring-automations'
+import { Route as ApiPublicHooksRunBirthdayAutomationsRouteImport } from './routes/api/public/hooks/run-birthday-automations'
 import { Route as ApiPublicHooksDrainWebhookQueueRouteImport } from './routes/api/public/hooks/drain-webhook-queue'
 import { Route as ApiPublicHooksDrainRenaveQueueRouteImport } from './routes/api/public/hooks/drain-renave-queue'
 import { Route as ApiPublicHooksDrainN8nDeliveriesRouteImport } from './routes/api/public/hooks/drain-n8n-deliveries'
@@ -178,6 +179,12 @@ const ApiPublicHooksRunRecurringAutomationsRoute =
     path: '/api/public/hooks/run-recurring-automations',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRunBirthdayAutomationsRoute =
+  ApiPublicHooksRunBirthdayAutomationsRouteImport.update({
+    id: '/api/public/hooks/run-birthday-automations',
+    path: '/api/public/hooks/run-birthday-automations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDrainWebhookQueueRoute =
   ApiPublicHooksDrainWebhookQueueRouteImport.update({
     id: '/api/public/hooks/drain-webhook-queue',
@@ -253,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
+  '/api/public/hooks/run-birthday-automations': typeof ApiPublicHooksRunBirthdayAutomationsRoute
   '/api/public/hooks/run-recurring-automations': typeof ApiPublicHooksRunRecurringAutomationsRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/focus-nfe': typeof ApiPublicWebhooksFocusNfeRoute
@@ -286,6 +294,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
+  '/api/public/hooks/run-birthday-automations': typeof ApiPublicHooksRunBirthdayAutomationsRoute
   '/api/public/hooks/run-recurring-automations': typeof ApiPublicHooksRunRecurringAutomationsRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/focus-nfe': typeof ApiPublicWebhooksFocusNfeRoute
@@ -322,6 +331,7 @@ export interface FileRoutesById {
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
+  '/api/public/hooks/run-birthday-automations': typeof ApiPublicHooksRunBirthdayAutomationsRoute
   '/api/public/hooks/run-recurring-automations': typeof ApiPublicHooksRunRecurringAutomationsRoute
   '/api/public/webhooks/evolution': typeof ApiPublicWebhooksEvolutionRouteWithChildren
   '/api/public/webhooks/focus-nfe': typeof ApiPublicWebhooksFocusNfeRoute
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/drain-n8n-deliveries'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
+    | '/api/public/hooks/run-birthday-automations'
     | '/api/public/hooks/run-recurring-automations'
     | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/focus-nfe'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/drain-n8n-deliveries'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
+    | '/api/public/hooks/run-birthday-automations'
     | '/api/public/hooks/run-recurring-automations'
     | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/focus-nfe'
@@ -426,6 +438,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/drain-n8n-deliveries'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
+    | '/api/public/hooks/run-birthday-automations'
     | '/api/public/hooks/run-recurring-automations'
     | '/api/public/webhooks/evolution'
     | '/api/public/webhooks/focus-nfe'
@@ -445,6 +458,7 @@ export interface RootRouteChildren {
   ApiPublicHooksDrainN8nDeliveriesRoute: typeof ApiPublicHooksDrainN8nDeliveriesRoute
   ApiPublicHooksDrainRenaveQueueRoute: typeof ApiPublicHooksDrainRenaveQueueRoute
   ApiPublicHooksDrainWebhookQueueRoute: typeof ApiPublicHooksDrainWebhookQueueRoute
+  ApiPublicHooksRunBirthdayAutomationsRoute: typeof ApiPublicHooksRunBirthdayAutomationsRoute
   ApiPublicHooksRunRecurringAutomationsRoute: typeof ApiPublicHooksRunRecurringAutomationsRoute
   ApiPublicWebhooksEvolutionRoute: typeof ApiPublicWebhooksEvolutionRouteWithChildren
   ApiPublicWebhooksFocusNfeRoute: typeof ApiPublicWebhooksFocusNfeRoute
@@ -630,6 +644,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksRunRecurringAutomationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/run-birthday-automations': {
+      id: '/api/public/hooks/run-birthday-automations'
+      path: '/api/public/hooks/run-birthday-automations'
+      fullPath: '/api/public/hooks/run-birthday-automations'
+      preLoaderRoute: typeof ApiPublicHooksRunBirthdayAutomationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/drain-webhook-queue': {
       id: '/api/public/hooks/drain-webhook-queue'
       path: '/api/public/hooks/drain-webhook-queue'
@@ -766,6 +787,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksDrainN8nDeliveriesRoute: ApiPublicHooksDrainN8nDeliveriesRoute,
   ApiPublicHooksDrainRenaveQueueRoute: ApiPublicHooksDrainRenaveQueueRoute,
   ApiPublicHooksDrainWebhookQueueRoute: ApiPublicHooksDrainWebhookQueueRoute,
+  ApiPublicHooksRunBirthdayAutomationsRoute:
+    ApiPublicHooksRunBirthdayAutomationsRoute,
   ApiPublicHooksRunRecurringAutomationsRoute:
     ApiPublicHooksRunRecurringAutomationsRoute,
   ApiPublicWebhooksEvolutionRoute: ApiPublicWebhooksEvolutionRouteWithChildren,
