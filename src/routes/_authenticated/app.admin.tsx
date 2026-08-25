@@ -4,13 +4,20 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById, updateWorkspaceFeatures, joinWorkspaceAsSuperAdmin, leaveWorkspaceAsSuperAdmin, setSupportStaff } from "@/lib/admin.functions";
+import { listAllUsers, deleteUserById, listAllWorkspaces, deleteWorkspaceById, updateWorkspaceFeatures, joinWorkspaceAsSuperAdmin, leaveWorkspaceAsSuperAdmin, setSupportStaff, createWorkspaceAsSuperAdmin } from "@/lib/admin.functions";
 import { setActiveWorkspaceId } from "@/hooks/useWorkspace";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldAlert, Trash2, Search, Users, Building2, LogIn, DoorOpen, Headset } from "lucide-react";
+import { ShieldAlert, Trash2, Search, Users, Building2, LogIn, DoorOpen, Headset, Plus, Loader2 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
