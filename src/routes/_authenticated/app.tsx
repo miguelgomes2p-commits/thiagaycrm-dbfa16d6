@@ -102,6 +102,8 @@ function AppShell() {
   const filteredNav = NAV.filter((item) => {
     if (item.feature === "renave") return !!current?.feature_renave;
     if (item.feature === "ai") return !!current?.feature_ai;
+    if (item.feature === "inventory") return current?.feature_inventory !== false;
+    if (item.feature === "fiscal") return current?.feature_fiscal !== false;
     return true;
   });
   const allNav = [
