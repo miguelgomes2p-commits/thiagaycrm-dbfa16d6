@@ -1610,7 +1610,9 @@ function ConversationsPage() {
                 onOpenChange={setLocationOpen}
                 workspaceId={ws?.id ?? null}
                 sending={sendingLocation}
-                onSend={(loc) => sendLocation(loc)}
+                canManage={isAdmin}
+                onSend={(args) => sendLocation(args)}
+
               />
               {ws?.id && (
                 <SendVehicleDialog
