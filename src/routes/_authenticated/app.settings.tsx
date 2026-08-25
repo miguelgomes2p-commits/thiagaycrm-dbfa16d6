@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { listWorkspaceMembers, inviteMemberByEmail, listWorkspaceInvitations, updateMemberRole, removeMember, updateMemberQueueSettings } from "@/lib/workspace.functions";
 import { Switch } from "@/components/ui/switch";
 import { InstallAppButton } from "@/components/pwa/InstallAppButton";
+import { WorkspaceLocationsSection } from "@/components/settings/WorkspaceLocationsSection";
+
 
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
