@@ -176,6 +176,11 @@ function AdminPage() {
         </TabsList>
 
         <TabsContent value="workspaces" className="mt-4">
+          <div className="flex justify-end mb-3">
+            <Button size="sm" className="cursor-pointer" onClick={() => setNewOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Criar workspace
+            </Button>
+          </div>
           <div className="card-elevated p-4">
             {wsQ.isLoading && <div className="text-sm text-muted-foreground">Carregando...</div>}
             <div className="divide-y divide-border">
