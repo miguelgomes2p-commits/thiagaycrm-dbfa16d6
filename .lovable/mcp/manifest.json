@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "sdk_version": "0.28.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://dknojmeojvtohxbhkzmq.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "lupus-crm-prd",
+      "version": "0.1.0",
+      "title": "Lupus CRM PRD"
+    },
+    "tools": [
+      {
+        "name": "list_workspaces",
+        "title": "Listar workspaces",
+        "description": "Lista os workspaces do Lupus CRM que o usuário conectado pode acessar, com id, nome, modo e o papel do usuário. Use o id retornado como workspace_id nas outras ferramentas.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_leads",
+        "title": "Listar leads",
+        "description": "Lista os leads do pipeline visíveis para o usuário conectado, com etapa, valor, prioridade e contato. Filtre por workspace, texto no título ou nome da etapa.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "description": "Workspace a consultar (use list_workspaces).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "search": {
+              "description": "Texto para buscar no título do lead.",
+              "type": "string",
+              "minLength": 1
+            },
+            "stage_name": {
+              "description": "Nome da etapa do pipeline (ex.: Negociação).",
+              "type": "string",
+              "minLength": 1
+            },
+            "limit": {
+              "default": 25,
+              "description": "Quantidade máxima de leads.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_contacts",
+        "title": "Listar contatos",
+        "description": "Lista ou busca contatos do Lupus CRM visíveis para o usuário conectado (nome, telefone, email, cidade, data de nascimento).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "description": "Workspace a consultar (use list_workspaces).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "search": {
+              "description": "Busca por nome, telefone ou email.",
+              "type": "string",
+              "minLength": 1
+            },
+            "limit": {
+              "default": 25,
+              "description": "Quantidade máxima de contatos.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_conversations",
+        "title": "Listar conversas",
+        "description": "Lista as conversas de WhatsApp visíveis para o usuário conectado, com contato, canal, status, não lidas e prévia da última mensagem.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "description": "Workspace a consultar (use list_workspaces).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "only_unread": {
+              "default": false,
+              "description": "Retornar apenas conversas com mensagens não lidas.",
+              "type": "boolean"
+            },
+            "limit": {
+              "default": 20,
+              "description": "Quantidade máxima de conversas.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_conversation_messages",
+        "title": "Ler mensagens da conversa",
+        "description": "Retorna as mensagens mais recentes de uma conversa do Lupus CRM (direção, autor, conteúdo, tipo de mídia e status de entrega). Use list_conversations para obter o conversation_id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "conversation_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "ID da conversa."
+            },
+            "limit": {
+              "default": 30,
+              "description": "Quantidade máxima de mensagens.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "conversation_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_vehicles",
+        "title": "Listar veículos do estoque",
+        "description": "Lista o estoque de veículos visível para o usuário conectado (marca, modelo, ano, preço, km, placa e status). Filtre por texto e status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "description": "Workspace a consultar (use list_workspaces).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "search": {
+              "description": "Busca por marca, modelo ou versão.",
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "description": "Status do veículo no estoque.",
+              "type": "string",
+              "enum": [
+                "available",
+                "reserved",
+                "sold",
+                "inactive"
+              ]
+            },
+            "limit": {
+              "default": 25,
+              "description": "Quantidade máxima de veículos.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_tasks",
+        "title": "Listar tarefas",
+        "description": "Lista as tarefas do Lupus CRM visíveis para o usuário conectado, com título, prazo, prioridade e lead relacionado.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "description": "Workspace a consultar (use list_workspaces).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "only_pending": {
+              "default": true,
+              "description": "Retornar apenas tarefas não concluídas.",
+              "type": "boolean"
+            },
+            "limit": {
+              "default": 25,
+              "description": "Quantidade máxima de tarefas.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_task",
+        "title": "Criar tarefa",
+        "description": "Cria uma tarefa no Lupus CRM para o usuário conectado, opcionalmente vinculada a um lead ou contato. Use list_workspaces para obter o workspace_id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Workspace onde a tarefa será criada."
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Título da tarefa."
+            },
+            "description": {
+              "description": "Detalhes da tarefa.",
+              "type": "string",
+              "maxLength": 2000
+            },
+            "due_at": {
+              "description": "Prazo em ISO 8601 com fuso, ex.: 2026-09-01T13:00:00-03:00.",
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "priority": {
+              "default": "medium",
+              "description": "Prioridade da tarefa.",
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "urgent"
+              ]
+            },
+            "lead_id": {
+              "description": "Lead relacionado (opcional).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "contact_id": {
+              "description": "Contato relacionado (opcional).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "required": [
+            "workspace_id",
+            "title"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
