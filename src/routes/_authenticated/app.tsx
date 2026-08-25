@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/app")({
   component: AppShell,
 });
 
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; feature?: "renave" | "ai" };
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; feature?: "renave" | "ai" | "inventory" | "fiscal" };
 const NAV: NavItem[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/app/pipeline", label: "Pipeline", icon: KanbanSquare },
