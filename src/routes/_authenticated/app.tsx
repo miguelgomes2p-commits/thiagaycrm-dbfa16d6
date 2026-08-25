@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/app")({
   component: AppShell,
 });
 
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; feature?: "renave" | "ai" };
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; feature?: "renave" | "ai" | "inventory" | "fiscal" };
 const NAV: NavItem[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/app/pipeline", label: "Pipeline", icon: KanbanSquare },
@@ -29,8 +29,8 @@ const NAV: NavItem[] = [
   { to: "/app/whatsapp", label: "WhatsApp", icon: Phone },
   { to: "/app/labels", label: "Etiquetas", icon: Tag },
   { to: "/app/tasks", label: "Tarefas", icon: CheckSquare },
-  { to: "/app/inventory", label: "Estoque", icon: Car },
-  { to: "/app/fiscal", label: "Fiscal", icon: FileText },
+  { to: "/app/inventory", label: "Estoque", icon: Car, feature: "inventory" },
+  { to: "/app/fiscal", label: "Fiscal", icon: FileText, feature: "fiscal" },
   { to: "/app/renave", label: "RENAVE", icon: Car, feature: "renave" },
   { to: "/app/ai", label: "Assistente IA", icon: Bot, feature: "ai" },
   { to: "/app/settings", label: "Configurações", icon: Settings },
@@ -102,6 +102,8 @@ function AppShell() {
   const filteredNav = NAV.filter((item) => {
     if (item.feature === "renave") return !!current?.feature_renave;
     if (item.feature === "ai") return !!current?.feature_ai;
+    if (item.feature === "inventory") return current?.feature_inventory !== false;
+    if (item.feature === "fiscal") return current?.feature_fiscal !== false;
     return true;
   });
   const allNav = [
