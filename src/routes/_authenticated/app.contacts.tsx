@@ -96,12 +96,15 @@ function ContactsPage() {
   }
 
   async function del(c: Contact) {
-    if (!confirm(`Excluir contato "${c.name}"? Suas conversas ficarão sem contato vinculado.`)) return;
-    const { error } = await supabase.from("contacts").delete().eq("id", c.id);
+    if (!confirm(`Excluir definitivamente "${c.name}"?\n\nIsso apaga o contato, conversas, mensagens e leads permanentemente. Se esse número mandar mensagem novamente, entra como um atendimento novo.`)) return;
+    const { error } = await supabase.rpc("purge_contact", { _contact_id: c.id });
     if (error) { toast.error(error.message); return; }
-    toast.success("Contato excluído");
+    toast.success("Contato e todo o histórico excluídos");
     qc.invalidateQueries({ queryKey: ["contacts"] });
+    qc.invalidateQueries({ queryKey: ["conversations"] });
+    qc.invalidateQueries({ queryKey: ["leads"] });
   }
+
 
   const v = (name: keyof Contact) => (editing?.[name] as string | undefined) ?? "";
 
