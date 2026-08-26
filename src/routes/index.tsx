@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { isStandalone } from "@/lib/pwa";
+import { isNativeApp } from "@/lib/native";
 import {
   motion,
   useMotionValue,
@@ -404,6 +406,16 @@ function FinalCTA() {
 }
 
 function Landing() {
+  const navigate = useNavigate();
+
+  // Aberto pelo ícone (PWA instalado / app nativo): vai direto para o CRM,
+  // sem passar pela landing. No navegador web nada muda.
+  useEffect(() => {
+    if (isStandalone() || isNativeApp()) {
+      void navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
