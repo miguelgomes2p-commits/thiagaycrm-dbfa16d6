@@ -14,6 +14,7 @@ import { listWorkspaceMembers, inviteMemberByEmail, listWorkspaceInvitations, up
 import { Switch } from "@/components/ui/switch";
 import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import { WorkspaceLocationsSection } from "@/components/settings/WorkspaceLocationsSection";
+import { PushSettingsCard } from "@/components/notifications/PushSettingsCard";
 
 
 
@@ -140,6 +141,8 @@ function SettingsPage() {
           </div>
         </dl>
       </section>
+
+      <PushSettingsCard workspaceId={ws?.id ?? null} />
 
       <WorkspaceLocationsSection workspaceId={ws?.id ?? null} canManage={canManage} />
 

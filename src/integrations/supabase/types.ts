@@ -2105,6 +2105,115 @@ export type Database = {
           },
         ]
       }
+      push_queue: {
+        Row: {
+          attempts: number
+          body: string | null
+          conversation_id: string | null
+          created_at: string
+          dedupe_key: string
+          error: string | null
+          event_type: string
+          id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          attempts?: number
+          body?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key: string
+          error?: string | null
+          event_type: string
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          attempts?: number
+          body?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key?: string
+          error?: string | null
+          event_type?: string
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_queue_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          device_label: string | null
+          enabled: boolean
+          endpoint: string
+          id: string
+          last_used_at: string | null
+          p256dh: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          device_label?: string | null
+          enabled?: boolean
+          endpoint: string
+          id?: string
+          last_used_at?: string | null
+          p256dh: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          device_label?: string | null
+          enabled?: boolean
+          endpoint?: string
+          id?: string
+          last_used_at?: string | null
+          p256dh?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       queue_entries: {
         Row: {
           assigned_at: string | null
@@ -3599,6 +3708,7 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          push_notifications_enabled: boolean
           slug: string
           updated_at: string
           workspace_mode: Database["public"]["Enums"]["workspace_mode"]
@@ -3614,6 +3724,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          push_notifications_enabled?: boolean
           slug: string
           updated_at?: string
           workspace_mode?: Database["public"]["Enums"]["workspace_mode"]
@@ -3629,6 +3740,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          push_notifications_enabled?: boolean
           slug?: string
           updated_at?: string
           workspace_mode?: Database["public"]["Enums"]["workspace_mode"]

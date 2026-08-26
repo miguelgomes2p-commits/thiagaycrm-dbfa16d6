@@ -132,7 +132,7 @@ export const listAllWorkspaces = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: workspaces, error } = await supabaseAdmin
       .from("workspaces")
-      .select("id, name, slug, created_at, feature_renave, feature_ai, feature_inventory, feature_fiscal")
+      .select("id, name, slug, created_at, feature_renave, feature_ai, feature_inventory, feature_fiscal, push_notifications_enabled")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const { data: members } = await supabaseAdmin
@@ -154,14 +154,15 @@ export const listAllWorkspaces = createServerFn({ method: "GET" })
 
 export const updateWorkspaceFeatures = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { workspaceId: string; feature_renave?: boolean; feature_ai?: boolean; feature_inventory?: boolean; feature_fiscal?: boolean }) => data)
+  .inputValidator((data: { workspaceId: string; feature_renave?: boolean; feature_ai?: boolean; feature_inventory?: boolean; feature_fiscal?: boolean; push_notifications_enabled?: boolean }) => data)
   .handler(async ({ data, context }) => {
     assertSuperAdmin(context.claims as unknown as Record<string, unknown>);
-    const patch: { feature_renave?: boolean; feature_ai?: boolean; feature_inventory?: boolean; feature_fiscal?: boolean } = {};
+    const patch: { feature_renave?: boolean; feature_ai?: boolean; feature_inventory?: boolean; feature_fiscal?: boolean; push_notifications_enabled?: boolean } = {};
     if (typeof data.feature_renave === "boolean") patch.feature_renave = data.feature_renave;
     if (typeof data.feature_ai === "boolean") patch.feature_ai = data.feature_ai;
     if (typeof data.feature_inventory === "boolean") patch.feature_inventory = data.feature_inventory;
     if (typeof data.feature_fiscal === "boolean") patch.feature_fiscal = data.feature_fiscal;
+    if (typeof data.push_notifications_enabled === "boolean") patch.push_notifications_enabled = data.push_notifications_enabled;
     if (Object.keys(patch).length === 0) return { ok: true as const };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("workspaces").update(patch).eq("id", data.workspaceId);
