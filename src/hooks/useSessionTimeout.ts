@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isStandalone } from "@/lib/pwa";
+import { isNativeApp } from "@/lib/native";
 
 const IDLE_MS = 30 * 60 * 1000; // 30 min de inatividade
 const MAX_SESSION_MS = 8 * 60 * 60 * 1000; // 8 h máximo por sessão
