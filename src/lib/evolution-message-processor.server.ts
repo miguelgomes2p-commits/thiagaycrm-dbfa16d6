@@ -465,7 +465,7 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
         .in("phone", waIdArr),
       supabaseAdmin
         .from("conversations")
-        .select("id, last_message_at, wa_contact_wa_id")
+        .select("id, last_message_at, wa_contact_wa_id, contact_id")
         .eq("workspace_id", num.workspace_id)
         .eq("whatsapp_number_id", num.id)
         .in("wa_contact_wa_id", waIdArr),
@@ -473,10 +473,17 @@ export async function processEvolutionPayload(numberId: string, payload: Json, o
     for (const c of preContacts ?? []) {
       if (c.phone) contactByPhone.set(c.phone, { id: c.id, name: c.name ?? null, avatar_url: c.avatar_url ?? null });
     }
+    // Conversas órfãs (contato excluído) são descartadas: o atendimento recomeça do zero,
+    // com contato novo e atribuição automática (round-robin / dono do número).
+    const orphanIds = (preConvs ?? []).filter((c) => !c.contact_id).map((c) => c.id);
+    if (orphanIds.length > 0) {
+      await supabaseAdmin.from("conversations").delete().in("id", orphanIds);
+    }
     for (const c of preConvs ?? []) {
-      if (c.wa_contact_wa_id) convByWaId.set(c.wa_contact_wa_id, { id: c.id, last_message_at: c.last_message_at ?? null });
+      if (c.wa_contact_wa_id && c.contact_id) convByWaId.set(c.wa_contact_wa_id, { id: c.id, last_message_at: c.last_message_at ?? null });
     }
   }
+
 
   for (const m of msgs) {
     const key = keyOf(m);
