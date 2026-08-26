@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.tg_push_on_customer_message() FROM PUBLIC, anon, authenticated;

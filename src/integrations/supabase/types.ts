@@ -3812,6 +3812,7 @@ export type Database = {
         Args: { _workspace_id: string }
         Returns: number
       }
+      retry_push_queue: { Args: never; Returns: undefined }
       set_workspace_mode: {
         Args: { _mode: string; _workspace_id: string }
         Returns: string
