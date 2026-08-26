@@ -52,7 +52,7 @@ export default defineConfig({
           lang: "pt-BR",
           display: "standalone",
           orientation: "portrait-primary",
-          start_url: "/",
+          start_url: "/app",
           scope: "/",
           theme_color: "#FFFFFF",
           background_color: "#FFFFFF",
