@@ -42,6 +42,7 @@ import { Route as ApiPublicHooksRunRecurringAutomationsRouteImport } from './rou
 import { Route as ApiPublicHooksRunBirthdayAutomationsRouteImport } from './routes/api/public/hooks/run-birthday-automations'
 import { Route as ApiPublicHooksDrainWebhookQueueRouteImport } from './routes/api/public/hooks/drain-webhook-queue'
 import { Route as ApiPublicHooksDrainRenaveQueueRouteImport } from './routes/api/public/hooks/drain-renave-queue'
+import { Route as ApiPublicHooksDrainPushRouteImport } from './routes/api/public/hooks/drain-push'
 import { Route as ApiPublicHooksDrainN8nDeliveriesRouteImport } from './routes/api/public/hooks/drain-n8n-deliveries'
 import { Route as ApiPublicHooksDrainAutomationsRouteImport } from './routes/api/public/hooks/drain-automations'
 import { Route as ApiPublicWebhooksWhatsappNumberIdRouteImport } from './routes/api/public/webhooks/whatsapp.$numberId'
@@ -230,6 +231,11 @@ const ApiPublicHooksDrainRenaveQueueRoute =
     path: '/api/public/hooks/drain-renave-queue',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDrainPushRoute = ApiPublicHooksDrainPushRouteImport.update({
+  id: '/api/public/hooks/drain-push',
+  path: '/api/public/hooks/drain-push',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksDrainN8nDeliveriesRoute =
   ApiPublicHooksDrainN8nDeliveriesRouteImport.update({
     id: '/api/public/hooks/drain-n8n-deliveries',
@@ -296,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AuthenticatedAppIndexRoute
   '/api/public/hooks/drain-automations': typeof ApiPublicHooksDrainAutomationsRoute
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
+  '/api/public/hooks/drain-push': typeof ApiPublicHooksDrainPushRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
   '/api/public/hooks/run-birthday-automations': typeof ApiPublicHooksRunBirthdayAutomationsRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/app': typeof AuthenticatedAppIndexRoute
   '/api/public/hooks/drain-automations': typeof ApiPublicHooksDrainAutomationsRoute
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
+  '/api/public/hooks/drain-push': typeof ApiPublicHooksDrainPushRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
   '/api/public/hooks/run-birthday-automations': typeof ApiPublicHooksRunBirthdayAutomationsRoute
@@ -377,6 +385,7 @@ export interface FileRoutesById {
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/api/public/hooks/drain-automations': typeof ApiPublicHooksDrainAutomationsRoute
   '/api/public/hooks/drain-n8n-deliveries': typeof ApiPublicHooksDrainN8nDeliveriesRoute
+  '/api/public/hooks/drain-push': typeof ApiPublicHooksDrainPushRoute
   '/api/public/hooks/drain-renave-queue': typeof ApiPublicHooksDrainRenaveQueueRoute
   '/api/public/hooks/drain-webhook-queue': typeof ApiPublicHooksDrainWebhookQueueRoute
   '/api/public/hooks/run-birthday-automations': typeof ApiPublicHooksRunBirthdayAutomationsRoute
@@ -419,6 +428,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/api/public/hooks/drain-automations'
     | '/api/public/hooks/drain-n8n-deliveries'
+    | '/api/public/hooks/drain-push'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
     | '/api/public/hooks/run-birthday-automations'
@@ -458,6 +468,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/api/public/hooks/drain-automations'
     | '/api/public/hooks/drain-n8n-deliveries'
+    | '/api/public/hooks/drain-push'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
     | '/api/public/hooks/run-birthday-automations'
@@ -499,6 +510,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/'
     | '/api/public/hooks/drain-automations'
     | '/api/public/hooks/drain-n8n-deliveries'
+    | '/api/public/hooks/drain-push'
     | '/api/public/hooks/drain-renave-queue'
     | '/api/public/hooks/drain-webhook-queue'
     | '/api/public/hooks/run-birthday-automations'
@@ -524,6 +536,7 @@ export interface RootRouteChildren {
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicHooksDrainAutomationsRoute: typeof ApiPublicHooksDrainAutomationsRoute
   ApiPublicHooksDrainN8nDeliveriesRoute: typeof ApiPublicHooksDrainN8nDeliveriesRoute
+  ApiPublicHooksDrainPushRoute: typeof ApiPublicHooksDrainPushRoute
   ApiPublicHooksDrainRenaveQueueRoute: typeof ApiPublicHooksDrainRenaveQueueRoute
   ApiPublicHooksDrainWebhookQueueRoute: typeof ApiPublicHooksDrainWebhookQueueRoute
   ApiPublicHooksRunBirthdayAutomationsRoute: typeof ApiPublicHooksRunBirthdayAutomationsRoute
@@ -768,6 +781,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDrainRenaveQueueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/drain-push': {
+      id: '/api/public/hooks/drain-push'
+      path: '/api/public/hooks/drain-push'
+      fullPath: '/api/public/hooks/drain-push'
+      preLoaderRoute: typeof ApiPublicHooksDrainPushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/drain-n8n-deliveries': {
       id: '/api/public/hooks/drain-n8n-deliveries'
       path: '/api/public/hooks/drain-n8n-deliveries'
@@ -894,6 +914,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicHooksDrainAutomationsRoute: ApiPublicHooksDrainAutomationsRoute,
   ApiPublicHooksDrainN8nDeliveriesRoute: ApiPublicHooksDrainN8nDeliveriesRoute,
+  ApiPublicHooksDrainPushRoute: ApiPublicHooksDrainPushRoute,
   ApiPublicHooksDrainRenaveQueueRoute: ApiPublicHooksDrainRenaveQueueRoute,
   ApiPublicHooksDrainWebhookQueueRoute: ApiPublicHooksDrainWebhookQueueRoute,
   ApiPublicHooksRunBirthdayAutomationsRoute:

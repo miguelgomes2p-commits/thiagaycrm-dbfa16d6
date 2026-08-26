@@ -224,6 +224,18 @@ function AdminPage() {
                         />
                       </label>
                       <label className="flex items-center gap-2 text-xs">
+                        Push
+                        <Switch
+                          checked={w.push_notifications_enabled !== false}
+                          onCheckedChange={async (v) => {
+                            await updateFeaturesFn({ data: { workspaceId: w.id, push_notifications_enabled: v } });
+                            qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
+                            qc.invalidateQueries({ queryKey: ["my-workspaces"] });
+                            toast.success("Atualizado");
+                          }}
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-xs">
                         RENAVE
                         <Switch
                           checked={!!w.feature_renave}
