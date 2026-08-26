@@ -26,6 +26,9 @@ async function forceSignOut(reason: string) {
 export function useSessionTimeout() {
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // No app instalado (PWA na tela de início ou app nativo) a sessão permanece salva:
+    // sem logout por inatividade nem limite de duração — comportamento de app.
+    if (isStandalone() || isNativeApp()) return;
 
     let interval: ReturnType<typeof setInterval> | null = null;
 
