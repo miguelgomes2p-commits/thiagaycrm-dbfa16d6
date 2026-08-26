@@ -3804,6 +3804,7 @@ export type Database = {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
+      purge_contact: { Args: { _contact_id: string }; Returns: Json }
       purge_old_messages: { Args: never; Returns: undefined }
       purge_old_net_responses: { Args: never; Returns: undefined }
       purge_old_operational_logs: { Args: never; Returns: undefined }
