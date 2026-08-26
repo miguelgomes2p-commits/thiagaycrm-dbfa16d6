@@ -62,9 +62,18 @@ export function PushSettingsCard({ workspaceId }: { workspaceId: string | null }
         toast.error("Permissão de notificações negada pelo navegador.");
         return;
       }
-      const reg = await navigator.serviceWorker.getRegistration();
+      // Garante um service worker ativo (PWAs antigas podem não ter registro pronto).
+      let reg = await navigator.serviceWorker.getRegistration();
       if (!reg) {
-        toast.error("Notificações funcionam apenas no app publicado/instalado.");
+        try {
+          reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+        } catch {
+          /* segue para o ready abaixo */
+        }
+      }
+      if (!reg) reg = await navigator.serviceWorker.ready;
+      if (!reg) {
+        toast.error("Não foi possível preparar o app para notificações. Reinstale o CRM na tela de início.");
         return;
       }
       const { publicKey } = await pubKeyFn();
