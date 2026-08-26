@@ -404,6 +404,16 @@ function FinalCTA() {
 }
 
 function Landing() {
+  const navigate = useNavigate();
+
+  // Aberto pelo ícone (PWA instalado / app nativo): vai direto para o CRM,
+  // sem passar pela landing. No navegador web nada muda.
+  useEffect(() => {
+    if (isStandalone() || isNativeApp()) {
+      void navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
