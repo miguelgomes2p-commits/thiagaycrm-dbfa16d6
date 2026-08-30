@@ -18,12 +18,15 @@ import type { Vehicle } from "@/lib/vehicles";
 export function VehicleFinancialSummary({ vehicle, enabled }: { vehicle: Vehicle; enabled: boolean }) {
   const q = useVehicleFinancial(vehicle.id, enabled);
   const save = useSaveVehicleFinancial(vehicle.id);
+  const addExpense = useAddVehicleExpense(vehicle.id);
   const [acq, setAcq] = useState("");
   const [acqDate, setAcqDate] = useState("");
+  const [cost, setCost] = useState("");
   const [sale, setSale] = useState("");
   const [saleDate, setSaleDate] = useState("");
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
 
   const fin = q.data?.financial ?? null;
   useEffect(() => {
