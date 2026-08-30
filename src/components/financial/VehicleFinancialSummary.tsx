@@ -114,7 +114,7 @@ export function VehicleFinancialSummary({ vehicle, enabled }: { vehicle: Vehicle
         <Row label="Preço anunciado" value={formatMoney(vehicle.price ?? 0)} />
         <Row label="Despesas" value={formatMoney(calc.expensesTotal)} />
         <Row label="Custo total" value={formatMoney(calc.totalCost)} />
-        {isSold && calc.saleAmount != null ? (
+        {calc.saleAmount != null ? (
           <>
             <Row label="Valor da venda" value={formatMoney(calc.saleAmount)} />
             <Row label="Lucro bruto" value={formatMoney(calc.grossProfit)} negative={(calc.grossProfit ?? 0) < 0} />
