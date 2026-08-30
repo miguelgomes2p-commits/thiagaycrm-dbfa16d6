@@ -837,32 +837,54 @@ function ConversationsPage() {
   }
 
   async function sendAttachment(file: File | undefined) {
-    if (!file || !active || !ws) return;
-    if (file.size > 16 * 1024 * 1024) {
-      toast.error("Arquivo muito grande. Use até 16 MB.");
+    if (!file) return;
+    await sendAttachments([file]);
+  }
+
+  /** Envia vários anexos em sequência (a legenda digitada vai apenas no primeiro). */
+  async function sendAttachments(files: File[] | FileList | null | undefined) {
+    const list = Array.from(files ?? []);
+    if (list.length === 0 || !active || !ws) return;
+    const tooBig = list.filter((f) => f.size > 16 * 1024 * 1024);
+    const valid = list.filter((f) => f.size <= 16 * 1024 * 1024);
+    if (tooBig.length > 0) toast.error(`${tooBig.length} arquivo(s) acima de 16 MB foram ignorados.`);
+    if (valid.length === 0) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setUploading(true);
+    const caption = text.trim() || null;
+    setText("");
+    let sent = 0;
+    let failed = 0;
     try {
-      const base64 = await fileToBase64(file);
-      await sendWaFile({ data: {
-        conversationId: active.id,
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-        base64,
-        caption: text.trim() || null,
-      }});
-      setText("");
+      for (const [i, file] of valid.entries()) {
+        setUploadProgress({ done: i, total: valid.length });
+        try {
+          const base64 = await fileToBase64(file);
+          await sendWaFile({ data: {
+            conversationId: active.id,
+            fileName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            base64,
+            caption: i === 0 ? caption : null,
+          }});
+          sent++;
+        } catch {
+          failed++;
+        }
+      }
       qc.invalidateQueries({ queryKey: ["messages", active.id] });
       qc.invalidateQueries({ queryKey: ["conversations", ws.id] });
-      toast.success("Anexo enviado");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao enviar anexo");
+      if (sent > 0) toast.success(sent === 1 ? "Anexo enviado" : `${sent} anexos enviados`);
+      if (failed > 0) toast.error(`${failed} anexo(s) falharam ao enviar`);
     } finally {
       setUploading(false);
+      setUploadProgress({ done: 0, total: 0 });
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
+
 
   async function sendLocation(args: { locationId?: string; preview: { latitude: number; longitude: number; name?: string | null; address?: string | null } }) {
     const loc = args.preview;
