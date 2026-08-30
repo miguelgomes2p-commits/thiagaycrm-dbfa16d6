@@ -107,6 +107,8 @@ function ConversationsPage() {
   }, [deepLinkConversationId]);
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
+
   const [cameraOpen, setCameraOpen] = useState(false);
   const [vehicleSendOpen, setVehicleSendOpen] = useState(false);
 
