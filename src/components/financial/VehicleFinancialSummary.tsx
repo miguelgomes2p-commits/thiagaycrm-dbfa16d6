@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import {
   calculateVehicleFinancials, formatDateBR, formatMoney, formatPercent, parseMoney,
 } from "@/lib/financial";
-import { useSaveVehicleFinancial, useVehicleFinancial } from "@/hooks/useFinancial";
+import { useAddVehicleExpense, useSaveVehicleFinancial, useVehicleFinancial } from "@/hooks/useFinancial";
 import { AddVehicleExpenseDialog } from "@/components/financial/AddVehicleExpenseDialog";
 import { VehicleExpenseList } from "@/components/financial/VehicleExpenseList";
 import type { Vehicle } from "@/lib/vehicles";
@@ -18,12 +18,15 @@ import type { Vehicle } from "@/lib/vehicles";
 export function VehicleFinancialSummary({ vehicle, enabled }: { vehicle: Vehicle; enabled: boolean }) {
   const q = useVehicleFinancial(vehicle.id, enabled);
   const save = useSaveVehicleFinancial(vehicle.id);
+  const addExpense = useAddVehicleExpense(vehicle.id);
   const [acq, setAcq] = useState("");
   const [acqDate, setAcqDate] = useState("");
+  const [cost, setCost] = useState("");
   const [sale, setSale] = useState("");
   const [saleDate, setSaleDate] = useState("");
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
 
   const fin = q.data?.financial ?? null;
   useEffect(() => {
@@ -50,9 +53,20 @@ export function VehicleFinancialSummary({ vehicle, enabled }: { vehicle: Vehicle
         vehicleId: vehicle.id,
         acquisitionCost: parseMoney(acq),
         acquiredAt: acqDate || null,
-        saleAmount: isSold ? parseMoney(sale) : (fin?.sale_amount ?? null),
-        saleDate: isSold ? (saleDate || null) : (fin?.sale_date ?? null),
+        saleAmount: parseMoney(sale),
+        saleDate: saleDate || null,
       });
+      const extraCost = parseMoney(cost);
+      if (extraCost && extraCost > 0) {
+        await addExpense.mutateAsync({
+          vehicleId: vehicle.id,
+          category: "Outros",
+          amount: extraCost,
+          expenseDate: new Date().toISOString().slice(0, 10),
+          description: "Custos com o veículo",
+        });
+        setCost("");
+      }
       toast.success("Financeiro atualizado");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao salvar financeiro");
@@ -75,28 +89,32 @@ export function VehicleFinancialSummary({ vehicle, enabled }: { vehicle: Vehicle
           <Label className="text-[11px]">Data de aquisição</Label>
           <Input className="h-8 text-xs" type="date" value={acqDate} onChange={(e) => setAcqDate(e.target.value)} />
         </div>
-        {isSold && (
-          <>
-            <div>
-              <Label className="text-[11px]">Valor da venda</Label>
-              <Input className="h-8 text-xs" placeholder="R$ 96.000,00" value={sale} onChange={(e) => setSale(e.target.value)} />
-            </div>
-            <div>
-              <Label className="text-[11px]">Data da venda</Label>
-              <Input className="h-8 text-xs" type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
-            </div>
-          </>
-        )}
+        <div>
+          <Label className="text-[11px]">Custos com o veículo</Label>
+          <Input className="h-8 text-xs" placeholder="R$ 2.500,00" value={cost} onChange={(e) => setCost(e.target.value)} />
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            Soma atual: {formatMoney(calc.expensesTotal)} — o valor informado é somado como despesa ao salvar.
+          </p>
+        </div>
+        <div>
+          <Label className="text-[11px]">Valor de venda</Label>
+          <Input className="h-8 text-xs" placeholder="R$ 96.000,00" value={sale} onChange={(e) => setSale(e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-[11px]">Data da venda</Label>
+          <Input className="h-8 text-xs" type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
+        </div>
       </div>
-      <Button size="sm" variant="outline" className="cursor-pointer" disabled={save.isPending} onClick={persist}>
+      <Button size="sm" variant="outline" className="cursor-pointer" disabled={save.isPending || addExpense.isPending} onClick={persist}>
         <Save className="h-4 w-4 mr-1.5" /> Salvar financeiro
       </Button>
+
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs pt-1">
         <Row label="Preço anunciado" value={formatMoney(vehicle.price ?? 0)} />
         <Row label="Despesas" value={formatMoney(calc.expensesTotal)} />
         <Row label="Custo total" value={formatMoney(calc.totalCost)} />
-        {isSold && calc.saleAmount != null ? (
+        {calc.saleAmount != null ? (
           <>
             <Row label="Valor da venda" value={formatMoney(calc.saleAmount)} />
             <Row label="Lucro bruto" value={formatMoney(calc.grossProfit)} negative={(calc.grossProfit ?? 0) < 0} />
@@ -110,7 +128,7 @@ export function VehicleFinancialSummary({ vehicle, enabled }: { vehicle: Vehicle
           </>
         )}
       </dl>
-      {!isSold && (
+      {!isSold && calc.saleAmount == null && (
         <p className="text-[10px] text-muted-foreground">Valores potenciais — o veículo ainda não foi vendido.</p>
       )}
 
