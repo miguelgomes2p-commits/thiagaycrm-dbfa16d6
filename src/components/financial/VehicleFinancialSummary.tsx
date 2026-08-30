@@ -128,7 +128,7 @@ export function VehicleFinancialSummary({ vehicle, enabled }: { vehicle: Vehicle
           </>
         )}
       </dl>
-      {!isSold && (
+      {!isSold && calc.saleAmount == null && (
         <p className="text-[10px] text-muted-foreground">Valores potenciais — o veículo ainda não foi vendido.</p>
       )}
 
