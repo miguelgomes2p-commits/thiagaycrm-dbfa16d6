@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import {
   calculateVehicleFinancials, formatDateBR, formatMoney, formatPercent, parseMoney,
 } from "@/lib/financial";
-import { useSaveVehicleFinancial, useVehicleFinancial } from "@/hooks/useFinancial";
+import { useAddVehicleExpense, useSaveVehicleFinancial, useVehicleFinancial } from "@/hooks/useFinancial";
 import { AddVehicleExpenseDialog } from "@/components/financial/AddVehicleExpenseDialog";
 import { VehicleExpenseList } from "@/components/financial/VehicleExpenseList";
 import type { Vehicle } from "@/lib/vehicles";
