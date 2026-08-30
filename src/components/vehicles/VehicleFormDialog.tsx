@@ -96,6 +96,34 @@ export function VehicleFormDialog({
 
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
+  /**
+   * Aplica a consulta de placa no formulário (merge não destrutivo: só preenche
+   * campos vazios). Nunca escreve no preço — FIPE é apenas referência.
+   */
+  function applyLookup(r: VehicleLookupResult) {
+    setForm((f) => {
+      const keep = (cur: string, next: string | number | null | undefined) =>
+        cur.trim() ? cur : next != null ? String(next) : "";
+      return {
+        ...f,
+        brand: keep(f.brand, r.brand),
+        model: keep(f.model, r.model),
+        version: keep(f.version, r.version),
+        year_manufacture: keep(f.year_manufacture, r.year_manufacture),
+        year_model: keep(f.year_model, r.year_model),
+        color: keep(f.color, r.color),
+        fuel: f.fuel || (r.fuel ?? ""),
+        engine: keep(f.engine, r.engine),
+        category: keep(f.category, r.category),
+        renavam: keep(f.renavam, r.renavam),
+        plate: r.plate,
+      };
+    });
+    setLookup(r);
+    toast.success("Dados aplicados ao cadastro");
+  }
+
+
   async function save() {
     if (!form.brand.trim() || !form.model.trim()) {
       toast.error("Marca e modelo são obrigatórios");
