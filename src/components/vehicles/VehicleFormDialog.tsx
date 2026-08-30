@@ -158,6 +158,22 @@ export function VehicleFormDialog({
       acquisition_source: origin.acquisition_source || null,
       ownership_type: origin.ownership_type,
       acquisition_details: origin.details,
+      // Consulta de placa: dados sem coluna dedicada ficam isolados no metadata.
+      ...(lookup
+        ? {
+            metadata: {
+              ...(((vehicle as unknown as { metadata?: Record<string, unknown> } | null | undefined)?.metadata) ?? {}),
+              plate_lookup: {
+                provider: lookup.provider,
+                fetched_at: lookup.fetched_at,
+                plate: lookup.plate,
+                raw: lookup.extra,
+                fipe: lookup.fipe,
+              },
+            },
+          }
+        : {}),
+
     };
 
     let savedId = createdId;
