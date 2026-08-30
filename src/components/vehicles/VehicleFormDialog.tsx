@@ -19,6 +19,9 @@ import {
 import { useFinancialAccess, useSaveVehicleFinancial, useVehicleFinancial } from "@/hooks/useFinancial";
 import { parseMoney } from "@/lib/financial";
 import { VehicleOriginSection, EMPTY_ORIGIN, type VehicleOriginState } from "@/components/vehicles/VehicleOriginSection";
+import { PlateLookupField } from "@/components/vehicles/PlateLookupField";
+import type { VehicleLookupResult } from "@/lib/vehicle-lookup/types";
+
 
 
 type FormState = {
