@@ -93,6 +93,8 @@ export function VehicleFormDialog({
     );
     setCreatedId(vehicle?.id ?? null);
     setPending([]);
+    setLookup(null);
+
     setUploadProgress(null);
   }, [open, vehicle]);
 
