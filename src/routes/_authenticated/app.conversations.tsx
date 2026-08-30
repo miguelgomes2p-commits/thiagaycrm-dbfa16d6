@@ -1616,13 +1616,20 @@ function ConversationsPage() {
 
             </div>
             <div className="border-t border-border p-3 shrink-0">
+              {uploading && uploadProgress.total > 1 && (
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Enviando anexo {Math.min(uploadProgress.done + 1, uploadProgress.total)} de {uploadProgress.total}...
+                </p>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 className="hidden"
                 accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-                onChange={(e) => sendAttachment(e.target.files?.[0])}
+                onChange={(e) => sendAttachments(e.target.files)}
               />
+
               <CameraCaptureDialog
                 open={cameraOpen}
                 onOpenChange={setCameraOpen}
