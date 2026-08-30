@@ -187,11 +187,17 @@ export function VehicleFormDialog({
             <div><Label>KM</Label><Input inputMode="numeric" value={form.mileage} onChange={(e) => set({ mileage: e.target.value })} /></div>
             <div><Label>Preço (R$)</Label><Input value={form.price} onChange={(e) => set({ price: e.target.value })} /></div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><Label>Placa</Label><Input value={form.plate} onChange={(e) => set({ plate: e.target.value })} /></div>
+          <PlateLookupField
+            value={form.plate}
+            onChange={(v) => set({ plate: v })}
+            workspaceId={workspaceId}
+            onApply={applyLookup}
+          />
+          <div className="grid grid-cols-2 gap-3">
             <div><Label>Renavam</Label><Input value={form.renavam} onChange={(e) => set({ renavam: e.target.value })} /></div>
             <div><Label>Chassi</Label><Input value={form.chassis} onChange={(e) => set({ chassis: e.target.value })} /></div>
           </div>
+
           <div className="grid grid-cols-4 gap-3">
             <div>
               <Label>Combustível</Label>
