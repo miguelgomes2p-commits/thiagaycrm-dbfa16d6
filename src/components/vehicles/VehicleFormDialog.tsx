@@ -68,6 +68,9 @@ export function VehicleFormDialog({
   const [acquiredAt, setAcquiredAt] = useState("");
   // Origem/propriedade — base do motor de decisão fiscal automotivo.
   const [origin, setOrigin] = useState<VehicleOriginState>(EMPTY_ORIGIN);
+  // Resultado da consulta de placa (gravado em metadata.plate_lookup ao salvar).
+  const [lookup, setLookup] = useState<VehicleLookupResult | null>(null);
+
 
   useEffect(() => {
     const fin = financialQ.data?.financial;
