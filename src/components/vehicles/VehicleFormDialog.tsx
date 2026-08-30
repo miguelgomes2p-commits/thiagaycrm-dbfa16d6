@@ -19,6 +19,9 @@ import {
 import { useFinancialAccess, useSaveVehicleFinancial, useVehicleFinancial } from "@/hooks/useFinancial";
 import { parseMoney } from "@/lib/financial";
 import { VehicleOriginSection, EMPTY_ORIGIN, type VehicleOriginState } from "@/components/vehicles/VehicleOriginSection";
+import { PlateLookupField } from "@/components/vehicles/PlateLookupField";
+import type { VehicleLookupResult } from "@/lib/vehicle-lookup/types";
+
 
 
 type FormState = {
@@ -65,6 +68,9 @@ export function VehicleFormDialog({
   const [acquiredAt, setAcquiredAt] = useState("");
   // Origem/propriedade — base do motor de decisão fiscal automotivo.
   const [origin, setOrigin] = useState<VehicleOriginState>(EMPTY_ORIGIN);
+  // Resultado da consulta de placa (gravado em metadata.plate_lookup ao salvar).
+  const [lookup, setLookup] = useState<VehicleLookupResult | null>(null);
+
 
   useEffect(() => {
     const fin = financialQ.data?.financial;
@@ -87,11 +93,41 @@ export function VehicleFormDialog({
     );
     setCreatedId(vehicle?.id ?? null);
     setPending([]);
+    setLookup(null);
+
     setUploadProgress(null);
   }, [open, vehicle]);
 
 
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
+
+  /**
+   * Aplica a consulta de placa no formulário (merge não destrutivo: só preenche
+   * campos vazios). Nunca escreve no preço — FIPE é apenas referência.
+   */
+  function applyLookup(r: VehicleLookupResult) {
+    setForm((f) => {
+      const keep = (cur: string, next: string | number | null | undefined) =>
+        cur.trim() ? cur : next != null ? String(next) : "";
+      return {
+        ...f,
+        brand: keep(f.brand, r.brand),
+        model: keep(f.model, r.model),
+        version: keep(f.version, r.version),
+        year_manufacture: keep(f.year_manufacture, r.year_manufacture),
+        year_model: keep(f.year_model, r.year_model),
+        color: keep(f.color, r.color),
+        fuel: f.fuel || (r.fuel ?? ""),
+        engine: keep(f.engine, r.engine),
+        category: keep(f.category, r.category),
+        renavam: keep(f.renavam, r.renavam),
+        plate: r.plate,
+      };
+    });
+    setLookup(r);
+    toast.success("Dados aplicados ao cadastro");
+  }
+
 
   async function save() {
     if (!form.brand.trim() || !form.model.trim()) {
@@ -122,6 +158,22 @@ export function VehicleFormDialog({
       acquisition_source: origin.acquisition_source || null,
       ownership_type: origin.ownership_type,
       acquisition_details: origin.details,
+      // Consulta de placa: dados sem coluna dedicada ficam isolados no metadata.
+      ...(lookup
+        ? {
+            metadata: {
+              ...(((vehicle as unknown as { metadata?: Record<string, unknown> } | null | undefined)?.metadata) ?? {}),
+              plate_lookup: {
+                provider: lookup.provider,
+                fetched_at: lookup.fetched_at,
+                plate: lookup.plate,
+                raw: lookup.extra,
+                fipe: lookup.fipe,
+              },
+            },
+          }
+        : {}),
+
     };
 
     let savedId = createdId;
@@ -187,11 +239,17 @@ export function VehicleFormDialog({
             <div><Label>KM</Label><Input inputMode="numeric" value={form.mileage} onChange={(e) => set({ mileage: e.target.value })} /></div>
             <div><Label>Preço (R$)</Label><Input value={form.price} onChange={(e) => set({ price: e.target.value })} /></div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><Label>Placa</Label><Input value={form.plate} onChange={(e) => set({ plate: e.target.value })} /></div>
+          <PlateLookupField
+            value={form.plate}
+            onChange={(v) => set({ plate: v })}
+            workspaceId={workspaceId}
+            onApply={applyLookup}
+          />
+          <div className="grid grid-cols-2 gap-3">
             <div><Label>Renavam</Label><Input value={form.renavam} onChange={(e) => set({ renavam: e.target.value })} /></div>
             <div><Label>Chassi</Label><Input value={form.chassis} onChange={(e) => set({ chassis: e.target.value })} /></div>
           </div>
+
           <div className="grid grid-cols-4 gap-3">
             <div>
               <Label>Combustível</Label>
