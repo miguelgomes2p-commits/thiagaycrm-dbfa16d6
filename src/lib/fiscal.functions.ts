@@ -101,10 +101,13 @@ export const saveFiscalConfig = createServerFn({ method: "POST" })
     const { encryptSecret } = await import("./renave.server");
     const { loadConfig } = await import("./fiscal/service.server");
 
+    const emitter = Object.fromEntries(
+      Object.entries(data.emitter ?? {}).filter(([, v]) => v !== undefined),
+    );
     const patch: Record<string, any> = {
       workspace_id: data.workspaceId,
       provider: "focus_nfe",
-      ...(data.emitter ?? {}),
+      ...emitter,
     };
     if (data.accountantChecklist) patch.accountant_checklist = data.accountantChecklist;
     if (data.tokenHomolog !== undefined)
