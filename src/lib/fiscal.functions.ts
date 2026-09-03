@@ -247,7 +247,9 @@ export const listFiscalProfiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ workspaceId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
+    await assertFiscalRole(context, data.workspaceId, [...ADMIN, "manager", "agent"]);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
       .from("fiscal_profiles")
       .select("*")
       .eq("workspace_id", data.workspaceId)
