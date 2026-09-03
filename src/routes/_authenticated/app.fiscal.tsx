@@ -314,7 +314,10 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
         data: {
           workspaceId,
           emitter: {
-            ...e,
+            // remove nulos/vazios vindos da config atual — o backend só aceita strings
+            ...Object.fromEntries(
+              Object.entries(e).filter(([, v]) => v !== null && v !== undefined && v !== ""),
+            ),
             ...(e.regime_tributario ? { regime_tributario: Number(e.regime_tributario) } : {}),
             ...(e.serie_padrao ? { serie_padrao: Number(e.serie_padrao) } : {}),
           },
@@ -391,7 +394,7 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
               onValueChange={(v) => setEmitter({ ...emitter, regime_tributario: Number(v) })}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
-                {REGIME_TRIBUTARIO_OPTIONS.map((o) => <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>)}
+                {REGIME_TRIBUTARIO_OPTIONS.filter((o) => o.value <= 3).map((o) => <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
