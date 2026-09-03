@@ -2,19 +2,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertFiscalRole } from "./fiscal/access";
 import type { FiscalConfigView } from "./fiscal/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-async function assertRole(supabase: any, workspaceId: string, roles: string[]) {
-  const { data } = await supabase
-    .from("workspace_members")
-    .select("role")
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
-  if (!data || !roles.includes(data.role)) throw new Error("Sem permissão fiscal para esta ação.");
-  return data.role as string;
-}
 
 const ADMIN = ["owner", "admin", "support"];
 
@@ -24,7 +16,7 @@ export const getFiscalConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ workspaceId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }): Promise<FiscalConfigView> => {
-    await assertRole(context.supabase, data.workspaceId, [...ADMIN, "manager", "agent"]);
+    await assertFiscalRole(context, data.workspaceId, [...ADMIN, "manager", "agent"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { loadConfig, computeConfigStatus, configEnvironment } = await import("./fiscal/service.server");
     const cfg = await loadConfig(supabaseAdmin, data.workspaceId);
@@ -103,7 +95,7 @@ export const saveFiscalConfig = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertRole(context.supabase, data.workspaceId, ADMIN);
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { encryptSecret } = await import("./renave.server");
     const { loadConfig } = await import("./fiscal/service.server");
@@ -149,7 +141,7 @@ export const uploadFiscalCertificate = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertRole(context.supabase, data.workspaceId, ADMIN);
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { loadConfig, recordAttempt, configEnvironment } = await import("./fiscal/service.server");
     const { createFiscalProvider } = await import("./fiscal/provider.server");
@@ -215,7 +207,7 @@ export const enableFiscalProduction = createServerFn({ method: "POST" })
     z.object({ workspaceId: z.string().uuid(), confirm: z.literal(true) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertRole(context.supabase, data.workspaceId, ADMIN);
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { loadConfig, computeConfigStatus } = await import("./fiscal/service.server");
     const cfg = await loadConfig(supabaseAdmin, data.workspaceId);
@@ -255,7 +247,9 @@ export const listFiscalProfiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ workspaceId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
+    await assertFiscalRole(context, data.workspaceId, [...ADMIN, "manager", "agent"]);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
       .from("fiscal_profiles")
       .select("*")
       .eq("workspace_id", data.workspaceId)
@@ -287,7 +281,7 @@ export const upsertFiscalProfile = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertRole(context.supabase, data.workspaceId, ADMIN);
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { workspaceId, id, ...rest } = data;
     if (rest.is_default) {
@@ -308,7 +302,7 @@ export const deleteFiscalProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ workspaceId: z.string().uuid(), id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertRole(context.supabase, data.workspaceId, ADMIN);
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("fiscal_profiles").update({ active: false, is_default: false }).eq("id", data.id);
     return { ok: true };
@@ -378,7 +372,7 @@ export const validateFiscalEmission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => emissionInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertRole(context.supabase, data.workspaceId, ADMIN);
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { cfg, profile, vehicle, issues, svc } = await gatherEmissionContext(supabaseAdmin, data);
     return {
@@ -403,7 +397,7 @@ export const issueFiscalNfe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => emissionInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertRole(context.supabase, data.workspaceId, ADMIN);
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { cfg, profile, vehicle, issues, svc } = await gatherEmissionContext(supabaseAdmin, data);
     if (issues.length > 0) return { ok: false as const, issues };
@@ -486,7 +480,7 @@ export const syncFiscalDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ workspaceId: z.string().uuid(), documentId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertRole(context.supabase, data.workspaceId, [...ADMIN, "manager"]);
+    await assertFiscalRole(context, data.workspaceId, [...ADMIN, "manager"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const svc = await import("./fiscal/service.server");
     const { data: doc } = await supabaseAdmin
@@ -523,7 +517,7 @@ export const cancelFiscalDocument = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertRole(context.supabase, data.workspaceId, ADMIN);
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const svc = await import("./fiscal/service.server");
     const { data: doc } = await supabaseAdmin
