@@ -314,7 +314,10 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
         data: {
           workspaceId,
           emitter: {
-            ...e,
+            // remove nulos/vazios vindos da config atual — o backend só aceita strings
+            ...Object.fromEntries(
+              Object.entries(e).filter(([, v]) => v !== null && v !== undefined && v !== ""),
+            ),
             ...(e.regime_tributario ? { regime_tributario: Number(e.regime_tributario) } : {}),
             ...(e.serie_padrao ? { serie_padrao: Number(e.serie_padrao) } : {}),
           },
