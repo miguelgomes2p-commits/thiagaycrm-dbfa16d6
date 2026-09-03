@@ -205,6 +205,95 @@ export const uploadFiscalCertificate = createServerFn({ method: "POST" })
     return { ok: true, expiresAt: res.certificateExpiresAt ?? null };
   });
 
+/**
+ * Consulta o provedor fiscal para saber se a empresa já possui certificado A1
+ * válido cadastrado (por exemplo, enviado direto no painel da Focus NFe).
+ * Sincroniza o status local quando encontra.
+ */
+export const checkFiscalCertificate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ workspaceId: z.string().uuid() }).parse(d))
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{
+      found: boolean;
+      source: "provider" | "local" | "none";
+      expiresAt: string | null;
+      expired?: boolean;
+      message?: string;
+    }> => {
+      await assertFiscalRole(context, data.workspaceId, ADMIN);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { loadConfig, configEnvironment } = await import("./fiscal/service.server");
+      const { createFiscalProvider } = await import("./fiscal/provider.server");
+      const { decryptSecret } = await import("./renave.server");
+
+      const cfg = await loadConfig(supabaseAdmin, data.workspaceId);
+      const cnpj = (cfg?.cnpj_emitente ?? "").replace(/\D+/g, "");
+      const environment = configEnvironment(cfg);
+      const enc = environment === "production" ? cfg?.token_prod_enc : cfg?.token_homolog_enc;
+      if (!enc)
+        return {
+          found: cfg?.certificate_status === "configured",
+          source: cfg?.certificate_status === "configured" ? "local" : "none",
+          expiresAt: cfg?.certificate_expires_at ?? null,
+          message: "Configure o token do provedor fiscal para consultar o certificado.",
+        };
+
+      const provider = createFiscalProvider({
+        provider: cfg?.provider ?? "focus_nfe",
+        environment,
+        token: decryptSecret(enc),
+      });
+
+      const res = await provider.getStatus();
+      if (!res.ok)
+        return {
+          found: cfg?.certificate_status === "configured",
+          source: cfg?.certificate_status === "configured" ? "local" : "none",
+          expiresAt: cfg?.certificate_expires_at ?? null,
+          message: res.errorMessage ?? "Não foi possível consultar o provedor fiscal.",
+        };
+
+      const list: any[] = Array.isArray(res.raw)
+        ? (res.raw as any[])
+        : Array.isArray((res.raw as any)?.empresas)
+          ? (res.raw as any).empresas
+          : [];
+      const company =
+        list.find((c) => String(c?.cnpj ?? "").replace(/\D+/g, "") === cnpj) ??
+        (list.length === 1 ? list[0] : null);
+
+      const validUntil: string | null =
+        (company?.certificado_valido_ate as string | undefined) ??
+        (company?.certificado_valido_ate_iso as string | undefined) ??
+        null;
+
+      if (!company || !validUntil)
+        return {
+          found: cfg?.certificate_status === "configured",
+          source: cfg?.certificate_status === "configured" ? "local" : "none",
+          expiresAt: cfg?.certificate_expires_at ?? null,
+          ...(company ? {} : { message: "Empresa não encontrada no provedor fiscal." }),
+        };
+
+      const expired = new Date(validUntil).getTime() < Date.now();
+      await supabaseAdmin
+        .from("nfe_config")
+        .update({
+          certificate_status: expired ? "error" : "configured",
+          certificate_expires_at: validUntil,
+          ...(company?.id ? { provider_company_id: String(company.id) } : {}),
+        } as any)
+        .eq("workspace_id", data.workspaceId);
+
+      return { found: !expired, source: "provider", expiresAt: validUntil, expired };
+    },
+  );
+
+
 export const enableFiscalProduction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
