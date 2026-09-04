@@ -288,6 +288,15 @@ export function VehicleFiscalDraftDialog({
             </div>
           </div>
 
+          <p className="text-[11px]">
+            <span className="text-muted-foreground">Natureza da operação: </span>
+            {issues.some((i) => i.field === "natureza_operacao") ? (
+              <span className="text-destructive">✗ Não configurada</span>
+            ) : (
+              <span className="text-emerald-600">✓ Configurada</span>
+            )}
+          </p>
+
           {accountingIssues.length > 0 && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-2 space-y-2">
               <p className="text-[11px] font-semibold uppercase text-amber-700">
