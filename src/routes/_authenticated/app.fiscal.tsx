@@ -24,6 +24,7 @@ import {
   ACCOUNTANT_CHECKLIST_ITEMS, FISCAL_CONFIG_STATUS_LABEL, FISCAL_STATUS_LABEL,
   OPERATION_TYPE_OPTIONS, REGIME_TRIBUTARIO_OPTIONS, type FiscalConfigView,
 } from "@/lib/fiscal/types";
+import { FISCAL_OPERATIONS, operationLabel } from "@/lib/fiscal/operations";
 
 export const Route = createFileRoute("/_authenticated/app/fiscal")({
   component: FiscalPage,
@@ -726,6 +727,24 @@ function ProfilesCard({
                   {OPERATION_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs text-muted-foreground">Operação fiscal (motor automotivo)</Label>
+              <Select value={form.operation_key ?? "none"}
+                onValueChange={(v) => setForm({ ...form, operation_key: v === "none" ? null : v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione a operação" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não vincular a uma operação automotiva</SelectItem>
+                  {FISCAL_OPERATIONS.map((o) => (
+                    <SelectItem key={o.key} value={o.key}>
+                      {o.label} — {o.direction === "entry" ? "Entrada" : "Saída"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                É por esta operação que o CRM localiza o perfil ao gerar documentos de veículos.
+              </p>
             </div>
             <F label="CFOP" v={form.cfop} on={(v) => setForm({ ...form, cfop: v })} />
             <F label="NCM" v={form.ncm} on={(v) => setForm({ ...form, ncm: v })} />
