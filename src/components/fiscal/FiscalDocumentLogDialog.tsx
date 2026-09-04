@@ -98,6 +98,20 @@ export function FiscalDocumentLogDialog({
             </div>
 
             {d.provider?.error && <Block title="Falha na consulta" value={d.provider.error} />}
+            {d.payload?.operacao?.destino && (
+              <Block
+                title="Destino da operação e CFOP"
+                value={[
+                  `UF emitente: ${d.payload.operacao.destino.emitUf || "—"}`,
+                  `UF destinatário: ${d.payload.operacao.destino.destUf || "—"}`,
+                  `Local destino (idDest): ${d.payload.operacao.destino.localDestino}`,
+                  `CFOP dentro do estado configurado: ${d.payload.operacao.destino.cfopInternal ?? "—"}`,
+                  `CFOP interestadual configurado: ${d.payload.operacao.destino.cfopInterstate ?? "—"}`,
+                  `CFOP utilizado: ${d.payload.operacao.destino.cfop ?? "—"}`,
+                  `Motivo: ${d.payload.operacao.destino.reason}`,
+                ].join("\n")}
+              />
+            )}
             {d.payload?.tributacao?.icms_group && (
               <Block
                 title="Grupo ICMS calculado"
