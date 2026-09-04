@@ -185,6 +185,8 @@ export function buildVehicleNfePayload(input: VehicleNfeBuildInput) {
     informacoes_adicionais_item: vehicleAdditionalInfo(vehicle),
     ...(profile.cest ? { cest: profile.cest } : {}),
     ...tax,
+    ...buildIcmsGroup(profile, amount).group,
+
   };
 
   const isPJ = counterparty.person_type === "PJ";
