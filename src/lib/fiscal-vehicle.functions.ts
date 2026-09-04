@@ -379,7 +379,13 @@ export const issueVehicleFiscalDocument = createServerFn({ method: "POST" })
           icms_group: svc.buildIcmsGroup(ctx.profile!, Number(doc.total_amount)).detail,
         },
 
-        operation_snapshot: auto.buildOperationSnapshot(ctx),
+        operation_snapshot: auto.buildOperationSnapshot(ctx, {
+          destino: auto.resolveDestination({
+            emitUf: cfg?.emit_uf ?? null,
+            destUf: counterparty.uf ?? null,
+            profile: ctx.profile,
+          }),
+        }),
         vehicle_snapshot: auto.buildVehicleSnapshot(vehicle!),
       } as any)
       .eq("id", doc.id);
