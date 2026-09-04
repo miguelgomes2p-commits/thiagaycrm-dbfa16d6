@@ -98,6 +98,22 @@ export function FiscalDocumentLogDialog({
             </div>
 
             {d.provider?.error && <Block title="Falha na consulta" value={d.provider.error} />}
+            {d.payload?.tributacao?.icms_group && (
+              <Block
+                title="Grupo ICMS calculado"
+                value={[
+                  "ICMS",
+                  `CST: ${d.payload.tributacao.icms_group.cst}`,
+                  `Modalidade BC: ${d.payload.tributacao.icms_group.modalidade_bc} — ${d.payload.tributacao.icms_group.modalidade_bc_label}`,
+                  `Valor operação: R$ ${Number(d.payload.tributacao.icms_group.valor_operacao).toFixed(2)}`,
+                  `Redução BC: ${d.payload.tributacao.icms_group.reducao_bc}%`,
+                  `Base ICMS: R$ ${Number(d.payload.tributacao.icms_group.base_icms).toFixed(2)}`,
+                  `Alíquota: ${d.payload.tributacao.icms_group.aliquota}%`,
+                  `Valor ICMS: R$ ${Number(d.payload.tributacao.icms_group.valor_icms).toFixed(2)}`,
+                ].join("\n")}
+              />
+            )}
+
             <Block title="Detalhamento retornado pelo provedor" value={d.provider?.raw ?? "—"} />
             <Block title="Tentativas registradas" value={d.attempts} />
             <Block title="Payload enviado (sem credenciais)" value={d.payload} />
