@@ -80,6 +80,91 @@ export async function resolveVehicleOperationContext(
   return { ...resolved, profile };
 }
 
+/* --------------------- destino e CFOP da operação --------------------- */
+
+export type DestinationResolution = {
+  /** 1 = interna, 2 = interestadual, 3 = exterior */
+  localDestino: 1 | 2 | 3;
+  emitUf: string;
+  destUf: string;
+  cfopInternal: string | null;
+  cfopInterstate: string | null;
+  /** CFOP efetivamente utilizado (null quando não configurado) */
+  cfop: string | null;
+  reason: string;
+};
+
+/**
+ * Determina o destino da operação (idDest/local_destino) pelas UFs e escolhe o
+ * CFOP correspondente no perfil. Nunca infere CFOP pelo primeiro dígito nem
+ * inventa códigos: apenas usa o que a contabilidade configurou.
+ */
+export function resolveDestination(input: {
+  emitUf?: string | null;
+  destUf?: string | null;
+  profile: Record<string, any> | null;
+  /** exceção fiscal futura: força o idDest quando informado */
+  overrideLocalDestino?: 1 | 2 | 3 | null;
+}): DestinationResolution {
+  const emitUf = (input.emitUf ?? "").toUpperCase().trim();
+  const destUf = (input.destUf ?? "").toUpperCase().trim();
+  const cfopInternal = (input.profile?.cfop ?? null) || null;
+  const cfopInterstate = (input.profile?.cfop_interstate ?? null) || null;
+
+  let localDestino: 1 | 2 | 3;
+  let reason: string;
+  if (input.overrideLocalDestino) {
+    localDestino = input.overrideLocalDestino;
+    reason = "Destino definido manualmente por exceção fiscal configurada.";
+  } else if (destUf === "EX") {
+    localDestino = 3;
+    reason = "Destinatário no exterior.";
+  } else if (emitUf && destUf && emitUf === destUf) {
+    localDestino = 1;
+    reason = `Operação interna: UF do emitente (${emitUf}) igual à do destinatário (${destUf}).`;
+  } else {
+    localDestino = 2;
+    reason = `Operação interestadual: UF do emitente (${emitUf || "—"}) diferente da do destinatário (${destUf || "—"}).`;
+  }
+
+  const cfop = localDestino === 1 ? cfopInternal : cfopInterstate;
+  return { localDestino, emitUf, destUf, cfopInternal, cfopInterstate, cfop, reason };
+}
+
+/** Pendências relativas ao CFOP x destino. Não escolhe nem corrige códigos. */
+export function validateDestinationCfop(d: DestinationResolution): FiscalValidationIssue[] {
+  const out: FiscalValidationIssue[] = [];
+  if (d.localDestino === 1) {
+    if (!d.cfopInternal)
+      out.push({
+        field: "cfop",
+        message: "O Perfil Fiscal não possui CFOP dentro do estado configurado para esta operação.",
+      });
+    else if (!/^[1235]/.test(d.cfopInternal))
+      out.push({
+        field: "cfop",
+        message: `O CFOP ${d.cfopInternal} configurado não é compatível com operação interna (idDest 1).`,
+      });
+  } else if (d.localDestino === 2) {
+    if (!d.cfopInterstate)
+      out.push({
+        field: "cfop_interstate",
+        message: "O Perfil Fiscal não possui CFOP interestadual configurado para esta operação.",
+      });
+    else if (!/^[26]/.test(d.cfopInterstate))
+      out.push({
+        field: "cfop_interstate",
+        message: `O CFOP ${d.cfopInterstate} configurado não é compatível com operação interestadual (idDest 2).`,
+      });
+  } else if (!d.cfop) {
+    out.push({
+      field: "cfop",
+      message: "O Perfil Fiscal não possui CFOP configurado para operação com o exterior.",
+    });
+  }
+  return out;
+}
+
 /* ----------------------------- validação ----------------------------- */
 
 export function validateVehicleForFiscal(v: Record<string, any> | null): FiscalValidationIssue[] {
