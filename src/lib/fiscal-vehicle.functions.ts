@@ -376,7 +376,9 @@ export const issueVehicleFiscalDocument = createServerFn({ method: "POST" })
         tax_snapshot: {
           profile: { id: ctx.profile!.id, name: ctx.profile!.name, cfop: ctx.profile!.cfop },
           tax_configuration: ctx.profile!.tax_configuration ?? {},
+          icms_group: svc.buildIcmsGroup(ctx.profile!, Number(doc.total_amount)).detail,
         },
+
         operation_snapshot: auto.buildOperationSnapshot(ctx),
         vehicle_snapshot: auto.buildVehicleSnapshot(vehicle!),
       } as any)

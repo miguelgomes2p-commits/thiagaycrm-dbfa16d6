@@ -4,7 +4,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  buildIcmsGroup,
   buildIssuerSnapshot,
+
   missingEmitterFields,
   onlyDigits,
   validateProfile,
@@ -119,6 +121,11 @@ export function validateFiscalOperation(input: {
     });
   } else {
     issues.push(...validateProfile(ctx.profile));
+    if (amount && amount > 0)
+      for (const i of buildIcmsGroup(ctx.profile, amount).issues)
+        if (!issues.some((x) => x.message === i.message)) issues.push(i);
+
+
     if (ctx.profile.direction && ctx.profile.direction !== ctx.direction)
       issues.push({
         field: "fiscal_profile",
@@ -185,6 +192,8 @@ export function buildVehicleNfePayload(input: VehicleNfeBuildInput) {
     informacoes_adicionais_item: vehicleAdditionalInfo(vehicle),
     ...(profile.cest ? { cest: profile.cest } : {}),
     ...tax,
+    ...buildIcmsGroup(profile, amount).group,
+
   };
 
   const isPJ = counterparty.person_type === "PJ";
