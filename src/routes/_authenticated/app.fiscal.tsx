@@ -818,7 +818,7 @@ function ProfilesCard({
               Usar como perfil padrão
             </label>
           </div>
-          <Button className="cursor-pointer" disabled={!form.name || !String(form.natureza_operacao ?? "").trim() || saveM.isPending} onClick={() => saveM.mutate()}>
+          <Button className="cursor-pointer" disabled={!form.name || !String(form.natureza_operacao ?? "").trim() || (String(tax.icms_situacao_tributaria ?? "").trim() === "20" && !String(tax.icms_modalidade_base_calculo ?? "").trim()) || saveM.isPending} onClick={() => saveM.mutate()}>
             {saveM.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />} Salvar perfil
           </Button>
         </DialogContent>
