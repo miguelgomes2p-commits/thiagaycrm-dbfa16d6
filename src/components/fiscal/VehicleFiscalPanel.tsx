@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileDown, FileText, Loader2, Upload } from "lucide-react";
+import { Download, FileDown, FileText, Loader2, RefreshCw, Upload } from "lucide-react";
 import {
   getVehicleFiscalStatus,
   issueVehicleFiscalDocument,
@@ -207,6 +207,22 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
                       <FileText className="h-3 w-3 mr-1" />
                     )}
                     Emitir
+                  </Button>
+                )}
+                {(d.status === "rejected" || d.status === "error") && d.source !== "imported" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] cursor-pointer"
+                    disabled={issue.isPending}
+                    onClick={() => issue.mutate(d.id)}
+                  >
+                    {issue.isPending ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                    )}
+                    Reenviar
                   </Button>
                 )}
                 <Button
