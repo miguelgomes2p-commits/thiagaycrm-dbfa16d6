@@ -47,6 +47,18 @@ type Counterparty = {
   taxpayer_indicator: "contributor" | "exempt" | "non_contributor";
 };
 
+/** Pendências que dependem exclusivamente da configuração contábil do perfil. */
+const ACCOUNTING_FIELD_LABEL: Record<string, string> = {
+  icms: "CST ICMS",
+  pis: "CST PIS",
+  cofins: "CST COFINS",
+  cfop: "CFOP",
+  ncm: "NCM",
+  ibs: "IBS",
+  cbs: "CBS",
+  fiscal_profile: "Perfil fiscal da operação",
+};
+
 const EMPTY: Counterparty = {
   person_type: "PF",
   name: "",
