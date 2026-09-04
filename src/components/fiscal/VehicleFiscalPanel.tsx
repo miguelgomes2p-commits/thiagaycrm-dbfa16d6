@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileDown, FileText, Loader2, Upload } from "lucide-react";
+import { Download, FileDown, FileText, Loader2, RefreshCw, Upload } from "lucide-react";
 import {
   getVehicleFiscalStatus,
   issueVehicleFiscalDocument,
