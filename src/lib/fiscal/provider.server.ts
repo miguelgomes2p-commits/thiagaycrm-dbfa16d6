@@ -107,7 +107,18 @@ export class FocusNFeProvider implements FiscalProvider {
     const danfePath = str(b.caminho_danfe);
     const isHttpOk = res.status >= 200 && res.status < 300;
     const errorCode = str(b.codigo) ?? str(b.status_sefaz);
-    const errorMessage = str(b.mensagem_sefaz) ?? str(b.mensagem) ?? str(b.erros as string);
+    const errosDetail = Array.isArray(b.erros)
+      ? (b.erros as unknown[])
+          .map((e) => {
+            const r = asRecord(e);
+            const campo = str(r.campo) ?? str(r.tag);
+            const msg = str(r.mensagem) ?? str(r.erro) ?? JSON.stringify(e);
+            return campo ? `${campo}: ${msg}` : msg;
+          })
+          .join(" | ")
+      : str(b.erros as string);
+    const errorMessage =
+      [str(b.mensagem_sefaz) ?? str(b.mensagem), errosDetail].filter(Boolean).join(" — ") || undefined;
     return {
       ok: isHttpOk,
       httpStatus: res.status,
