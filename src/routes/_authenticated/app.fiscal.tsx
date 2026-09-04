@@ -347,12 +347,24 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
     queryFn: () =>
       certCheckFn({ data: { workspaceId } }) as Promise<{
         found: boolean;
-        source: "provider" | "local" | "none";
+        source: "provider" | "local" | "external_declared" | "none";
+        status: string;
         expiresAt: string | null;
         expired?: boolean;
+        verifiable: boolean;
         message?: string;
       }>,
     staleTime: 60_000,
+  });
+
+  const confirmCertM = useMutation({
+    mutationFn: (confirmed: boolean) => confirmCertFn({ data: { workspaceId, confirmed } }),
+    onSuccess: () => {
+      toast.success("Certificado informado como cadastrado na Focus NFe.");
+      certCheckQ.refetch();
+      refetch();
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const prodM = useMutation({
@@ -361,10 +373,13 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const chk = certCheckQ.data;
+  const certStatusValue = chk?.status ?? cfg?.certificate_status ?? "missing";
+  const certDeclared = certStatusValue === "external_declared";
   const steps = [
     { key: "empresa", label: "Empresa", done: !!(cfg?.emitter.cnpj_emitente && cfg?.emitter.emit_razao_social && cfg?.emitter.emit_ibge) },
     { key: "provider", label: "Provedor", done: !!(cfg?.has_token_homolog || cfg?.has_token_prod) },
-    { key: "cert", label: "Certificado", done: certCheckQ.data?.found || cfg?.certificate_status === "configured" },
+    { key: "cert", label: "Certificado", done: certCheckQ.data?.found || certDeclared || cfg?.certificate_status === "configured" },
     { key: "nfe", label: "Configuração NF-e", done: !!(cfg?.emitter.serie_padrao && cfg?.emitter.regime_tributario) },
     { key: "profile", label: "Perfil fiscal", done: (profilesQ.data ?? []).some((p) => p.active) },
     { key: "homolog", label: "Teste em homologação", done: false },
@@ -372,14 +387,16 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
   ];
   const done = steps.filter((s) => s.done).length;
 
-  const chk = certCheckQ.data;
   const certStatus = chk?.source === "provider"
     ? chk.expired
       ? { ok: false, label: "Certificado vencido na Focus NFe", expiresAt: chk.expiresAt }
       : { ok: true, label: "Certificado configurado na Focus NFe", expiresAt: chk.expiresAt }
-    : cfg?.certificate_status === "configured"
-      ? { ok: true, label: "Certificado configurado", expiresAt: cfg.certificate_expires_at }
-      : { ok: false, label: "Não configurado", expiresAt: null as string | null };
+    : certStatusValue === "configured"
+      ? { ok: true, label: "Certificado configurado", expiresAt: chk?.expiresAt ?? cfg?.certificate_expires_at ?? null }
+      : certDeclared
+        ? { ok: true, label: "Certificado informado como cadastrado na Focus NFe", expiresAt: chk?.expiresAt ?? null }
+        : { ok: false, label: "Não configurado", expiresAt: null as string | null };
+
 
   return (
     <div className="space-y-4">
