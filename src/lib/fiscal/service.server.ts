@@ -157,8 +157,114 @@ export function validateProfile(profile: Record<string, any> | null): FiscalVali
     out.push({ field: "pis", message: "CST de PIS não definido no perfil fiscal" });
   if (!tax.cofins_situacao_tributaria)
     out.push({ field: "cofins", message: "CST de COFINS não definido no perfil fiscal" });
+  out.push(...icmsStructureIssues(profile));
   return out;
 }
+
+/* ------------------------- grupo ICMS (CST 20) ------------------------- */
+
+const MODALIDADE_BC_LABEL: Record<string, string> = {
+  "0": "Margem de Valor Agregado (%)",
+  "1": "Pauta (valor)",
+  "2": "Preço tabelado máximo",
+  "3": "Valor da operação",
+};
+
+function num(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+export type IcmsGroupDetail = {
+  cst: string;
+  modalidade_bc: string;
+  modalidade_bc_label: string;
+  valor_operacao: number;
+  reducao_bc: number;
+  base_icms: number;
+  aliquota: number;
+  valor_icms: number;
+};
+
+/** Checagens estruturais do grupo ICMS que não dependem do valor da operação. */
+export function icmsStructureIssues(profile: Record<string, any> | null): FiscalValidationIssue[] {
+  const tax = (profile?.tax_configuration ?? {}) as Record<string, any>;
+  const cst = String(tax.icms_situacao_tributaria ?? "").trim();
+  if (cst !== "20") return [];
+  const out: FiscalValidationIssue[] = [];
+  const mod = String(tax.icms_modalidade_base_calculo ?? "").trim();
+  if (!mod)
+    out.push({ field: "icms_modalidade_base_calculo", message: "Modalidade da base de cálculo ICMS não definida no perfil fiscal" });
+  else if (!(mod in MODALIDADE_BC_LABEL))
+    out.push({ field: "icms_modalidade_base_calculo", message: "Modalidade da base de cálculo ICMS inválida (use 0, 1, 2 ou 3)" });
+  if (num(tax.icms_reducao_base_calculo) == null)
+    out.push({ field: "icms_reducao_base_calculo", message: "Percentual de redução da base de cálculo ICMS não definido no perfil fiscal" });
+  if (num(tax.icms_aliquota) == null)
+    out.push({ field: "icms_aliquota", message: "Alíquota de ICMS não definida no perfil fiscal" });
+  if (!String(profile?.product_origin ?? tax.icms_origem ?? "").trim())
+    out.push({ field: "icms_origem", message: "Origem do produto não definida no perfil fiscal" });
+  return out;
+}
+
+/**
+ * Monta o grupo ICMS. Para CST 20 estrutura modBC + pRedBC + vBC + pICMS + vICMS.
+ * Para os demais CST mantém exatamente o que a contabilidade configurou.
+ */
+export function buildIcmsGroup(
+  profile: Record<string, any>,
+  amount: number,
+): { group: Record<string, string>; issues: FiscalValidationIssue[]; detail: IcmsGroupDetail | null } {
+  const tax = (profile.tax_configuration ?? {}) as Record<string, any>;
+  const cst = String(tax.icms_situacao_tributaria ?? "").trim();
+  if (cst !== "20") return { group: {}, issues: [], detail: null };
+
+  const issues = icmsStructureIssues(profile);
+  const mod = String(tax.icms_modalidade_base_calculo ?? "").trim();
+  const red = num(tax.icms_reducao_base_calculo);
+  const aliq = num(tax.icms_aliquota);
+  const origem = String(profile.product_origin ?? tax.icms_origem ?? "").trim();
+
+  if (!(amount > 0)) issues.push({ field: "amount", message: "Valor da operação ausente ou inválido" });
+  if (mod && mod !== "3" && mod in MODALIDADE_BC_LABEL)
+    issues.push({
+      field: "icms_modalidade_base_calculo",
+      message: `Configuração fiscal incompleta: a modalidade de base de cálculo "${mod} — ${MODALIDADE_BC_LABEL[mod]}" exige informações que ainda não existem na configuração fiscal.`,
+    });
+
+  if (issues.length || red == null || aliq == null) return { group: {}, issues, detail: null };
+
+  const base = round2(amount * (1 - red / 100));
+  const valor = round2((base * aliq) / 100);
+
+  return {
+    group: {
+      icms_origem: origem,
+      icms_situacao_tributaria: cst,
+      icms_modalidade_base_calculo: mod,
+      icms_reducao_base_calculo: red.toFixed(2),
+      icms_base_calculo: base.toFixed(2),
+      icms_aliquota: aliq.toFixed(2),
+      icms_valor: valor.toFixed(2),
+    },
+    issues,
+    detail: {
+      cst,
+      modalidade_bc: mod,
+      modalidade_bc_label: MODALIDADE_BC_LABEL[mod] ?? mod,
+      valor_operacao: round2(amount),
+      reducao_bc: red,
+      base_icms: base,
+      aliquota: aliq,
+      valor_icms: valor,
+    },
+  };
+}
+
 
 export function buildIssuerSnapshot(cfg: FiscalConfigRow) {
   return {
