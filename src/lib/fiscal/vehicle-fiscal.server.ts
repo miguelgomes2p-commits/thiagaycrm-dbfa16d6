@@ -4,7 +4,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  buildIcmsGroup,
   buildIssuerSnapshot,
+
   missingEmitterFields,
   onlyDigits,
   validateProfile,
