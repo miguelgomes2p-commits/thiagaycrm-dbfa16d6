@@ -491,7 +491,7 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
             </p>
           ) : certStatus.ok ? (
             <p className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-600" /> {certStatus.label}
+              <ShieldCheck className={`h-4 w-4 ${certDeclared ? "text-amber-500" : "text-emerald-600"}`} /> {certStatus.label}
               {certStatus.expiresAt && (
                 <span className="text-muted-foreground text-xs">
                   • validade {new Date(certStatus.expiresAt).toLocaleDateString("pt-BR")}
@@ -503,8 +503,28 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
               <XCircle className="h-4 w-4" /> {certStatus.label}
             </p>
           )}
+          {certDeclared && (
+            <p className="text-xs text-muted-foreground">
+              A confirmação definitiva ocorrerá na primeira comunicação bem-sucedida com o provedor.
+            </p>
+          )}
           {certCheckQ.data?.message && (
-            <p className="text-xs text-muted-foreground">{certCheckQ.data.message}</p>
+            <p className="text-xs text-amber-700">{certCheckQ.data.message}</p>
+          )}
+          {!certCheckQ.isLoading && chk && !chk.verifiable && !certStatus.ok && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2 space-y-2">
+              <p className="text-xs text-amber-800 flex items-start gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5" />
+                Não foi possível verificar automaticamente o certificado na Focus NFe. A API
+                administrativa de empresas da Focus não utiliza o ambiente de homologação.
+              </p>
+              <Button size="sm" variant="outline" className="cursor-pointer h-8 text-xs"
+                disabled={confirmCertM.isPending}
+                onClick={() => confirmCertM.mutate(true)}>
+                {confirmCertM.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                Confirmar certificado já cadastrado na Focus
+              </Button>
+            </div>
           )}
 
           <div className="flex flex-wrap gap-2">
@@ -514,11 +534,19 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${certCheckQ.isFetching ? "animate-spin" : ""}`} />
               Verificar no provedor
             </Button>
+            {certDeclared && (
+              <Button variant="ghost" size="sm" className="cursor-pointer h-8 text-xs text-destructive"
+                disabled={confirmCertM.isPending}
+                onClick={() => confirmCertM.mutate(false)}>
+                Remover confirmação
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="cursor-pointer h-8 text-xs"
               onClick={() => setShowCertUpload((v) => !v)}>
               {certStatus.ok ? "Substituir certificado" : "Enviar certificado"}
             </Button>
           </div>
+
 
           {showCertUpload && (
             <div className="space-y-3 border-t border-border pt-3">
