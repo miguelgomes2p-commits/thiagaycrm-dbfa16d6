@@ -754,8 +754,8 @@ function ProfilesCard({
                 É por esta operação que o CRM localiza o perfil ao gerar documentos de veículos.
               </p>
             </div>
-            <F label="CFOP" v={form.cfop} on={(v) => setForm({ ...form, cfop: v })} />
-            <F label="NCM" v={form.ncm} on={(v) => setForm({ ...form, ncm: v })} />
+            <F label="CFOP" required v={form.cfop} on={(v) => setForm({ ...form, cfop: v })} />
+            <F label="NCM" required v={form.ncm} on={(v) => setForm({ ...form, ncm: v })} />
             <F label="CEST (opcional)" v={form.cest} on={(v) => setForm({ ...form, cest: v })} />
             <F label="Origem do produto" v={form.product_origin} on={(v) => setForm({ ...form, product_origin: v })} />
             <F label="Natureza da operação" v={form.natureza_operacao} on={(v) => setForm({ ...form, natureza_operacao: v })} />
