@@ -674,6 +674,10 @@ export const upsertFiscalProfile = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertFiscalRole(context, data.workspaceId, ADMIN);
+    // Natureza da operação é obrigatória na aplicação (a coluna segue nullable no banco
+    // para não quebrar perfis antigos, que devem ser corrigidos manualmente).
+    if (!String(data.natureza_operacao ?? "").trim())
+      throw new Error("Informe a natureza da operação.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { workspaceId, id, ...rest } = data;
     if (rest.is_default) {

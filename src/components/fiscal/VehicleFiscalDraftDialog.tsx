@@ -56,6 +56,7 @@ const ACCOUNTING_FIELD_LABEL: Record<string, string> = {
   ncm: "NCM",
   ibs: "IBS",
   cbs: "CBS",
+  natureza_operacao: "Natureza da operação",
   fiscal_profile: "Perfil fiscal da operação",
 };
 
@@ -287,6 +288,15 @@ export function VehicleFiscalDraftDialog({
             </div>
           </div>
 
+          <p className="text-[11px]">
+            <span className="text-muted-foreground">Natureza da operação: </span>
+            {issues.some((i) => i.field === "natureza_operacao") ? (
+              <span className="text-destructive">✗ Não configurada</span>
+            ) : (
+              <span className="text-emerald-600">✓ Configurada</span>
+            )}
+          </p>
+
           {accountingIssues.length > 0 && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-2 space-y-2">
               <p className="text-[11px] font-semibold uppercase text-amber-700">
@@ -297,7 +307,9 @@ export function VehicleFiscalDraftDialog({
                   <li key={`${i.field}-${idx}`}>
                     {ACCOUNTING_FIELD_LABEL[i.field]}
                     <span className="block text-[11px] text-amber-700">
-                      Informação fiscal não fornecida pela contabilidade.
+                      {i.field === "natureza_operacao"
+                        ? i.message
+                        : "Informação fiscal não fornecida pela contabilidade."}
                     </span>
                   </li>
                 ))}

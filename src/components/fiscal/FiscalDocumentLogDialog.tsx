@@ -88,6 +88,10 @@ export function FiscalDocumentLogDialog({
                 {d.provider?.errorCode ?? d.rejectionCode ?? "—"}
               </p>
               <p className="col-span-2">
+                <span className="text-muted-foreground">Natureza da operação: </span>
+                {d.payload?.operacao?.profile?.natureza_operacao ?? "—"}
+              </p>
+              <p className="col-span-2">
                 <span className="text-muted-foreground">Mensagem: </span>
                 {d.provider?.errorMessage ?? d.rejectionMessage ?? "—"}
               </p>

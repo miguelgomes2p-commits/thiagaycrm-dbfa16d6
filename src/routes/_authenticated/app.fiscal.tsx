@@ -674,7 +674,7 @@ function ProfilesCard({
           ncm: form.ncm,
           cest: form.cest,
           product_origin: form.product_origin,
-          natureza_operacao: form.natureza_operacao,
+          natureza_operacao: String(form.natureza_operacao ?? "").trim(),
           additional_information: form.additional_information,
           is_default: !!form.is_default,
           tax_configuration: Object.fromEntries(Object.entries(tax).filter(([, v]) => v !== "")),
@@ -775,7 +775,7 @@ function ProfilesCard({
             <F label="NCM" required v={form.ncm} on={(v) => setForm({ ...form, ncm: v })} />
             <F label="CEST (opcional)" v={form.cest} on={(v) => setForm({ ...form, cest: v })} />
             <F label="Origem do produto" v={form.product_origin} on={(v) => setForm({ ...form, product_origin: v })} />
-            <F label="Natureza da operação" v={form.natureza_operacao} on={(v) => setForm({ ...form, natureza_operacao: v })} />
+            <F label="Natureza da operação" required v={form.natureza_operacao} on={(v) => setForm({ ...form, natureza_operacao: v })} />
             <F label="CST/CSOSN ICMS" required v={tax.icms_situacao_tributaria} on={(v) => setTax({ ...tax, icms_situacao_tributaria: v })} />
             <F label="CST PIS" required v={tax.pis_situacao_tributaria} on={(v) => setTax({ ...tax, pis_situacao_tributaria: v })} />
             <F label="CST COFINS" required v={tax.cofins_situacao_tributaria} on={(v) => setTax({ ...tax, cofins_situacao_tributaria: v })} />
@@ -791,7 +791,7 @@ function ProfilesCard({
               Usar como perfil padrão
             </label>
           </div>
-          <Button className="cursor-pointer" disabled={!form.name || saveM.isPending} onClick={() => saveM.mutate()}>
+          <Button className="cursor-pointer" disabled={!form.name || !String(form.natureza_operacao ?? "").trim() || saveM.isPending} onClick={() => saveM.mutate()}>
             {saveM.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />} Salvar perfil
           </Button>
         </DialogContent>
