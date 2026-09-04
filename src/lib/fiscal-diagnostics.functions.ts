@@ -35,11 +35,11 @@ export type FiscalDocumentDiagnostics = {
     errorCode?: string | undefined;
     errorMessage?: string | undefined;
     /** detalhamento bruto retornado pela Focus (sem credenciais) */
-    raw: unknown;
+    raw: any;
     error?: string | undefined;
   };
-  attempts: Array<Record<string, unknown>>;
-  payload: Record<string, unknown>;
+  attempts: Array<Record<string, any>>;
+  payload: Record<string, any>;
 };
 
 export const getFiscalDocumentDiagnostics = createServerFn({ method: "POST" })
@@ -101,7 +101,7 @@ export const getFiscalDocumentDiagnostics = createServerFn({ method: "POST" })
       rejectionCode: (doc as any).rejection_code ?? null,
       rejectionMessage: (doc as any).rejection_message ?? null,
       provider,
-      attempts: ((attempts ?? []) as any[]).map((a) => redact(a) as Record<string, unknown>),
+      attempts: ((attempts ?? []) as any[]).map((a) => redact(a) as Record<string, any>),
       payload: redact({
         emitente: (doc as any).issuer_snapshot,
         destinatario: (doc as any).recipient_snapshot,
@@ -112,6 +112,6 @@ export const getFiscalDocumentDiagnostics = createServerFn({ method: "POST" })
         tributacao: (doc as any).tax_snapshot,
         serie: (doc as any).series,
         valor_total: (doc as any).total_amount,
-      }) as Record<string, unknown>,
+      }) as Record<string, any>,
     };
   });
