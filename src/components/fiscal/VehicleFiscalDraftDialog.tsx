@@ -135,6 +135,10 @@ export function VehicleFiscalDraftDialog({
   });
 
   const issues = validationQ.data?.issues ?? [];
+  const operationKey = validationQ.data?.operation_key ?? null;
+  const accountingIssues = issues.filter((i) => ACCOUNTING_FIELD_LABEL[i.field]);
+  const otherIssues = issues.filter((i) => !ACCOUNTING_FIELD_LABEL[i.field]);
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
