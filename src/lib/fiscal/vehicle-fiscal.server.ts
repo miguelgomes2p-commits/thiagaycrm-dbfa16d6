@@ -121,6 +121,8 @@ export function validateFiscalOperation(input: {
     });
   } else {
     issues.push(...validateProfile(ctx.profile));
+    if (amount && amount > 0) issues.push(...buildIcmsGroup(ctx.profile, amount).issues);
+
     if (ctx.profile.direction && ctx.profile.direction !== ctx.direction)
       issues.push({
         field: "fiscal_profile",
