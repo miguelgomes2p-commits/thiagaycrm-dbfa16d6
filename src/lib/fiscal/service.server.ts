@@ -3,6 +3,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFiscalProvider, mapFocusStatus, type FiscalProvider } from "./provider.server";
+import { certificateAllowsIssue } from "./types";
 import type { FiscalConfigStatus, FiscalEnvironment, FiscalValidationIssue } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -58,8 +59,9 @@ export function computeConfigStatus(
 ): { status: FiscalConfigStatus; missing: FiscalValidationIssue[] } {
   if (!cfg) return { status: "not_configured", missing: missingEmitterFields(null) };
   const missing = missingEmitterFields(cfg);
-  if (cfg.certificate_status !== "configured")
+  if (!certificateAllowsIssue(cfg.certificate_status))
     missing.push({ field: "certificate", message: "Certificado digital A1 não configurado" });
+
   if (!cfg.token_homolog_enc && !cfg.token_prod_enc)
     missing.push({ field: "provider", message: "Credenciais do provedor fiscal não configuradas" });
   if (!hasProfile)
