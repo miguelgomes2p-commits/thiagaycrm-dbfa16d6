@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Download, FileText, Loader2, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import {
-  getFiscalConfig, saveFiscalConfig, uploadFiscalCertificate, checkFiscalCertificate, enableFiscalProduction,
+  getFiscalConfig, saveFiscalConfig, uploadFiscalCertificate, checkFiscalCertificate, confirmExternalCertificate, enableFiscalProduction,
   listFiscalProfiles, upsertFiscalProfile, deleteFiscalProfile,
   listFiscalDocuments, getFiscalDocumentLinks, syncFiscalDocument, cancelFiscalDocument,
 } from "@/lib/fiscal.functions";
@@ -24,6 +24,7 @@ import {
   ACCOUNTANT_CHECKLIST_ITEMS, FISCAL_CONFIG_STATUS_LABEL, FISCAL_STATUS_LABEL,
   OPERATION_TYPE_OPTIONS, REGIME_TRIBUTARIO_OPTIONS, type FiscalConfigView,
 } from "@/lib/fiscal/types";
+import { FISCAL_OPERATIONS, operationLabel } from "@/lib/fiscal/operations";
 
 export const Route = createFileRoute("/_authenticated/app/fiscal")({
   component: FiscalPage,
@@ -290,6 +291,7 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
   const saveFn = useServerFn(saveFiscalConfig);
   const certFn = useServerFn(uploadFiscalCertificate);
   const certCheckFn = useServerFn(checkFiscalCertificate);
+  const confirmCertFn = useServerFn(confirmExternalCertificate);
   const prodFn = useServerFn(enableFiscalProduction);
   const profilesFn = useServerFn(listFiscalProfiles);
   const upsertProfileFn = useServerFn(upsertFiscalProfile);
@@ -347,12 +349,24 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
     queryFn: () =>
       certCheckFn({ data: { workspaceId } }) as Promise<{
         found: boolean;
-        source: "provider" | "local" | "none";
+        source: "provider" | "local" | "external_declared" | "none";
+        status: string;
         expiresAt: string | null;
         expired?: boolean;
+        verifiable: boolean;
         message?: string;
       }>,
     staleTime: 60_000,
+  });
+
+  const confirmCertM = useMutation({
+    mutationFn: (confirmed: boolean) => confirmCertFn({ data: { workspaceId, confirmed } }),
+    onSuccess: () => {
+      toast.success("Certificado informado como cadastrado na Focus NFe.");
+      certCheckQ.refetch();
+      refetch();
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const prodM = useMutation({
@@ -361,10 +375,13 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const chk = certCheckQ.data;
+  const certStatusValue = chk?.status ?? cfg?.certificate_status ?? "missing";
+  const certDeclared = certStatusValue === "external_declared";
   const steps = [
     { key: "empresa", label: "Empresa", done: !!(cfg?.emitter.cnpj_emitente && cfg?.emitter.emit_razao_social && cfg?.emitter.emit_ibge) },
     { key: "provider", label: "Provedor", done: !!(cfg?.has_token_homolog || cfg?.has_token_prod) },
-    { key: "cert", label: "Certificado", done: certCheckQ.data?.found || cfg?.certificate_status === "configured" },
+    { key: "cert", label: "Certificado", done: certCheckQ.data?.found || certDeclared || cfg?.certificate_status === "configured" },
     { key: "nfe", label: "Configuração NF-e", done: !!(cfg?.emitter.serie_padrao && cfg?.emitter.regime_tributario) },
     { key: "profile", label: "Perfil fiscal", done: (profilesQ.data ?? []).some((p) => p.active) },
     { key: "homolog", label: "Teste em homologação", done: false },
@@ -372,14 +389,16 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
   ];
   const done = steps.filter((s) => s.done).length;
 
-  const chk = certCheckQ.data;
   const certStatus = chk?.source === "provider"
     ? chk.expired
       ? { ok: false, label: "Certificado vencido na Focus NFe", expiresAt: chk.expiresAt }
       : { ok: true, label: "Certificado configurado na Focus NFe", expiresAt: chk.expiresAt }
-    : cfg?.certificate_status === "configured"
-      ? { ok: true, label: "Certificado configurado", expiresAt: cfg.certificate_expires_at }
-      : { ok: false, label: "Não configurado", expiresAt: null as string | null };
+    : certStatusValue === "configured"
+      ? { ok: true, label: "Certificado configurado", expiresAt: chk?.expiresAt ?? cfg?.certificate_expires_at ?? null }
+      : certDeclared
+        ? { ok: true, label: "Certificado informado como cadastrado na Focus NFe", expiresAt: chk?.expiresAt ?? null }
+        : { ok: false, label: "Não configurado", expiresAt: null as string | null };
+
 
   return (
     <div className="space-y-4">
@@ -473,7 +492,7 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
             </p>
           ) : certStatus.ok ? (
             <p className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-600" /> {certStatus.label}
+              <ShieldCheck className={`h-4 w-4 ${certDeclared ? "text-amber-500" : "text-emerald-600"}`} /> {certStatus.label}
               {certStatus.expiresAt && (
                 <span className="text-muted-foreground text-xs">
                   • validade {new Date(certStatus.expiresAt).toLocaleDateString("pt-BR")}
@@ -485,8 +504,28 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
               <XCircle className="h-4 w-4" /> {certStatus.label}
             </p>
           )}
+          {certDeclared && (
+            <p className="text-xs text-muted-foreground">
+              A confirmação definitiva ocorrerá na primeira comunicação bem-sucedida com o provedor.
+            </p>
+          )}
           {certCheckQ.data?.message && (
-            <p className="text-xs text-muted-foreground">{certCheckQ.data.message}</p>
+            <p className="text-xs text-amber-700">{certCheckQ.data.message}</p>
+          )}
+          {!certCheckQ.isLoading && chk && !chk.verifiable && !certStatus.ok && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2 space-y-2">
+              <p className="text-xs text-amber-800 flex items-start gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5" />
+                Não foi possível verificar automaticamente o certificado na Focus NFe. A API
+                administrativa de empresas da Focus não utiliza o ambiente de homologação.
+              </p>
+              <Button size="sm" variant="outline" className="cursor-pointer h-8 text-xs"
+                disabled={confirmCertM.isPending}
+                onClick={() => confirmCertM.mutate(true)}>
+                {confirmCertM.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                Confirmar certificado já cadastrado na Focus
+              </Button>
+            </div>
           )}
 
           <div className="flex flex-wrap gap-2">
@@ -496,11 +535,19 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${certCheckQ.isFetching ? "animate-spin" : ""}`} />
               Verificar no provedor
             </Button>
+            {certDeclared && (
+              <Button variant="ghost" size="sm" className="cursor-pointer h-8 text-xs text-destructive"
+                disabled={confirmCertM.isPending}
+                onClick={() => confirmCertM.mutate(false)}>
+                Remover confirmação
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="cursor-pointer h-8 text-xs"
               onClick={() => setShowCertUpload((v) => !v)}>
               {certStatus.ok ? "Substituir certificado" : "Enviar certificado"}
             </Button>
           </div>
+
 
           {showCertUpload && (
             <div className="space-y-3 border-t border-border pt-3">
@@ -609,6 +656,8 @@ function ProfilesCard({
           ...(form.id ? { id: form.id } : {}),
           name: form.name,
           operation_type: form.operation_type,
+          operation_key: form.operation_key || null,
+
           cfop: form.cfop,
           ncm: form.ncm,
           cest: form.cest,
@@ -646,7 +695,10 @@ function ProfilesCard({
           <div key={p.id} className="flex items-center justify-between gap-2 border border-border rounded-lg p-2">
             <div>
               <p className="font-medium">{p.name} {p.is_default && <Badge variant="secondary" className="ml-1 text-[10px]">Padrão</Badge>}</p>
-              <p className="text-xs text-muted-foreground">CFOP {p.cfop ?? "—"} • NCM {p.ncm ?? "—"}</p>
+              <p className="text-xs text-muted-foreground">
+                CFOP {p.cfop ?? "—"} • NCM {p.ncm ?? "—"}
+                {p.operation_key ? ` • ${operationLabel(p.operation_key)}` : " • operação fiscal não vinculada"}
+              </p>
             </div>
             <div className="flex gap-1.5">
               <Button size="sm" variant="ghost" className="cursor-pointer" onClick={() => edit(p)}>Editar</Button>
@@ -675,6 +727,24 @@ function ProfilesCard({
                   {OPERATION_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs text-muted-foreground">Operação fiscal (motor automotivo)</Label>
+              <Select value={form.operation_key ?? "none"}
+                onValueChange={(v) => setForm({ ...form, operation_key: v === "none" ? null : v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione a operação" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não vincular a uma operação automotiva</SelectItem>
+                  {FISCAL_OPERATIONS.map((o) => (
+                    <SelectItem key={o.key} value={o.key}>
+                      {o.label} — {o.direction === "entry" ? "Entrada" : "Saída"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                É por esta operação que o CRM localiza o perfil ao gerar documentos de veículos.
+              </p>
             </div>
             <F label="CFOP" v={form.cfop} on={(v) => setForm({ ...form, cfop: v })} />
             <F label="NCM" v={form.ncm} on={(v) => setForm({ ...form, ncm: v })} />

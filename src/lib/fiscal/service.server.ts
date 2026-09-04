@@ -3,6 +3,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFiscalProvider, mapFocusStatus, type FiscalProvider } from "./provider.server";
+import { certificateAllowsIssue } from "./types";
 import type { FiscalConfigStatus, FiscalEnvironment, FiscalValidationIssue } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -58,8 +59,9 @@ export function computeConfigStatus(
 ): { status: FiscalConfigStatus; missing: FiscalValidationIssue[] } {
   if (!cfg) return { status: "not_configured", missing: missingEmitterFields(null) };
   const missing = missingEmitterFields(cfg);
-  if (cfg.certificate_status !== "configured")
+  if (!certificateAllowsIssue(cfg.certificate_status))
     missing.push({ field: "certificate", message: "Certificado digital A1 não configurado" });
+
   if (!cfg.token_homolog_enc && !cfg.token_prod_enc)
     missing.push({ field: "provider", message: "Credenciais do provedor fiscal não configuradas" });
   if (!hasProfile)
@@ -386,6 +388,29 @@ export async function applyProviderResult(
   if (internal === "cancelled") patch.cancelled_at = doc.cancelled_at ?? new Date().toISOString();
 
   await admin.from("fiscal_documents").update(patch).eq("id", documentId);
+
+  // Confirmação operacional do certificado: a Focus é a autoridade final.
+  if (doc.workspace_id) {
+    if (internal === "authorized") {
+      await admin
+        .from("nfe_config")
+        .update({
+          certificate_status: "configured",
+          certificate_verified_at: new Date().toISOString(),
+        } as any)
+        .eq("workspace_id", doc.workspace_id)
+        .in("certificate_status", ["external_declared", "missing", "error", "expired"]);
+    } else if (
+      (internal === "rejected" || internal === "error") &&
+      /certificad/i.test(`${result.errorMessage ?? ""} ${result.errorCode ?? ""}`)
+    ) {
+      await admin
+        .from("nfe_config")
+        .update({ certificate_status: "error" } as any)
+        .eq("workspace_id", doc.workspace_id);
+    }
+  }
+
 
   if (doc.status !== internal) {
     await emitFiscalEvent(admin, { ...doc, ...patch }, internal);

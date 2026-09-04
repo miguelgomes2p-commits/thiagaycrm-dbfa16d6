@@ -21,7 +21,7 @@ import {
   type FiscalOperationKey,
   type TaxpayerIndicator,
 } from "./operations";
-import type { FiscalValidationIssue } from "./types";
+import { certificateAllowsIssue, type FiscalValidationIssue } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Admin = SupabaseClient<any, any, any>;
@@ -103,8 +103,11 @@ export function validateFiscalOperation(input: {
   const { cfg, ctx, vehicle, counterparty, amount } = input;
   const issues: FiscalValidationIssue[] = [...missingEmitterFields(cfg)];
 
-  if (cfg?.certificate_status !== "configured")
+  // "external_declared" = administrador informou custódia na Focus; a Focus
+  // continua sendo a autoridade final na primeira emissão.
+  if (!certificateAllowsIssue(cfg?.certificate_status))
     issues.push({ field: "certificate", message: "Certificado digital A1 não configurado" });
+
   if (cfg?.certificate_expires_at && new Date(cfg.certificate_expires_at) < new Date())
     issues.push({ field: "certificate", message: "Certificado digital expirado" });
 

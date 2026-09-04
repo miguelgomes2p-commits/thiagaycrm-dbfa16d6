@@ -2,7 +2,7 @@
 // FiscalService -> FiscalProvider -> (FocusNFeProvider | NuvemFiscalProvider).
 // SERVER-ONLY: importe apenas de dentro de handlers.
 
-import { focusRequest, type NfeEnv } from "../nfe.server";
+import { focusAuthHeader, focusRequest, type NfeEnv } from "../nfe.server";
 import type { FiscalEnvironment } from "./types";
 
 export type ProviderResult = {
@@ -21,6 +21,15 @@ export type ProviderResult = {
   danfeUrl?: string;
 };
 
+export type CompanyLookupResult = {
+  ok: boolean;
+  httpStatus: number;
+  endpoint: string;
+  company: Record<string, unknown> | null;
+  errorCode?: string;
+  errorMessage?: string;
+};
+
 export interface FiscalProvider {
   readonly name: string;
   issueNFe(input: { ref: string; payload: unknown }): Promise<ProviderResult>;
@@ -34,8 +43,17 @@ export interface FiscalProvider {
     certificatePassword: string;
     extra?: Record<string, unknown>;
   }): Promise<ProviderResult & { companyId?: string; certificateExpiresAt?: string | null }>;
+  /** API administrativa de empresas — sempre no domínio de produção da Focus. */
+  findCompanyByCnpj?(input: { cnpj: string; token: string }): Promise<CompanyLookupResult>;
   getStatus(): Promise<ProviderResult>;
 }
+
+/**
+ * A API administrativa de empresas da Focus NFe existe apenas no domínio de
+ * produção — o ambiente de EMISSÃO (homologação/produção) não muda esta URL.
+ */
+export const FOCUS_ADMIN_BASE_URL = "https://api.focusnfe.com.br";
+
 
 function envToFocus(env: FiscalEnvironment): NfeEnv {
   return env === "production" ? "producao" : "homologacao";
@@ -187,7 +205,65 @@ export class FocusNFeProvider implements FiscalProvider {
     const res = await focusRequest({ env: this.env, token: this.token, path: "/v2/empresas" });
     return this.normalize(res);
   }
+
+  /**
+   * Consulta a empresa pelo CNPJ na API administrativa (domínio de produção).
+   * Recebe o token explicitamente porque nem toda credencial de emissão é
+   * aceita nesta API. Nunca loga token, senha ou certificado.
+   */
+  async findCompanyByCnpj({ cnpj, token }: { cnpj: string; token: string }): Promise<CompanyLookupResult> {
+    const url = new URL(`${FOCUS_ADMIN_BASE_URL}/v2/empresas`);
+    url.searchParams.set("cnpj", cnpj);
+    const endpoint = url.toString();
+    try {
+      const res = await fetch(endpoint, {
+        method: "GET",
+        headers: { Authorization: focusAuthHeader(token), Accept: "application/json" },
+      });
+      const text = await res.text();
+      let body: unknown = text;
+      try {
+        body = JSON.parse(text);
+      } catch {
+        /* keep text */
+      }
+      const list: unknown[] = Array.isArray(body)
+        ? body
+        : Array.isArray(asRecord(body).empresas)
+          ? (asRecord(body).empresas as unknown[])
+          : asRecord(body).cnpj
+            ? [body]
+            : [];
+      const company =
+        (list as Record<string, unknown>[]).find(
+          (c) => String(c?.["cnpj"] ?? "").replace(/\D+/g, "") === cnpj,
+        ) ?? null;
+      const b = asRecord(body);
+      const out: CompanyLookupResult = {
+        ok: res.status >= 200 && res.status < 300,
+        httpStatus: res.status,
+        endpoint,
+        company,
+        ...(str(b["codigo"]) ? { errorCode: str(b["codigo"])! } : {}),
+        ...(str(b["mensagem"]) ? { errorMessage: str(b["mensagem"])! } : {}),
+      };
+      console.info("[fiscal:certificate] focus company lookup", {
+        endpoint,
+        cnpj,
+        httpStatus: out.httpStatus,
+        found: !!company,
+        errorCode: out.errorCode ?? null,
+        errorMessage: out.errorMessage ?? null,
+      });
+      return out;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "erro de rede";
+      console.error("[fiscal:certificate] focus company lookup failed", { endpoint, cnpj, message });
+      return { ok: false, httpStatus: 0, endpoint, company: null, errorMessage: message };
+    }
+  }
 }
+
 
 export function createFiscalProvider(opts: {
   provider: string;

@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertFiscalRole } from "./fiscal/access";
-import type { FiscalConfigView } from "./fiscal/types";
+import { certificateAllowsIssue, type FiscalConfigView } from "./fiscal/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -194,10 +194,13 @@ export const uploadFiscalCertificate = createServerFn({ method: "POST" })
       .from("nfe_config")
       .update({
         certificate_status: "configured",
+        certificate_source: "crm_upload",
+        certificate_verified_at: new Date().toISOString(),
         certificate_filename: data.filename,
         certificate_uploaded_at: new Date().toISOString(),
         certificate_expires_at: res.certificateExpiresAt ?? null,
         provider_company_id: res.companyId ?? cfg.provider_company_id ?? null,
+
       } as any)
       .eq("workspace_id", data.workspaceId);
 
@@ -205,93 +208,144 @@ export const uploadFiscalCertificate = createServerFn({ method: "POST" })
     return { ok: true, expiresAt: res.certificateExpiresAt ?? null };
   });
 
+export type FiscalCertificateCheck = {
+  found: boolean;
+  source: "provider" | "local" | "external_declared" | "none";
+  status: string;
+  expiresAt: string | null;
+  expired?: boolean;
+  /** false = não há credencial capaz de consultar a API administrativa de empresas */
+  verifiable: boolean;
+  message?: string;
+};
+
 /**
- * Consulta o provedor fiscal para saber se a empresa já possui certificado A1
- * válido cadastrado (por exemplo, enviado direto no painel da Focus NFe).
- * Sincroniza o status local quando encontra.
+ * Consulta a API administrativa de empresas da Focus NFe (SEMPRE no domínio de
+ * produção, conforme a própria API) para saber se a empresa já possui
+ * certificado A1 sob custódia — inclusive quando enviado pelo painel da Focus.
+ * O ambiente de EMISSÃO permanece inalterado.
  */
 export const checkFiscalCertificate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ workspaceId: z.string().uuid() }).parse(d))
-  .handler(
-    async ({
-      data,
-      context,
-    }): Promise<{
-      found: boolean;
-      source: "provider" | "local" | "none";
-      expiresAt: string | null;
-      expired?: boolean;
-      message?: string;
-    }> => {
-      await assertFiscalRole(context, data.workspaceId, ADMIN);
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { loadConfig, configEnvironment } = await import("./fiscal/service.server");
-      const { createFiscalProvider } = await import("./fiscal/provider.server");
-      const { decryptSecret } = await import("./renave.server");
+  .handler(async ({ data, context }): Promise<FiscalCertificateCheck> => {
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { loadConfig, configEnvironment } = await import("./fiscal/service.server");
+    const { createFiscalProvider } = await import("./fiscal/provider.server");
+    const { decryptSecret } = await import("./renave.server");
 
-      const cfg = await loadConfig(supabaseAdmin, data.workspaceId);
-      const cnpj = (cfg?.cnpj_emitente ?? "").replace(/\D+/g, "");
-      const environment = configEnvironment(cfg);
-      const enc = environment === "production" ? cfg?.token_prod_enc : cfg?.token_homolog_enc;
-      if (!enc)
-        return {
-          found: cfg?.certificate_status === "configured",
-          source: cfg?.certificate_status === "configured" ? "local" : "none",
-          expiresAt: cfg?.certificate_expires_at ?? null,
-          message: "Configure o token do provedor fiscal para consultar o certificado.",
-        };
+    const cfg = await loadConfig(supabaseAdmin, data.workspaceId);
+    const localStatus: string = cfg?.certificate_status ?? "missing";
+    const localSource = (): FiscalCertificateCheck => ({
+      found: localStatus === "configured",
+      source:
+        localStatus === "configured"
+          ? "local"
+          : localStatus === "external_declared"
+            ? "external_declared"
+            : "none",
+      status: localStatus,
+      expiresAt: cfg?.certificate_expires_at ?? null,
+      verifiable: false,
+    });
 
-      const provider = createFiscalProvider({
-        provider: cfg?.provider ?? "focus_nfe",
-        environment,
-        token: decryptSecret(enc),
-      });
+    const cnpj = (cfg?.cnpj_emitente ?? "").replace(/\D+/g, "");
+    if (!cnpj)
+      return { ...localSource(), message: "Informe o CNPJ do emitente para consultar o certificado." };
 
-      const res = await provider.getStatus();
-      if (!res.ok)
-        return {
-          found: cfg?.certificate_status === "configured",
-          source: cfg?.certificate_status === "configured" ? "local" : "none",
-          expiresAt: cfg?.certificate_expires_at ?? null,
-          message: res.errorMessage ?? "Não foi possível consultar o provedor fiscal.",
-        };
+    // Token para a API administrativa: preferimos produção; homologação pode
+    // não ser aceita pela Focus nessa API (não trocamos o ambiente de emissão).
+    const enc = cfg?.token_prod_enc ?? cfg?.token_homolog_enc ?? null;
+    const usingProdToken = !!cfg?.token_prod_enc;
+    if (!enc)
+      return {
+        ...localSource(),
+        message: "Configure o token do provedor fiscal para consultar o certificado.",
+      };
 
-      const list: any[] = Array.isArray(res.raw)
-        ? (res.raw as any[])
-        : Array.isArray((res.raw as any)?.empresas)
-          ? (res.raw as any).empresas
-          : [];
-      const company =
-        list.find((c) => String(c?.cnpj ?? "").replace(/\D+/g, "") === cnpj) ??
-        (list.length === 1 ? list[0] : null);
+    const provider = createFiscalProvider({
+      provider: cfg?.provider ?? "focus_nfe",
+      environment: configEnvironment(cfg),
+      token: "unused-for-admin-api",
+    });
+    if (!provider.findCompanyByCnpj)
+      return { ...localSource(), message: "Provedor não suporta consulta de empresas." };
 
-      const validUntil: string | null =
-        (company?.certificado_valido_ate as string | undefined) ??
-        (company?.certificado_valido_ate_iso as string | undefined) ??
-        null;
+    const res = await provider.findCompanyByCnpj({ cnpj, token: decryptSecret(enc) });
 
-      if (!company || !validUntil)
-        return {
-          found: cfg?.certificate_status === "configured",
-          source: cfg?.certificate_status === "configured" ? "local" : "none",
-          expiresAt: cfg?.certificate_expires_at ?? null,
-          ...(company ? {} : { message: "Empresa não encontrada no provedor fiscal." }),
-        };
+    if (!res.ok || !res.company) {
+      const reason = !res.ok
+        ? usingProdToken
+          ? `API de empresas retornou HTTP ${res.httpStatus}${res.errorMessage ? ` — ${res.errorMessage}` : ""}.`
+          : "A API administrativa de empresas da Focus NFe não utiliza o ambiente de homologação e a credencial atual não foi aceita."
+        : "Empresa não localizada na Focus NFe com este CNPJ.";
+      return {
+        ...localSource(),
+        message: `Não foi possível verificar automaticamente o certificado: ${reason}`,
+      };
+    }
 
-      const expired = new Date(validUntil).getTime() < Date.now();
-      await supabaseAdmin
-        .from("nfe_config")
-        .update({
-          certificate_status: expired ? "error" : "configured",
-          certificate_expires_at: validUntil,
-          ...(company?.id ? { provider_company_id: String(company.id) } : {}),
-        } as any)
-        .eq("workspace_id", data.workspaceId);
+    const c = res.company as Record<string, any>;
+    const validUntil: string | null =
+      (c["certificado_valido_ate"] as string | undefined) ??
+      (c["certificado_valido_ate_iso"] as string | undefined) ??
+      null;
 
-      return { found: !expired, source: "provider", expiresAt: validUntil, expired };
-    },
-  );
+    if (!validUntil)
+      return {
+        ...localSource(),
+        verifiable: true,
+        message: "Empresa localizada na Focus NFe, mas sem certificado A1 informado.",
+      };
+
+    const expired = new Date(validUntil).getTime() < Date.now();
+    await supabaseAdmin
+      .from("nfe_config")
+      .update({
+        certificate_status: expired ? "expired" : "configured",
+        certificate_source: "focus_api",
+        certificate_verified_at: new Date().toISOString(),
+        certificate_expires_at: validUntil,
+        ...(c["id"] ? { provider_company_id: String(c["id"]) } : {}),
+      } as any)
+      .eq("workspace_id", data.workspaceId);
+
+    return {
+      found: !expired,
+      source: "provider",
+      status: expired ? "expired" : "configured",
+      expiresAt: validUntil,
+      expired,
+      verifiable: true,
+    };
+  });
+
+/**
+ * O administrador declara que o certificado A1 já está sob custódia da Focus
+ * (cadastrado direto no painel). Não substitui verificação técnica: a Focus
+ * continua sendo a autoridade final na primeira emissão.
+ */
+export const confirmExternalCertificate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ workspaceId: z.string().uuid(), confirmed: z.boolean() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("nfe_config")
+      .update({
+        certificate_status: data.confirmed ? "external_declared" : "missing",
+        certificate_source: data.confirmed ? "focus_panel" : null,
+        certificate_verified_at: data.confirmed ? new Date().toISOString() : null,
+      } as any)
+      .eq("workspace_id", data.workspaceId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 
 export const enableFiscalProduction = createServerFn({ method: "POST" })
@@ -361,6 +415,10 @@ export const upsertFiscalProfile = createServerFn({ method: "POST" })
         workspaceId: z.string().uuid(),
         name: z.string().min(2).max(120),
         operation_type: z.string().min(2).max(60),
+        /** operação canônica automotiva (FISCAL_OPERATIONS) — usada pelo motor */
+        operation_key: z.string().max(60).nullish(),
+        direction: z.enum(["entry", "exit"]).optional(),
+
         cfop: z.string().max(10).optional(),
         ncm: z.string().max(12).optional(),
         cest: z.string().max(12).optional(),
@@ -383,7 +441,17 @@ export const upsertFiscalProfile = createServerFn({ method: "POST" })
         .update({ is_default: false })
         .eq("workspace_id", workspaceId);
     }
+    const { operationDef } = await import("./fiscal/operations");
     const row = { ...rest, workspace_id: workspaceId } as any;
+    // operation_key é a chave usada pelo motor automotivo; direction segue o catálogo canônico.
+    if (rest.operation_key === undefined) delete row.operation_key;
+    else {
+      row.operation_key = rest.operation_key || null;
+      const def = operationDef(rest.operation_key);
+      if (def) row.direction = def.direction;
+    }
+    if (rest.direction) row.direction = rest.direction;
+
     const res = id
       ? await supabaseAdmin.from("fiscal_profiles").update(row).eq("id", id).select("id").single()
       : await supabaseAdmin.from("fiscal_profiles").insert(row).select("id").single();
@@ -451,9 +519,10 @@ async function gatherEmissionContext(supabaseAdmin: any, data: z.infer<typeof em
 
   const issues = [
     ...svc.missingEmitterFields(cfg),
-    ...(cfg?.certificate_status === "configured"
+    ...(certificateAllowsIssue(cfg?.certificate_status)
       ? []
       : [{ field: "certificate", message: "Certificado digital não configurado" }]),
+
     ...svc.validateProfile(profile),
     ...svc.validateRecipient(data.recipient),
     ...(vehicle ? [] : [{ field: "vehicle", message: "Veículo não encontrado" }]),
