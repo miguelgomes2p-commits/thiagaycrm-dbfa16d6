@@ -287,11 +287,43 @@ export function VehicleFiscalDraftDialog({
             </div>
           </div>
 
-          {issues.length > 0 && (
+          {accountingIssues.length > 0 && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2 space-y-2">
+              <p className="text-[11px] font-semibold uppercase text-amber-700">
+                Pendente de configuração contábil
+              </p>
+              <ul className="list-disc pl-4 text-xs text-amber-800">
+                {accountingIssues.map((i, idx) => (
+                  <li key={`${i.field}-${idx}`}>
+                    {ACCOUNTING_FIELD_LABEL[i.field]}
+                    <span className="block text-[11px] text-amber-700">
+                      Informação fiscal não fornecida pela contabilidade.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] cursor-pointer"
+                onClick={() =>
+                  window.open(
+                    `/app/fiscal?tab=config${operationKey ? `&op=${encodeURIComponent(operationKey)}` : ""}`,
+                    "_blank",
+                    "noopener",
+                  )
+                }
+              >
+                Editar perfil fiscal
+              </Button>
+            </div>
+          )}
+
+          {otherIssues.length > 0 && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-2 space-y-1">
               <p className="text-[11px] font-semibold uppercase text-amber-700">Pendências</p>
               <ul className="list-disc pl-4 text-xs text-amber-800">
-                {issues.map((i, idx) => (
+                {otherIssues.map((i, idx) => (
                   <li key={`${i.field}-${idx}`}>{i.message}</li>
                 ))}
               </ul>
