@@ -78,6 +78,19 @@ export const ACCOUNTANT_CHECKLIST_ITEMS = [
 
 export type FiscalValidationIssue = { field: string; message: string };
 
+/**
+ * Status do certificado A1 que permitem TENTAR emissão.
+ * - configured: verificado (upload pelo CRM ou consulta à API da Focus).
+ * - external_declared: o administrador informou que o certificado está sob
+ *   custódia da Focus (cadastrado no painel). A Focus é a autoridade final.
+ */
+export const CERTIFICATE_ISSUE_STATUSES = ["configured", "external_declared"] as const;
+
+export function certificateAllowsIssue(status: string | null | undefined): boolean {
+  return (CERTIFICATE_ISSUE_STATUSES as readonly string[]).includes(status ?? "");
+}
+
+
 export type FiscalConfigView = {
   exists: boolean;
   provider: string;
