@@ -260,6 +260,17 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
         </ul>
       )}
 
+      {logDoc && (
+        <FiscalDocumentLogDialog
+          open
+          workspaceId={vehicle.workspace_id}
+          documentId={logDoc}
+          onOpenChange={(o) => {
+            if (!o) setLogDoc(null);
+          }}
+        />
+      )}
+
       {draft && (
         <VehicleFiscalDraftDialog
           open
@@ -271,6 +282,7 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
           }}
         />
       )}
+
     </div>
   );
 }
