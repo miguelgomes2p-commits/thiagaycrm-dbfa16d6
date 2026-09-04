@@ -441,7 +441,17 @@ export const upsertFiscalProfile = createServerFn({ method: "POST" })
         .update({ is_default: false })
         .eq("workspace_id", workspaceId);
     }
+    const { operationDef } = await import("./fiscal/operations");
     const row = { ...rest, workspace_id: workspaceId } as any;
+    // operation_key é a chave usada pelo motor automotivo; direction segue o catálogo canônico.
+    if (rest.operation_key === undefined) delete row.operation_key;
+    else {
+      row.operation_key = rest.operation_key || null;
+      const def = operationDef(rest.operation_key);
+      if (def) row.direction = def.direction;
+    }
+    if (rest.direction) row.direction = rest.direction;
+
     const res = id
       ? await supabaseAdmin.from("fiscal_profiles").update(row).eq("id", id).select("id").single()
       : await supabaseAdmin.from("fiscal_profiles").insert(row).select("id").single();
