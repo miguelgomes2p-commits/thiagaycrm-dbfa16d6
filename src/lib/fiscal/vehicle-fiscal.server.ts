@@ -121,7 +121,10 @@ export function validateFiscalOperation(input: {
     });
   } else {
     issues.push(...validateProfile(ctx.profile));
-    if (amount && amount > 0) issues.push(...buildIcmsGroup(ctx.profile, amount).issues);
+    if (amount && amount > 0)
+      for (const i of buildIcmsGroup(ctx.profile, amount).issues)
+        if (!issues.some((x) => x.message === i.message)) issues.push(i);
+
 
     if (ctx.profile.direction && ctx.profile.direction !== ctx.direction)
       issues.push({
