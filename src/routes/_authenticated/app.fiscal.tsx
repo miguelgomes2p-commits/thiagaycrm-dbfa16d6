@@ -63,6 +63,14 @@ function FiscalPage() {
   });
   const cfg = cfgQ.data;
 
+  // permite abrir direto a aba de configuração via /app/fiscal?tab=config&op=...
+  const [tab, setTab] = useState("docs");
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("tab") === "config" || p.get("op")) setTab("config");
+  }, []);
+
+
   if (!ws) return <div className="p-6 text-sm text-muted-foreground">Carregando workspace…</div>;
 
   return (
