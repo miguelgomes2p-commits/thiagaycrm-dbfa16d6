@@ -661,6 +661,7 @@ export const upsertFiscalProfile = createServerFn({ method: "POST" })
         direction: z.enum(["entry", "exit"]).optional(),
 
         cfop: z.string().max(10).nullish(),
+        cfop_interstate: z.string().max(10).nullish(),
         ncm: z.string().max(12).nullish(),
         cest: z.string().max(12).nullish(),
         product_origin: z.string().max(2).nullish(),

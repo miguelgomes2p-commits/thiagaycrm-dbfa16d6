@@ -66,7 +66,7 @@ export const getVehicleFiscalStatus = createServerFn({ method: "POST" })
     const { data: docs } = await supabaseAdmin
       .from("fiscal_documents")
       .select(
-        "id, direction, source, issuer_type, self_issued, operation_key, status, environment, number, series, access_key, total_amount, created_at, authorized_at, cancelled_at, rejection_message, xml_storage_path, danfe_storage_path, supplier_snapshot, recipient_snapshot",
+        "id, direction, source, issuer_type, self_issued, operation_key, status, environment, number, series, access_key, total_amount, created_at, authorized_at, cancelled_at, rejection_code, rejection_message, xml_storage_path, danfe_storage_path, supplier_snapshot, recipient_snapshot",
       )
       .eq("workspace_id", data.workspaceId)
       .eq("vehicle_id", data.vehicleId)
@@ -379,7 +379,13 @@ export const issueVehicleFiscalDocument = createServerFn({ method: "POST" })
           icms_group: svc.buildIcmsGroup(ctx.profile!, Number(doc.total_amount)).detail,
         },
 
-        operation_snapshot: auto.buildOperationSnapshot(ctx),
+        operation_snapshot: auto.buildOperationSnapshot(ctx, {
+          destino: auto.resolveDestination({
+            emitUf: cfg?.emit_uf ?? null,
+            destUf: counterparty.uf ?? null,
+            profile: ctx.profile,
+          }),
+        }),
         vehicle_snapshot: auto.buildVehicleSnapshot(vehicle!),
       } as any)
       .eq("id", doc.id);
@@ -633,4 +639,34 @@ export const getVehicleProductionReadiness = createServerFn({ method: "POST" })
       homologation_entry_done: list.some((r: any) => r.direction === "entry"),
       homologation_exit_done: list.some((r: any) => r.direction === "exit"),
     };
+  });
+
+/* ==================== ATUALIZAÇÃO DE STATUS (somente leitura) ==================== */
+
+/**
+ * Consulta a Focus e sincroniza o status do documento. Não emite nada.
+ * Serve para tirar do "Processando" documentos que a SEFAZ já rejeitou.
+ */
+export const refreshVehicleFiscalDocument = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ workspaceId: z.string().uuid(), documentId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const svc = await import("./fiscal/service.server");
+    const { data: doc } = await supabaseAdmin
+      .from("fiscal_documents")
+      .select("id, provider_document_id, status")
+      .eq("id", data.documentId)
+      .eq("workspace_id", data.workspaceId)
+      .maybeSingle();
+    if (!doc) throw new Error("Documento não encontrado.");
+    if (!doc.provider_document_id)
+      return { ok: true as const, status: doc.status, documentId: doc.id };
+    const { provider } = await svc.getProviderForWorkspace(supabaseAdmin, data.workspaceId);
+    const res = await provider.getNFe({ ref: doc.provider_document_id });
+    const updated = await svc.applyProviderResult(supabaseAdmin, provider, doc.id, res);
+    return { ok: true as const, status: updated?.status ?? doc.status, documentId: doc.id };
   });

@@ -476,7 +476,14 @@ export async function applyProviderResult(
   const { data: doc } = await admin.from("fiscal_documents").select("*").eq("id", documentId).maybeSingle();
   if (!doc) return null;
 
-  const internal = result.ok ? mapFocusStatus(result.status) : result.status ? mapFocusStatus(result.status) : "error";
+  let internal = result.ok ? mapFocusStatus(result.status) : result.status ? mapFocusStatus(result.status) : "error";
+  // Uma rejeição já registrada não é sobrescrita por consultas posteriores
+  // que voltem sem status definitivo (processing/pending).
+  if (
+    (doc.status === "rejected" || doc.status === "error") &&
+    (internal === "processing" || internal === "pending")
+  )
+    internal = doc.status;
   const patch: Record<string, any> = { status: internal };
   if (result.number) patch.number = result.number;
   if (result.series) patch.series = result.series;
