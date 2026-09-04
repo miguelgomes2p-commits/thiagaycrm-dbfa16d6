@@ -759,11 +759,11 @@ function ProfilesCard({
             <F label="CEST (opcional)" v={form.cest} on={(v) => setForm({ ...form, cest: v })} />
             <F label="Origem do produto" v={form.product_origin} on={(v) => setForm({ ...form, product_origin: v })} />
             <F label="Natureza da operação" v={form.natureza_operacao} on={(v) => setForm({ ...form, natureza_operacao: v })} />
-            <F label="CST/CSOSN ICMS" v={tax.icms_situacao_tributaria} on={(v) => setTax({ ...tax, icms_situacao_tributaria: v })} />
-            <F label="CST PIS" v={tax.pis_situacao_tributaria} on={(v) => setTax({ ...tax, pis_situacao_tributaria: v })} />
-            <F label="CST COFINS" v={tax.cofins_situacao_tributaria} on={(v) => setTax({ ...tax, cofins_situacao_tributaria: v })} />
-            <F label="Alíquota ICMS (%)" v={tax.icms_aliquota} on={(v) => setTax({ ...tax, icms_aliquota: v })} />
-            <F label="Redução base ICMS (%)" v={tax.icms_reducao_base_calculo} on={(v) => setTax({ ...tax, icms_reducao_base_calculo: v })} />
+            <F label="CST/CSOSN ICMS" required v={tax.icms_situacao_tributaria} on={(v) => setTax({ ...tax, icms_situacao_tributaria: v })} />
+            <F label="CST PIS" required v={tax.pis_situacao_tributaria} on={(v) => setTax({ ...tax, pis_situacao_tributaria: v })} />
+            <F label="CST COFINS" required v={tax.cofins_situacao_tributaria} on={(v) => setTax({ ...tax, cofins_situacao_tributaria: v })} />
+            <F label="Alíquota ICMS (%)" hint="Quando aplicável. Informe exatamente o que a contabilidade determinar." v={tax.icms_aliquota} on={(v) => setTax({ ...tax, icms_aliquota: v })} />
+            <F label="Redução base ICMS (%)" hint="Quando aplicável. Não equivale automaticamente a 'base de cálculo de X%' — confirme com a contabilidade." v={tax.icms_reducao_base_calculo} on={(v) => setTax({ ...tax, icms_reducao_base_calculo: v })} />
             <div className="sm:col-span-2 space-y-1">
               <Label className="text-xs text-muted-foreground">Informações adicionais</Label>
               <Textarea rows={2} value={form.additional_information ?? ""}
