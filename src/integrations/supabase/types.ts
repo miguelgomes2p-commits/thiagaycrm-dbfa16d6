@@ -1698,8 +1698,10 @@ export type Database = {
           accountant_checklist: Json
           certificate_expires_at: string | null
           certificate_filename: string | null
+          certificate_source: string | null
           certificate_status: string
           certificate_uploaded_at: string | null
+          certificate_verified_at: string | null
           cfop_entrada_padrao: string
           cfop_saida_padrao: string
           cnpj_emitente: string | null
@@ -1738,8 +1740,10 @@ export type Database = {
           accountant_checklist?: Json
           certificate_expires_at?: string | null
           certificate_filename?: string | null
+          certificate_source?: string | null
           certificate_status?: string
           certificate_uploaded_at?: string | null
+          certificate_verified_at?: string | null
           cfop_entrada_padrao?: string
           cfop_saida_padrao?: string
           cnpj_emitente?: string | null
@@ -1778,8 +1782,10 @@ export type Database = {
           accountant_checklist?: Json
           certificate_expires_at?: string | null
           certificate_filename?: string | null
+          certificate_source?: string | null
           certificate_status?: string
           certificate_uploaded_at?: string | null
+          certificate_verified_at?: string | null
           cfop_entrada_padrao?: string
           cfop_saida_padrao?: string
           cnpj_emitente?: string | null
