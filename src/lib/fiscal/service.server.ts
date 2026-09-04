@@ -389,6 +389,29 @@ export async function applyProviderResult(
 
   await admin.from("fiscal_documents").update(patch).eq("id", documentId);
 
+  // Confirmação operacional do certificado: a Focus é a autoridade final.
+  if (doc.workspace_id) {
+    if (internal === "authorized") {
+      await admin
+        .from("nfe_config")
+        .update({
+          certificate_status: "configured",
+          certificate_verified_at: new Date().toISOString(),
+        } as any)
+        .eq("workspace_id", doc.workspace_id)
+        .in("certificate_status", ["external_declared", "missing", "error", "expired"]);
+    } else if (
+      (internal === "rejected" || internal === "error") &&
+      /certificad/i.test(`${result.errorMessage ?? ""} ${result.errorCode ?? ""}`)
+    ) {
+      await admin
+        .from("nfe_config")
+        .update({ certificate_status: "error" } as any)
+        .eq("workspace_id", doc.workspace_id);
+    }
+  }
+
+
   if (doc.status !== internal) {
     await emitFiscalEvent(admin, { ...doc, ...patch }, internal);
   }
