@@ -483,10 +483,13 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
             </Label>
             <Input type="password" value={tokenProd} placeholder="••••••" onChange={(ev) => setTokenProd(ev.target.value)} />
           </div>
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
             <Button variant="outline" className="cursor-pointer" disabled={saveM.isPending} onClick={() => saveM.mutate(undefined)}>
               Salvar credenciais
             </Button>
+          </div>
+          <div className="sm:col-span-2 border-t border-border pt-3">
+            <FiscalIntegrationTestButton workspaceId={workspaceId} />
           </div>
         </CardContent>
       </Card>
