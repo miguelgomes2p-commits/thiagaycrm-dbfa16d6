@@ -333,6 +333,8 @@ export function buildNfePayload(input: {
     informacoes_adicionais_item: vehicleAdditionalInfo(vehicle),
     ...(profile.cest ? { cest: profile.cest } : {}),
     ...tax, // CST/CSOSN, alíquotas e reduções vindos da contabilidade
+    ...buildIcmsGroup(profile, amount).group,
+
   };
 
   const destinatario =
