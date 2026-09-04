@@ -2,7 +2,7 @@
 // FiscalService -> FiscalProvider -> (FocusNFeProvider | NuvemFiscalProvider).
 // SERVER-ONLY: importe apenas de dentro de handlers.
 
-import { focusRequest, type NfeEnv } from "../nfe.server";
+import { focusAuthHeader, focusRequest, type NfeEnv } from "../nfe.server";
 import type { FiscalEnvironment } from "./types";
 
 export type ProviderResult = {
@@ -21,6 +21,15 @@ export type ProviderResult = {
   danfeUrl?: string;
 };
 
+export type CompanyLookupResult = {
+  ok: boolean;
+  httpStatus: number;
+  endpoint: string;
+  company: Record<string, unknown> | null;
+  errorCode?: string;
+  errorMessage?: string;
+};
+
 export interface FiscalProvider {
   readonly name: string;
   issueNFe(input: { ref: string; payload: unknown }): Promise<ProviderResult>;
@@ -34,8 +43,17 @@ export interface FiscalProvider {
     certificatePassword: string;
     extra?: Record<string, unknown>;
   }): Promise<ProviderResult & { companyId?: string; certificateExpiresAt?: string | null }>;
+  /** API administrativa de empresas — sempre no domínio de produção da Focus. */
+  findCompanyByCnpj?(input: { cnpj: string; token: string }): Promise<CompanyLookupResult>;
   getStatus(): Promise<ProviderResult>;
 }
+
+/**
+ * A API administrativa de empresas da Focus NFe existe apenas no domínio de
+ * produção — o ambiente de EMISSÃO (homologação/produção) não muda esta URL.
+ */
+export const FOCUS_ADMIN_BASE_URL = "https://api.focusnfe.com.br";
+
 
 function envToFocus(env: FiscalEnvironment): NfeEnv {
   return env === "production" ? "producao" : "homologacao";
