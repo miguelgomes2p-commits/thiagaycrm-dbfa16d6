@@ -66,7 +66,7 @@ export const getVehicleFiscalStatus = createServerFn({ method: "POST" })
     const { data: docs } = await supabaseAdmin
       .from("fiscal_documents")
       .select(
-        "id, direction, source, issuer_type, self_issued, operation_key, status, environment, number, series, access_key, total_amount, created_at, authorized_at, cancelled_at, rejection_message, xml_storage_path, danfe_storage_path, supplier_snapshot, recipient_snapshot",
+        "id, direction, source, issuer_type, self_issued, operation_key, status, environment, number, series, access_key, total_amount, created_at, authorized_at, cancelled_at, rejection_code, rejection_message, xml_storage_path, danfe_storage_path, supplier_snapshot, recipient_snapshot",
       )
       .eq("workspace_id", data.workspaceId)
       .eq("vehicle_id", data.vehicleId)

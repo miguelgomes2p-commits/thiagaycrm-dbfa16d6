@@ -33,6 +33,7 @@ type Doc = {
   access_key: string | null;
   total_amount: number | string | null;
   created_at: string;
+  rejection_code: string | null;
   rejection_message: string | null;
 };
 
@@ -204,8 +205,12 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
                 {operationLabel(d.operation_key)} • {fmt(d.total_amount)}
                 {d.source === "imported" ? " • recebida do fornecedor" : ""}
               </p>
-              {d.rejection_message && (
-                <p className="text-[11px] text-destructive">{d.rejection_message}</p>
+              {(d.rejection_message || d.rejection_code) && (
+                <p className="text-[11px] text-destructive">
+                  {(d.status === "rejected" ? "Rejeitada" : "Falha") +
+                    (d.rejection_code ? ` — SEFAZ ${d.rejection_code}` : "")}
+                  {d.rejection_message ? `: ${d.rejection_message}` : ""}
+                </p>
               )}
               <div className="flex flex-wrap gap-1.5 pt-0.5">
                 {d.status === "draft" && d.source !== "imported" && (
