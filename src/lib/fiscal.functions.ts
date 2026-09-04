@@ -194,10 +194,13 @@ export const uploadFiscalCertificate = createServerFn({ method: "POST" })
       .from("nfe_config")
       .update({
         certificate_status: "configured",
+        certificate_source: "crm_upload",
+        certificate_verified_at: new Date().toISOString(),
         certificate_filename: data.filename,
         certificate_uploaded_at: new Date().toISOString(),
         certificate_expires_at: res.certificateExpiresAt ?? null,
         provider_company_id: res.companyId ?? cfg.provider_company_id ?? null,
+
       } as any)
       .eq("workspace_id", data.workspaceId);
 
@@ -412,6 +415,10 @@ export const upsertFiscalProfile = createServerFn({ method: "POST" })
         workspaceId: z.string().uuid(),
         name: z.string().min(2).max(120),
         operation_type: z.string().min(2).max(60),
+        /** operação canônica automotiva (FISCAL_OPERATIONS) — usada pelo motor */
+        operation_key: z.string().max(60).nullish(),
+        direction: z.enum(["entry", "exit"]).optional(),
+
         cfop: z.string().max(10).optional(),
         ncm: z.string().max(12).optional(),
         cest: z.string().max(12).optional(),
