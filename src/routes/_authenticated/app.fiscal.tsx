@@ -671,6 +671,7 @@ function ProfilesCard({
           operation_key: form.operation_key || null,
 
           cfop: form.cfop,
+          cfop_interstate: form.cfop_interstate,
           ncm: form.ncm,
           cest: form.cest,
           product_origin: form.product_origin,
@@ -721,7 +722,7 @@ function ProfilesCard({
             <div>
               <p className="font-medium">{p.name} {p.is_default && <Badge variant="secondary" className="ml-1 text-[10px]">Padrão</Badge>}</p>
               <p className="text-xs text-muted-foreground">
-                CFOP {p.cfop ?? "—"} • NCM {p.ncm ?? "—"}
+                CFOP interno {p.cfop ?? "—"} • CFOP interestadual {p.cfop_interstate ?? "—"} • NCM {p.ncm ?? "—"}
                 {p.operation_key ? ` • ${operationLabel(p.operation_key)}` : " • operação fiscal não vinculada"}
               </p>
             </div>
@@ -771,7 +772,8 @@ function ProfilesCard({
                 É por esta operação que o CRM localiza o perfil ao gerar documentos de veículos.
               </p>
             </div>
-            <F label="CFOP" required v={form.cfop} on={(v) => setForm({ ...form, cfop: v })} />
+            <F label="CFOP dentro do estado" required hint="Usado quando a UF do destinatário é a mesma do emitente (idDest 1)." v={form.cfop} on={(v) => setForm({ ...form, cfop: v })} />
+            <F label="CFOP interestadual" required hint="Usado quando a UF do destinatário é diferente da do emitente (idDest 2). Informe o código indicado pela contabilidade." v={form.cfop_interstate} on={(v) => setForm({ ...form, cfop_interstate: v })} />
             <F label="NCM" required v={form.ncm} on={(v) => setForm({ ...form, ncm: v })} />
             <F label="CEST (opcional)" v={form.cest} on={(v) => setForm({ ...form, cest: v })} />
             <F label="Origem do produto" v={form.product_origin} on={(v) => setForm({ ...form, product_origin: v })} />
