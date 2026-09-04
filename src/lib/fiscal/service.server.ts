@@ -144,6 +144,12 @@ export function validateProfile(profile: Record<string, any> | null): FiscalVali
   const out: FiscalValidationIssue[] = [];
   if (!profile.cfop) out.push({ field: "cfop", message: "CFOP não definido no perfil fiscal" });
   if (!profile.ncm) out.push({ field: "ncm", message: "NCM não definido no perfil fiscal" });
+  if (!String(profile.natureza_operacao ?? "").trim())
+    out.push({
+      field: "natureza_operacao",
+      message:
+        "Não é possível emitir a NF-e. O Perfil fiscal utilizado não possui Natureza da operação configurada.",
+    });
   const tax = (profile.tax_configuration ?? {}) as Record<string, any>;
   if (!tax.icms_situacao_tributaria && !tax.icms_csosn)
     out.push({ field: "icms", message: "CST/CSOSN de ICMS não definido no perfil fiscal" });
@@ -236,7 +242,7 @@ export function buildNfePayload(input: {
         };
 
   return {
-    natureza_operacao: profile.natureza_operacao ?? "Venda de mercadoria",
+    natureza_operacao: profile.natureza_operacao,
     data_emissao: new Date().toISOString(),
     data_entrada_saida: new Date().toISOString(),
     tipo_documento: 1,
