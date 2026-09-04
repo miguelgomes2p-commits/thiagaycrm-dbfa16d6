@@ -686,6 +686,19 @@ function ProfilesCard({
     setOpen(true);
   }
 
+  // /app/fiscal?op=<operation_key> abre direto o perfil da operação
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    const op = new URLSearchParams(window.location.search).get("op");
+    if (!op) return;
+    const p = profiles.find((x) => x.active && x.operation_key === op);
+    if (!p) return;
+    opened.current = true;
+    edit(p);
+  }, [profiles]);
+
+
   return (
     <Card>
       <CardHeader className="pb-2 flex-row items-center justify-between">
