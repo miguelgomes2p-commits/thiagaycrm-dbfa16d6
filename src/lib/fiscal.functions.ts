@@ -346,6 +346,247 @@ export const confirmExternalCertificate = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/* ==================== TESTE TÉCNICO DE INTEGRAÇÃO (HEALTH CHECK) ==================== */
+
+export type FiscalIntegrationCheck = {
+  status: "success" | "warning" | "error" | "skipped";
+  message: string;
+  detail?: string;
+};
+
+export type FiscalIntegrationTest = {
+  ok: boolean;
+  ran: boolean;
+  startedAt: string;
+  finishedAt: string;
+  environment: FiscalIntegrationCheck & { value: string };
+  credentials: FiscalIntegrationCheck;
+  provider_connection: FiscalIntegrationCheck & { http_status?: number };
+  issuer: FiscalIntegrationCheck & { missing_fields: string[] };
+  company: FiscalIntegrationCheck;
+  certificate: FiscalIntegrationCheck & { verified: boolean; expiresAt?: string | null };
+  tax_profile: FiscalIntegrationCheck & { missing_fields: string[] };
+};
+
+/**
+ * Diagnóstico técnico da integração CRM ↔ Focus NFe. NÃO emite NF-e, não cria
+ * documento fiscal, não consome numeração, não altera nenhuma configuração.
+ */
+export const testFiscalIntegration = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ workspaceId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }): Promise<FiscalIntegrationTest> => {
+    await assertFiscalRole(context, data.workspaceId, ADMIN);
+    const startedAt = new Date().toISOString();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { loadConfig, configEnvironment } = await import("./fiscal/service.server");
+    const { decryptSecret } = await import("./renave.server");
+
+    const cfg = await loadConfig(supabaseAdmin, data.workspaceId);
+    const env = configEnvironment(cfg);
+
+    const done = (t: Omit<FiscalIntegrationTest, "ok" | "ran" | "startedAt" | "finishedAt">, ran: boolean) => {
+      const finishedAt = new Date().toISOString();
+      const ok =
+        ran &&
+        t.environment.status === "success" &&
+        t.credentials.status === "success" &&
+        t.provider_connection.status === "success" &&
+        t.issuer.status === "success";
+      console.info("[fiscal:integration-test]", {
+        workspace_id: data.workspaceId,
+        provider: cfg?.provider ?? "focus_nfe",
+        environment: env,
+        test_started_at: startedAt,
+        test_finished_at: finishedAt,
+        http_status: t.provider_connection.http_status ?? null,
+        result: ok ? "operational" : ran ? "issues" : "skipped",
+      });
+      return { ...t, ok, ran, startedAt, finishedAt };
+    };
+
+    const skipped = (message: string): FiscalIntegrationCheck => ({ status: "skipped", message });
+
+    // Etapa 4 — emitente (somente dados cadastrais; nada de tributação)
+    const issuerFields: Array<[string, unknown]> = [
+      ["Razão social", cfg?.emit_razao_social],
+      ["CNPJ", cfg?.cnpj_emitente],
+      ["Inscrição estadual", cfg?.ie_emitente],
+      ["Regime tributário", cfg?.regime_tributario],
+      ["Logradouro", cfg?.emit_logradouro],
+      ["Número", cfg?.emit_numero],
+      ["Município", cfg?.emit_municipio],
+      ["Código IBGE", cfg?.emit_ibge],
+      ["UF", cfg?.emit_uf],
+    ];
+    const issuerMissing = issuerFields.filter(([, v]) => !v).map(([k]) => k);
+    const issuer = {
+      status: issuerMissing.length === 0 ? ("success" as const) : ("error" as const),
+      message:
+        issuerMissing.length === 0
+          ? "Dados básicos do emitente configurados"
+          : "Dados cadastrais do emitente incompletos",
+      missing_fields: issuerMissing,
+    };
+
+    // Perfil fiscal (informativo — nunca reprova a integração)
+    const { data: profiles } = await supabaseAdmin
+      .from("fiscal_profiles")
+      .select("name, cfop, ncm, tax_configuration, active")
+      .eq("workspace_id", data.workspaceId)
+      .eq("active", true);
+    const taxMissing = new Set<string>();
+    for (const p of (profiles ?? []) as any[]) {
+      const tax = (p.tax_configuration ?? {}) as Record<string, any>;
+      if (!tax.icms_situacao_tributaria && !tax.icms_csosn) taxMissing.add("CST ICMS");
+      if (!tax.pis_situacao_tributaria) taxMissing.add("CST PIS");
+      if (!tax.cofins_situacao_tributaria) taxMissing.add("CST COFINS");
+      if (!p.cfop) taxMissing.add("CFOP");
+      if (!p.ncm) taxMissing.add("NCM");
+    }
+    const tax_profile = {
+      status: (profiles ?? []).length === 0 ? ("warning" as const) : taxMissing.size ? ("warning" as const) : ("success" as const),
+      message:
+        (profiles ?? []).length === 0
+          ? "Nenhum perfil fiscal ativo cadastrado"
+          : taxMissing.size
+            ? "Configuração fiscal ainda incompleta"
+            : "Perfis fiscais com dados tributários preenchidos",
+      missing_fields: [...taxMissing],
+    };
+
+    // Etapa 1 — ambiente
+    if (env !== "homologation") {
+      return done(
+        {
+          environment: {
+            status: "warning",
+            value: env,
+            message: "O ambiente atual é Produção",
+            detail: "Este teste técnico deve ser executado em homologação. O ambiente não foi alterado.",
+          },
+          credentials: skipped("Não verificado"),
+          provider_connection: skipped("Não verificado"),
+          issuer: { ...issuer, status: "skipped", message: "Não verificado" },
+          company: skipped("Não verificado"),
+          certificate: { ...skipped("Não verificado"), verified: false },
+          tax_profile,
+        },
+        false,
+      );
+    }
+    const environment = {
+      status: "success" as const,
+      value: env,
+      message: "Ambiente de homologação",
+      detail: "Os testes não utilizarão o ambiente de emissão em produção.",
+    };
+
+    // Etapa 2 — token de homologação
+    if (!cfg?.token_homolog_enc) {
+      return done(
+        {
+          environment,
+          credentials: { status: "error", message: "Token de homologação não configurado" },
+          provider_connection: skipped("Não verificado"),
+          issuer,
+          company: skipped("Não verificado"),
+          certificate: { ...skipped("Não verificado"), verified: false },
+          tax_profile,
+        },
+        true,
+      );
+    }
+    const credentials: FiscalIntegrationCheck = {
+      status: "success",
+      message: "Token de homologação configurado",
+    };
+    const token = decryptSecret(cfg.token_homolog_enc);
+
+    // Etapa 3 — comunicação/autenticação (consulta somente leitura, sem criar documento)
+    let provider_connection: FiscalIntegrationCheck & { http_status?: number };
+    try {
+      const { focusRequest } = await import("./nfe.server");
+      const res = await focusRequest({
+        env: "homologacao",
+        token,
+        path: `/v2/nfe/crm-healthcheck-${Date.now()}`,
+      });
+      const s = res.status;
+      provider_connection =
+        s === 401
+          ? { status: "error", message: "Token de homologação inválido", http_status: s }
+          : s === 403
+            ? { status: "error", message: "Token sem permissão no provedor", http_status: s }
+            : s >= 500
+              ? { status: "warning", message: "Focus NFe temporariamente indisponível", http_status: s }
+              : {
+                  status: "success",
+                  message: "Comunicação com Focus NFe estabelecida",
+                  http_status: s,
+                  detail: "Consulta somente leitura — nenhuma NF-e foi criada.",
+                };
+    } catch {
+      provider_connection = {
+        status: "error",
+        message: "Não foi possível conectar à Focus NFe",
+        detail: "Pode ser uma indisponibilidade temporária do provedor.",
+      };
+    }
+
+    // Etapas 5 e 6 — empresa e certificado (API administrativa; pode não ser verificável)
+    let company: FiscalIntegrationCheck = {
+      status: "warning",
+      message: "Empresa não verificada automaticamente",
+      detail:
+        "Não existe uma credencial administrativa disponível para consultar os dados da empresa na Focus. Isso não impede o uso do token de homologação.",
+    };
+    const localCert: string = cfg?.certificate_status ?? "missing";
+    let certificate: FiscalIntegrationCheck & { verified: boolean; expiresAt?: string | null } =
+      localCert === "external_declared"
+        ? { status: "warning", message: "Certificado informado como cadastrado na Focus NFe", verified: false }
+        : localCert === "configured"
+          ? {
+              status: "success",
+              message: "Certificado digital configurado",
+              verified: false,
+              expiresAt: cfg?.certificate_expires_at ?? null,
+            }
+          : {
+              status: "warning",
+              message: "Não foi possível verificar automaticamente o certificado",
+              verified: false,
+            };
+
+    const cnpj = (cfg?.cnpj_emitente ?? "").replace(/\D+/g, "");
+    const adminToken = cfg?.token_prod_enc ? decryptSecret(cfg.token_prod_enc) : null;
+    if (cnpj && adminToken) {
+      const { createFiscalProvider } = await import("./fiscal/provider.server");
+      const provider = createFiscalProvider({ provider: cfg?.provider ?? "focus_nfe", environment: env, token: "unused" });
+      if (provider.findCompanyByCnpj) {
+        const res = await provider.findCompanyByCnpj({ cnpj, token: adminToken });
+        if (res.ok && res.company) {
+          company = { status: "success", message: "Empresa localizada na Focus NFe" };
+          const validUntil = (res.company as any)["certificado_valido_ate"] ?? null;
+          if (validUntil) {
+            const expired = new Date(validUntil).getTime() < Date.now();
+            certificate = {
+              status: expired ? "error" : "success",
+              message: expired ? "Certificado digital vencido" : "Certificado digital encontrado",
+              verified: true,
+              expiresAt: validUntil,
+            };
+          }
+        }
+      }
+    }
+
+    return done(
+      { environment, credentials, provider_connection, issuer, company, certificate, tax_profile },
+      true,
+    );
+  });
+
 
 
 export const enableFiscalProduction = createServerFn({ method: "POST" })
