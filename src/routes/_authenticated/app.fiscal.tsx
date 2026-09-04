@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Download, FileText, Loader2, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import {
-  getFiscalConfig, saveFiscalConfig, uploadFiscalCertificate, enableFiscalProduction,
+  getFiscalConfig, saveFiscalConfig, uploadFiscalCertificate, checkFiscalCertificate, enableFiscalProduction,
   listFiscalProfiles, upsertFiscalProfile, deleteFiscalProfile,
   listFiscalDocuments, getFiscalDocumentLinks, syncFiscalDocument, cancelFiscalDocument,
 } from "@/lib/fiscal.functions";
@@ -289,6 +289,7 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
   const qc = useQueryClient();
   const saveFn = useServerFn(saveFiscalConfig);
   const certFn = useServerFn(uploadFiscalCertificate);
+  const certCheckFn = useServerFn(checkFiscalCertificate);
   const prodFn = useServerFn(enableFiscalProduction);
   const profilesFn = useServerFn(listFiscalProfiles);
   const upsertProfileFn = useServerFn(upsertFiscalProfile);
@@ -299,6 +300,7 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
   const [tokenProd, setTokenProd] = useState("");
   const [certPassword, setCertPassword] = useState("");
   const [certFile, setCertFile] = useState<File | null>(null);
+  const [showCertUpload, setShowCertUpload] = useState(false);
 
   const e = { ...(cfg?.emitter ?? {}), ...emitter } as Record<string, any>;
   const checklist = cfg?.accountant_checklist ?? {};
