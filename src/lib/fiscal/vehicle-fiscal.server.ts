@@ -223,6 +223,14 @@ export function validateFiscalOperation(input: {
       if (tax.cbs == null && tax.cbs_cst == null)
         issues.push({ field: "cbs", message: "CBS não configurado no perfil fiscal" });
     }
+    // CFOP x destino (interna/interestadual)
+    const dest = resolveDestination({
+      emitUf: cfg?.emit_uf ?? null,
+      destUf: counterparty?.uf ?? null,
+      profile: ctx.profile,
+    });
+    for (const i of validateDestinationCfop(dest))
+      if (!issues.some((x) => x.message === i.message)) issues.push(i);
   }
 
   issues.push(...validateVehicleForFiscal(vehicle));
