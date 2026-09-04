@@ -655,6 +655,8 @@ function ProfilesCard({
           ...(form.id ? { id: form.id } : {}),
           name: form.name,
           operation_type: form.operation_type,
+          operation_key: form.operation_key || null,
+
           cfop: form.cfop,
           ncm: form.ncm,
           cest: form.cest,
@@ -692,7 +694,10 @@ function ProfilesCard({
           <div key={p.id} className="flex items-center justify-between gap-2 border border-border rounded-lg p-2">
             <div>
               <p className="font-medium">{p.name} {p.is_default && <Badge variant="secondary" className="ml-1 text-[10px]">Padrão</Badge>}</p>
-              <p className="text-xs text-muted-foreground">CFOP {p.cfop ?? "—"} • NCM {p.ncm ?? "—"}</p>
+              <p className="text-xs text-muted-foreground">
+                CFOP {p.cfop ?? "—"} • NCM {p.ncm ?? "—"}
+                {p.operation_key ? ` • ${operationLabel(p.operation_key)}` : " • operação fiscal não vinculada"}
+              </p>
             </div>
             <div className="flex gap-1.5">
               <Button size="sm" variant="ghost" className="cursor-pointer" onClick={() => edit(p)}>Editar</Button>
