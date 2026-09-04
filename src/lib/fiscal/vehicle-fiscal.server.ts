@@ -319,7 +319,7 @@ export function buildVehicleNfePayload(input: VehicleNfeBuildInput) {
     consumidor_final: profile.final_consumer === false ? 0 : counterparty.final_consumer === false ? 0 : 1,
     presenca_comprador: input.buyerPresence ?? profile.buyer_presence ?? 9,
     modalidade_frete: 9,
-    local_destino: interstate ? 2 : 1,
+    local_destino: dest.localDestino,
     serie: cfg.serie_padrao ?? 1,
     cnpj_emitente: onlyDigits(cfg.cnpj_emitente),
     inscricao_estadual_emitente: cfg.ie_emitente,
