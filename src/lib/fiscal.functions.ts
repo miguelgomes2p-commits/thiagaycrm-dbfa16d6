@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertFiscalRole } from "./fiscal/access";
-import type { FiscalConfigView } from "./fiscal/types";
+import { certificateAllowsIssue, type FiscalConfigView } from "./fiscal/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -519,9 +519,10 @@ async function gatherEmissionContext(supabaseAdmin: any, data: z.infer<typeof em
 
   const issues = [
     ...svc.missingEmitterFields(cfg),
-    ...(cfg?.certificate_status === "configured"
+    ...(certificateAllowsIssue(cfg?.certificate_status)
       ? []
       : [{ field: "certificate", message: "Certificado digital não configurado" }]),
+
     ...svc.validateProfile(profile),
     ...svc.validateRecipient(data.recipient),
     ...(vehicle ? [] : [{ field: "vehicle", message: "Veículo não encontrado" }]),
