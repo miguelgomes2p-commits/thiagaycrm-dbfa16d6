@@ -783,11 +783,37 @@ function ProfilesCard({
   );
 }
 
-function F({ label, v, on }: { label: string; v: any; on: (v: string) => void }) {
+function F({
+  label,
+  v,
+  on,
+  required,
+  hint,
+}: {
+  label: string;
+  v: any;
+  on: (v: string) => void;
+  /** obrigatório para emissão — nunca preenchido automaticamente pelo CRM */
+  required?: boolean;
+  hint?: string;
+}) {
+  const empty = !String(v ?? "").trim();
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Input value={v ?? ""} onChange={(e) => on(e.target.value)} />
+      <Label className="text-xs text-muted-foreground">
+        {label}
+        {required && <span className="text-destructive"> *</span>}
+      </Label>
+      <Input
+        value={v ?? ""}
+        onChange={(e) => on(e.target.value)}
+        className={required && empty ? "border-amber-400" : undefined}
+      />
+      {required && empty ? (
+        <p className="text-[11px] text-amber-600">Informação fiscal não fornecida pela contabilidade.</p>
+      ) : hint ? (
+        <p className="text-[11px] text-muted-foreground">{hint}</p>
+      ) : null}
     </div>
   );
 }
