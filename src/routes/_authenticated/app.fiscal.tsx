@@ -80,7 +80,7 @@ function FiscalPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="docs">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="docs" className="cursor-pointer">Documentos</TabsTrigger>
           {isAdmin && <TabsTrigger value="config" className="cursor-pointer">Configuração</TabsTrigger>}
