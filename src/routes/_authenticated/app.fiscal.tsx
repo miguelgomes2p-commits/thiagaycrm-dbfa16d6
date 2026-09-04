@@ -25,6 +25,7 @@ import {
   OPERATION_TYPE_OPTIONS, REGIME_TRIBUTARIO_OPTIONS, type FiscalConfigView,
 } from "@/lib/fiscal/types";
 import { FISCAL_OPERATIONS, operationLabel } from "@/lib/fiscal/operations";
+import { FiscalIntegrationTestButton } from "@/components/fiscal/FiscalIntegrationTestDialog";
 
 export const Route = createFileRoute("/_authenticated/app/fiscal")({
   component: FiscalPage,
