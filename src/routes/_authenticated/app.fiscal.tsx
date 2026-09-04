@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -63,6 +63,14 @@ function FiscalPage() {
   });
   const cfg = cfgQ.data;
 
+  // permite abrir direto a aba de configuração via /app/fiscal?tab=config&op=...
+  const [tab, setTab] = useState("docs");
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("tab") === "config" || p.get("op")) setTab("config");
+  }, []);
+
+
   if (!ws) return <div className="p-6 text-sm text-muted-foreground">Carregando workspace…</div>;
 
   return (
@@ -80,7 +88,7 @@ function FiscalPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="docs">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="docs" className="cursor-pointer">Documentos</TabsTrigger>
           {isAdmin && <TabsTrigger value="config" className="cursor-pointer">Configuração</TabsTrigger>}
@@ -678,6 +686,19 @@ function ProfilesCard({
     setOpen(true);
   }
 
+  // /app/fiscal?op=<operation_key> abre direto o perfil da operação
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    const op = new URLSearchParams(window.location.search).get("op");
+    if (!op) return;
+    const p = profiles.find((x) => x.active && x.operation_key === op);
+    if (!p) return;
+    opened.current = true;
+    edit(p);
+  }, [profiles]);
+
+
   return (
     <Card>
       <CardHeader className="pb-2 flex-row items-center justify-between">
@@ -746,16 +767,16 @@ function ProfilesCard({
                 É por esta operação que o CRM localiza o perfil ao gerar documentos de veículos.
               </p>
             </div>
-            <F label="CFOP" v={form.cfop} on={(v) => setForm({ ...form, cfop: v })} />
-            <F label="NCM" v={form.ncm} on={(v) => setForm({ ...form, ncm: v })} />
+            <F label="CFOP" required v={form.cfop} on={(v) => setForm({ ...form, cfop: v })} />
+            <F label="NCM" required v={form.ncm} on={(v) => setForm({ ...form, ncm: v })} />
             <F label="CEST (opcional)" v={form.cest} on={(v) => setForm({ ...form, cest: v })} />
             <F label="Origem do produto" v={form.product_origin} on={(v) => setForm({ ...form, product_origin: v })} />
             <F label="Natureza da operação" v={form.natureza_operacao} on={(v) => setForm({ ...form, natureza_operacao: v })} />
-            <F label="CST/CSOSN ICMS" v={tax.icms_situacao_tributaria} on={(v) => setTax({ ...tax, icms_situacao_tributaria: v })} />
-            <F label="CST PIS" v={tax.pis_situacao_tributaria} on={(v) => setTax({ ...tax, pis_situacao_tributaria: v })} />
-            <F label="CST COFINS" v={tax.cofins_situacao_tributaria} on={(v) => setTax({ ...tax, cofins_situacao_tributaria: v })} />
-            <F label="Alíquota ICMS (%)" v={tax.icms_aliquota} on={(v) => setTax({ ...tax, icms_aliquota: v })} />
-            <F label="Redução base ICMS (%)" v={tax.icms_reducao_base_calculo} on={(v) => setTax({ ...tax, icms_reducao_base_calculo: v })} />
+            <F label="CST/CSOSN ICMS" required v={tax.icms_situacao_tributaria} on={(v) => setTax({ ...tax, icms_situacao_tributaria: v })} />
+            <F label="CST PIS" required v={tax.pis_situacao_tributaria} on={(v) => setTax({ ...tax, pis_situacao_tributaria: v })} />
+            <F label="CST COFINS" required v={tax.cofins_situacao_tributaria} on={(v) => setTax({ ...tax, cofins_situacao_tributaria: v })} />
+            <F label="Alíquota ICMS (%)" hint="Quando aplicável. Informe exatamente o que a contabilidade determinar." v={tax.icms_aliquota} on={(v) => setTax({ ...tax, icms_aliquota: v })} />
+            <F label="Redução base ICMS (%)" hint="Quando aplicável. Não equivale automaticamente a 'base de cálculo de X%' — confirme com a contabilidade." v={tax.icms_reducao_base_calculo} on={(v) => setTax({ ...tax, icms_reducao_base_calculo: v })} />
             <div className="sm:col-span-2 space-y-1">
               <Label className="text-xs text-muted-foreground">Informações adicionais</Label>
               <Textarea rows={2} value={form.additional_information ?? ""}
@@ -775,11 +796,37 @@ function ProfilesCard({
   );
 }
 
-function F({ label, v, on }: { label: string; v: any; on: (v: string) => void }) {
+function F({
+  label,
+  v,
+  on,
+  required,
+  hint,
+}: {
+  label: string;
+  v: any;
+  on: (v: string) => void;
+  /** obrigatório para emissão — nunca preenchido automaticamente pelo CRM */
+  required?: boolean;
+  hint?: string;
+}) {
+  const empty = !String(v ?? "").trim();
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Input value={v ?? ""} onChange={(e) => on(e.target.value)} />
+      <Label className="text-xs text-muted-foreground">
+        {label}
+        {required && <span className="text-destructive"> *</span>}
+      </Label>
+      <Input
+        value={v ?? ""}
+        onChange={(e) => on(e.target.value)}
+        className={required && empty ? "border-amber-400" : undefined}
+      />
+      {required && empty ? (
+        <p className="text-[11px] text-amber-600">Informação fiscal não fornecida pela contabilidade.</p>
+      ) : hint ? (
+        <p className="text-[11px] text-muted-foreground">{hint}</p>
+      ) : null}
     </div>
   );
 }

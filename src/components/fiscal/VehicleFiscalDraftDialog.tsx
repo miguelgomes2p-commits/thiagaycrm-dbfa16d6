@@ -47,6 +47,18 @@ type Counterparty = {
   taxpayer_indicator: "contributor" | "exempt" | "non_contributor";
 };
 
+/** Pendências que dependem exclusivamente da configuração contábil do perfil. */
+const ACCOUNTING_FIELD_LABEL: Record<string, string> = {
+  icms: "CST ICMS",
+  pis: "CST PIS",
+  cofins: "CST COFINS",
+  cfop: "CFOP",
+  ncm: "NCM",
+  ibs: "IBS",
+  cbs: "CBS",
+  fiscal_profile: "Perfil fiscal da operação",
+};
+
 const EMPTY: Counterparty = {
   person_type: "PF",
   name: "",
@@ -121,6 +133,7 @@ export function VehicleFiscalDraftDialog({
     queryFn: () =>
       validateFn({ data: payload() }) as Promise<{
         issues: Array<{ field: string; message: string }>;
+        operation_key?: string | null;
       }>,
   });
 
@@ -134,6 +147,10 @@ export function VehicleFiscalDraftDialog({
   });
 
   const issues = validationQ.data?.issues ?? [];
+  const operationKey = validationQ.data?.operation_key ?? null;
+  const accountingIssues = issues.filter((i) => ACCOUNTING_FIELD_LABEL[i.field]);
+  const otherIssues = issues.filter((i) => !ACCOUNTING_FIELD_LABEL[i.field]);
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -270,11 +287,43 @@ export function VehicleFiscalDraftDialog({
             </div>
           </div>
 
-          {issues.length > 0 && (
+          {accountingIssues.length > 0 && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2 space-y-2">
+              <p className="text-[11px] font-semibold uppercase text-amber-700">
+                Pendente de configuração contábil
+              </p>
+              <ul className="list-disc pl-4 text-xs text-amber-800">
+                {accountingIssues.map((i, idx) => (
+                  <li key={`${i.field}-${idx}`}>
+                    {ACCOUNTING_FIELD_LABEL[i.field]}
+                    <span className="block text-[11px] text-amber-700">
+                      Informação fiscal não fornecida pela contabilidade.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] cursor-pointer"
+                onClick={() =>
+                  window.open(
+                    `/app/fiscal?tab=config${operationKey ? `&op=${encodeURIComponent(operationKey)}` : ""}`,
+                    "_blank",
+                    "noopener",
+                  )
+                }
+              >
+                Editar perfil fiscal
+              </Button>
+            </div>
+          )}
+
+          {otherIssues.length > 0 && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-2 space-y-1">
               <p className="text-[11px] font-semibold uppercase text-amber-700">Pendências</p>
               <ul className="list-disc pl-4 text-xs text-amber-800">
-                {issues.map((i, idx) => (
+                {otherIssues.map((i, idx) => (
                   <li key={`${i.field}-${idx}`}>{i.message}</li>
                 ))}
               </ul>
