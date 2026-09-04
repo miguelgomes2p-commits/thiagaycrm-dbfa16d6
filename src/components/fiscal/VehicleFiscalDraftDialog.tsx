@@ -121,6 +121,7 @@ export function VehicleFiscalDraftDialog({
     queryFn: () =>
       validateFn({ data: payload() }) as Promise<{
         issues: Array<{ field: string; message: string }>;
+        operation_key?: string | null;
       }>,
   });
 
