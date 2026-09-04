@@ -265,8 +265,12 @@ export function buildVehicleNfePayload(input: VehicleNfeBuildInput) {
   const { cfg, profile, vehicle, counterparty, amount, direction } = input;
   const tax = (profile.tax_configuration ?? {}) as Record<string, any>;
   const value = amount.toFixed(2);
-  const interstate = (counterparty.uf ?? "").toUpperCase() !== (cfg.emit_uf ?? "").toUpperCase();
-  const cfop = (interstate ? profile.cfop_interstate : profile.cfop) || profile.cfop;
+  const dest = resolveDestination({
+    emitUf: cfg.emit_uf ?? null,
+    destUf: counterparty.uf ?? null,
+    profile,
+  });
+  const cfop = dest.cfop;
 
   const item: Record<string, unknown> = {
     numero_item: 1,
