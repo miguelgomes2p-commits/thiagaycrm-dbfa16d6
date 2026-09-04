@@ -338,8 +338,21 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
       const b64 = await fileToBase64(certFile);
       return certFn({ data: { workspaceId, filename: certFile.name, fileBase64: b64, password: certPassword } });
     },
-    onSuccess: () => { toast.success("Certificado enviado ao provedor fiscal."); setCertFile(null); setCertPassword(""); refetch(); },
+    onSuccess: () => { toast.success("Certificado enviado ao provedor fiscal."); setCertFile(null); setCertPassword(""); setShowCertUpload(false); certCheckQ.refetch(); refetch(); },
     onError: (err: Error) => toast.error(err.message),
+  });
+
+  const certCheckQ = useQuery({
+    queryKey: ["fiscal-cert-check", workspaceId],
+    queryFn: () =>
+      certCheckFn({ data: { workspaceId } }) as Promise<{
+        found: boolean;
+        source: "provider" | "local" | "none";
+        expiresAt: string | null;
+        expired?: boolean;
+        message?: string;
+      }>,
+    staleTime: 60_000,
   });
 
   const prodM = useMutation({
@@ -351,13 +364,22 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
   const steps = [
     { key: "empresa", label: "Empresa", done: !!(cfg?.emitter.cnpj_emitente && cfg?.emitter.emit_razao_social && cfg?.emitter.emit_ibge) },
     { key: "provider", label: "Provedor", done: !!(cfg?.has_token_homolog || cfg?.has_token_prod) },
-    { key: "cert", label: "Certificado", done: cfg?.certificate_status === "configured" },
+    { key: "cert", label: "Certificado", done: certCheckQ.data?.found || cfg?.certificate_status === "configured" },
     { key: "nfe", label: "Configuração NF-e", done: !!(cfg?.emitter.serie_padrao && cfg?.emitter.regime_tributario) },
     { key: "profile", label: "Perfil fiscal", done: (profilesQ.data ?? []).some((p) => p.active) },
     { key: "homolog", label: "Teste em homologação", done: false },
     { key: "prod", label: "Produção", done: !!cfg?.production_enabled },
   ];
   const done = steps.filter((s) => s.done).length;
+
+  const chk = certCheckQ.data;
+  const certStatus = chk?.source === "provider"
+    ? chk.expired
+      ? { ok: false, label: "Certificado vencido na Focus NFe", expiresAt: chk.expiresAt }
+      : { ok: true, label: "Certificado configurado na Focus NFe", expiresAt: chk.expiresAt }
+    : cfg?.certificate_status === "configured"
+      ? { ok: true, label: "Certificado configurado", expiresAt: cfg.certificate_expires_at }
+      : { ok: false, label: "Não configurado", expiresAt: null as string | null };
 
   return (
     <div className="space-y-4">
@@ -445,38 +467,66 @@ function ConfigPanel({ workspaceId, cfg, refetch }: { workspaceId: string; cfg?:
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Certificado digital A1</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <p className="text-xs text-muted-foreground">
-            O arquivo e a senha são enviados diretamente ao provedor fiscal e nunca ficam armazenados no CRM.
-          </p>
-          {cfg?.certificate_status === "configured" ? (
+          {certCheckQ.isLoading ? (
+            <p className="flex items-center gap-2 text-muted-foreground text-xs">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Consultando certificado no provedor fiscal...
+            </p>
+          ) : certStatus.ok ? (
             <p className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-600" /> Configurado
-              {cfg.certificate_expires_at && <span className="text-muted-foreground text-xs">
-                • validade {new Date(cfg.certificate_expires_at).toLocaleDateString("pt-BR")}</span>}
+              <ShieldCheck className="h-4 w-4 text-emerald-600" /> {certStatus.label}
+              {certStatus.expiresAt && (
+                <span className="text-muted-foreground text-xs">
+                  • validade {new Date(certStatus.expiresAt).toLocaleDateString("pt-BR")}
+                </span>
+              )}
             </p>
           ) : (
             <p className="flex items-center gap-2 text-muted-foreground">
-              <XCircle className="h-4 w-4" /> Não configurado
+              <XCircle className="h-4 w-4" /> {certStatus.label}
             </p>
           )}
-          <div className="grid sm:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Arquivo .pfx/.p12</Label>
-              <Input type="file" accept=".pfx,.p12" className="cursor-pointer"
-                onChange={(ev) => setCertFile(ev.target.files?.[0] ?? null)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Senha do certificado</Label>
-              <Input type="password" value={certPassword} onChange={(ev) => setCertPassword(ev.target.value)} />
-            </div>
-            <div className="flex items-end">
-              <Button className="cursor-pointer" disabled={!certFile || !certPassword || certM.isPending}
-                onClick={() => certM.mutate()}>
-                {certM.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-                {cfg?.certificate_status === "configured" ? "Substituir certificado" : "Enviar certificado"}
-              </Button>
-            </div>
+          {certCheckQ.data?.message && (
+            <p className="text-xs text-muted-foreground">{certCheckQ.data.message}</p>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" size="sm" className="cursor-pointer h-8 text-xs"
+              disabled={certCheckQ.isFetching}
+              onClick={() => { certCheckQ.refetch(); refetch(); }}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${certCheckQ.isFetching ? "animate-spin" : ""}`} />
+              Verificar no provedor
+            </Button>
+            <Button variant="outline" size="sm" className="cursor-pointer h-8 text-xs"
+              onClick={() => setShowCertUpload((v) => !v)}>
+              {certStatus.ok ? "Substituir certificado" : "Enviar certificado"}
+            </Button>
           </div>
+
+          {showCertUpload && (
+            <div className="space-y-3 border-t border-border pt-3">
+              <p className="text-xs text-muted-foreground">
+                O arquivo e a senha são enviados diretamente ao provedor fiscal e nunca ficam armazenados no CRM.
+              </p>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Arquivo .pfx/.p12</Label>
+                  <Input type="file" accept=".pfx,.p12" className="cursor-pointer"
+                    onChange={(ev) => setCertFile(ev.target.files?.[0] ?? null)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Senha do certificado</Label>
+                  <Input type="password" value={certPassword} onChange={(ev) => setCertPassword(ev.target.value)} />
+                </div>
+                <div className="flex items-end">
+                  <Button className="cursor-pointer" disabled={!certFile || !certPassword || certM.isPending}
+                    onClick={() => certM.mutate()}>
+                    {certM.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                    Enviar ao provedor
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
