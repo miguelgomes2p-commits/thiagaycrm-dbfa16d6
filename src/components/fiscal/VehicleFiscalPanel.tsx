@@ -10,6 +10,7 @@ import {
   getVehicleFiscalStatus,
   issueVehicleFiscalDocument,
   importSupplierNfe,
+  refreshVehicleFiscalDocument,
 } from "@/lib/fiscal-vehicle.functions";
 import { getFiscalDocumentLinks } from "@/lib/fiscal.functions";
 import { FISCAL_STATUS_LABEL } from "@/lib/fiscal/types";
@@ -46,6 +47,7 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
   const issueFn = useServerFn(issueVehicleFiscalDocument);
   const importFn = useServerFn(importSupplierNfe);
   const linksFn = useServerFn(getFiscalDocumentLinks);
+  const refreshFn = useServerFn(refreshVehicleFiscalDocument);
   const fileRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<"purchase" | "sale" | null>(null);
   const [logDoc, setLogDoc] = useState<string | null>(null);
@@ -58,6 +60,15 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
       statusFn({
         data: { workspaceId: vehicle.workspace_id, vehicleId: vehicle.id },
       }) as Promise<any>,
+  });
+
+  const refresh = useMutation({
+    mutationFn: (documentId: string) =>
+      refreshFn({ data: { workspaceId: vehicle.workspace_id, documentId } }) as Promise<any>,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: key });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const issue = useMutation({
@@ -211,6 +222,22 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
                       <FileText className="h-3 w-3 mr-1" />
                     )}
                     Emitir
+                  </Button>
+                )}
+                {d.status === "processing" && d.source !== "imported" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] cursor-pointer"
+                    disabled={refresh.isPending}
+                    onClick={() => refresh.mutate(d.id)}
+                  >
+                    {refresh.isPending ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                    )}
+                    Atualizar status
                   </Button>
                 )}
                 {(d.status === "rejected" || d.status === "error") && d.source !== "imported" && (
