@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileDown, FileText, Loader2, RefreshCw, Upload } from "lucide-react";
+import { Download, FileDown, FileText, Loader2, RefreshCw, ScrollText, Upload } from "lucide-react";
 import {
   getVehicleFiscalStatus,
   issueVehicleFiscalDocument,
@@ -15,6 +15,8 @@ import { getFiscalDocumentLinks } from "@/lib/fiscal.functions";
 import { FISCAL_STATUS_LABEL } from "@/lib/fiscal/types";
 import { FISCAL_DIRECTION_LABEL, operationLabel } from "@/lib/fiscal/operations";
 import { VehicleFiscalDraftDialog } from "@/components/fiscal/VehicleFiscalDraftDialog";
+import { FiscalDocumentLogDialog } from "@/components/fiscal/FiscalDocumentLogDialog";
+
 import type { Vehicle } from "@/lib/vehicles";
 
 type Doc = {
@@ -46,6 +48,8 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
   const linksFn = useServerFn(getFiscalDocumentLinks);
   const fileRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<"purchase" | "sale" | null>(null);
+  const [logDoc, setLogDoc] = useState<string | null>(null);
+
 
   const key = ["vehicle-fiscal-status", vehicle.id];
   const q = useQuery({
@@ -241,6 +245,15 @@ export function VehicleFiscalPanel({ vehicle }: { vehicle: Vehicle }) {
                 >
                   <FileDown className="h-3 w-3 mr-1" /> DANFE
                 </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-[11px] cursor-pointer"
+                  onClick={() => setLogDoc(d.id)}
+                >
+                  <ScrollText className="h-3 w-3 mr-1" /> Log
+                </Button>
+
               </div>
             </li>
           ))}
