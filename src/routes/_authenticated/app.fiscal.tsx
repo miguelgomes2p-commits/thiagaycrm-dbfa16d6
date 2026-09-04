@@ -781,6 +781,33 @@ function ProfilesCard({
             <F label="CST COFINS" required v={tax.cofins_situacao_tributaria} on={(v) => setTax({ ...tax, cofins_situacao_tributaria: v })} />
             <F label="Alíquota ICMS (%)" hint="Quando aplicável. Informe exatamente o que a contabilidade determinar." v={tax.icms_aliquota} on={(v) => setTax({ ...tax, icms_aliquota: v })} />
             <F label="Redução base ICMS (%)" hint="Quando aplicável. Não equivale automaticamente a 'base de cálculo de X%' — confirme com a contabilidade." v={tax.icms_reducao_base_calculo} on={(v) => setTax({ ...tax, icms_reducao_base_calculo: v })} />
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">
+                Modalidade da base de cálculo ICMS {String(tax.icms_situacao_tributaria ?? "").trim() === "20" ? "*" : ""}
+              </Label>
+              <Select
+                value={tax.icms_modalidade_base_calculo || "none"}
+                onValueChange={(v) =>
+                  setTax({ ...tax, icms_modalidade_base_calculo: v === "none" ? "" : v })
+                }
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione a modalidade" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não informado</SelectItem>
+                  <SelectItem value="0">0 — Margem de Valor Agregado (%)</SelectItem>
+                  <SelectItem value="1">1 — Pauta (valor)</SelectItem>
+                  <SelectItem value="2">2 — Preço tabelado máximo</SelectItem>
+                  <SelectItem value="3">3 — Valor da operação</SelectItem>
+                </SelectContent>
+              </Select>
+              {String(tax.icms_situacao_tributaria ?? "").trim() === "20" &&
+                !String(tax.icms_modalidade_base_calculo ?? "").trim() && (
+                  <p className="text-[11px] text-destructive">
+                    Informação fiscal não fornecida pela contabilidade.
+                  </p>
+                )}
+            </div>
+
             <div className="sm:col-span-2 space-y-1">
               <Label className="text-xs text-muted-foreground">Informações adicionais</Label>
               <Textarea rows={2} value={form.additional_information ?? ""}
