@@ -45,6 +45,7 @@ import { formatPhoneForDisplay } from "@/lib/phone";
 import { getCameraCapability } from "@/lib/communication/capabilities";
 import { useLeadFields } from "@/hooks/useLeadFields";
 import { DynamicLeadForm } from "@/components/leads/DynamicLeadForm";
+import { stageAfterInboxEdit } from "@/lib/inbox-lead";
 
 
 
@@ -618,7 +619,7 @@ function ConversationsPage() {
       ]);
       const pipe = pipes?.[0] ?? null;
       const { data: stages } = pipe
-        ? await supabase.from("pipeline_stages").select("id, name, position, type").eq("pipeline_id", pipe.id).order("position")
+        ? await supabase.from("pipeline_stages").select("id, name, position, type, is_inbox").eq("pipeline_id", pipe.id).order("position")
         : { data: [] };
       return { pipe, stages: stages ?? [], lead: lead as { id: string; title: string; value: number | null; priority: "low" | "medium" | "high" | "urgent"; notes?: string | null; stage_id: string; pipeline_id: string; custom_fields?: Record<string, string> | null } | null };
     },
@@ -1002,8 +1003,11 @@ function ConversationsPage() {
     const contactId = (active as { contact_id?: string | null }).contact_id ?? null;
     const currentContactName = (active.contacts as { name?: string } | null)?.name ?? "";
     const lead = leadContextQ.data.lead;
-    const stages = leadContextQ.data.stages as Array<{ id: string; type?: string }>;
-    const chosenStage = stages.find((s) => s.id === leadStageId) ?? stages[0];
+    const stages = leadContextQ.data.stages as Array<{ id: string; name: string; position: number; type?: string; is_inbox?: boolean | null }>;
+    let chosenStage = stages.find((s) => s.id === leadStageId) ?? stages[0]!;
+    // Primeira edição de um lead na Caixa de Entrada: move para a primeira etapa operacional.
+    const promotedId = stageAfterInboxEdit(stages, chosenStage.id);
+    if (promotedId) chosenStage = stages.find((s) => s.id === promotedId) ?? chosenStage;
     const finalTitle = leadTitle.trim() || currentContactName || "Lead WhatsApp";
     const payload: Record<string, unknown> = {
       title: finalTitle,

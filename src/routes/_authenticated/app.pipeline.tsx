@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
@@ -22,12 +22,14 @@ import { LeadVehiclesPanel } from "@/components/vehicles/LeadVehiclesPanel";
 
 import { useServerFn } from "@tanstack/react-start";
 import { runStageAutomations } from "@/lib/automations.functions";
+import { stageAfterInboxEdit } from "@/lib/inbox-lead";
+import { MessageSquare } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/pipeline")({
   component: PipelinePage,
 });
 
-type Stage = { id: string; name: string; color: string; type: string; position: number };
+type Stage = { id: string; name: string; color: string; type: string; position: number; is_inbox?: boolean | null };
 type Lead = {
   id: string; title: string; value: number | null; stage_id: string; priority: string;
   source: string | null; tags: string[] | null; created_at: string; last_interaction_at: string | null;
@@ -48,6 +50,7 @@ function PipelinePage() {
   const ws = workspaces?.[0];
   const isAdmin = ws?.role === "owner" || ws?.role === "admin" || ws?.role === "support" || ws?.role === "manager";
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [dragging, setDragging] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [infoLead, setInfoLead] = useState<Lead | null>(null);
@@ -86,10 +89,13 @@ function PipelinePage() {
     };
     if (stage?.type === "won") patch.won_at = new Date().toISOString();
     if (stage?.type === "lost") patch.lost_at = new Date().toISOString();
+    // Primeira edição de um lead na Caixa de Entrada: move para a primeira etapa operacional.
+    const promoted = stageAfterInboxEdit(pipelineQ.data?.stages ?? [], String(patch.stage_id));
+    if (promoted) patch.stage_id = promoted;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await supabase.from("leads").update(patch as any).eq("id", infoLead.id);
     if (error) { toast.error(error.message); return; }
-    toast.success("Lead atualizado");
+    toast.success(promoted ? "Lead atualizado e movido da Caixa de Entrada" : "Lead atualizado");
     setEditForm(null);
     setInfoLead(null);
     qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
@@ -112,7 +118,7 @@ function PipelinePage() {
       const pipe = pipes?.[0];
       if (!pipe) return { pipe: null, stages: [] as Stage[], leads: [] as Lead[], owners: new Map<string, string>() };
       const [{ data: stages, error: stagesError }, { data: leads, error: leadsError }] = await Promise.all([
-        supabase.from("pipeline_stages").select("id, name, color, type, position").eq("pipeline_id", pipe.id).order("position"),
+        supabase.from("pipeline_stages").select("id, name, color, type, position, is_inbox").eq("pipeline_id", pipe.id).order("position"),
         supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, owner_id, contact_id, contacts:contact_id(name, company_name, phone, birthdate)").eq("pipeline_id", pipe.id).order("position"),
       ]);
       if (stagesError) throw stagesError;
@@ -124,7 +130,17 @@ function PipelinePage() {
         const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ownerIds);
         (profs ?? []).forEach((p) => owners.set(p.id, p.full_name ?? "Membro"));
       }
-      return { pipe, stages: (stages ?? []) as Stage[], leads: leadList, owners };
+      const leadIds = leadList.map((l) => l.id);
+      const conversationByLead = new Map<string, string>();
+      if (leadIds.length > 0) {
+        const { data: convs } = await supabase
+          .from("conversations")
+          .select("id, lead_id")
+          .eq("workspace_id", ws!.id)
+          .in("lead_id", leadIds);
+        (convs ?? []).forEach((c) => { if (c.lead_id && !conversationByLead.has(c.lead_id)) conversationByLead.set(c.lead_id, c.id); });
+      }
+      return { pipe, stages: (stages ?? []) as Stage[], leads: leadList, owners, conversationByLead };
     },
   });
 
@@ -366,6 +382,32 @@ function PipelinePage() {
                           </button>
                         </div>
                       </div>
+                      {stage.is_inbox && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setInfoLead(l); startEdit(l); }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          draggable={false}
+                          className="mt-2 w-full rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          Editar dados do lead
+                        </button>
+                      )}
+                      {pipelineQ.data?.conversationByLead?.get(l.id) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const convId = pipelineQ.data?.conversationByLead?.get(l.id);
+                            if (convId) navigate({ to: "/app/conversations", search: { c: convId } });
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          draggable={false}
+                          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                        >
+                          <MessageSquare className="h-3 w-3" /> Ir pra conversa
+                        </button>
+                      )}
                       {l.contacts?.name && (
                         <div className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1">
                           <UserIcon className="h-3 w-3" /> {l.contacts.name}
