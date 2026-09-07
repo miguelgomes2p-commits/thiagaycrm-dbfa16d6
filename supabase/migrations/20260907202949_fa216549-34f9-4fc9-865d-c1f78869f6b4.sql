@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.tg_conversation_create_inbox_lead() FROM PUBLIC, anon, authenticated;
