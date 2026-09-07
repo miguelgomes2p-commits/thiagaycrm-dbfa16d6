@@ -802,7 +802,11 @@ export const validateFiscalEmission = createServerFn({ method: "POST" })
               issuer: svc.buildIssuerSnapshot(cfg),
               vehicle: svc.vehicleDescription(vehicle),
               profileName: profile.name as string,
-              cfop: profile.cfop as string,
+              cfop: svc.resolveOperationDestination({
+                emitUf: cfg.emit_uf,
+                destUf: data.recipient?.uf,
+                profile,
+              }).cfop as string,
               ncm: profile.ncm as string,
               amount: data.amount,
             }
