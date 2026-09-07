@@ -22,12 +22,14 @@ import { LeadVehiclesPanel } from "@/components/vehicles/LeadVehiclesPanel";
 
 import { useServerFn } from "@tanstack/react-start";
 import { runStageAutomations } from "@/lib/automations.functions";
+import { stageAfterInboxEdit } from "@/lib/inbox-lead";
+import { MessageSquare } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/pipeline")({
   component: PipelinePage,
 });
 
-type Stage = { id: string; name: string; color: string; type: string; position: number };
+type Stage = { id: string; name: string; color: string; type: string; position: number; is_inbox?: boolean | null };
 type Lead = {
   id: string; title: string; value: number | null; stage_id: string; priority: string;
   source: string | null; tags: string[] | null; created_at: string; last_interaction_at: string | null;
@@ -86,10 +88,13 @@ function PipelinePage() {
     };
     if (stage?.type === "won") patch.won_at = new Date().toISOString();
     if (stage?.type === "lost") patch.lost_at = new Date().toISOString();
+    // Primeira edição de um lead na Caixa de Entrada: move para a primeira etapa operacional.
+    const promoted = stageAfterInboxEdit(pipelineQ.data?.stages ?? [], String(patch.stage_id));
+    if (promoted) patch.stage_id = promoted;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await supabase.from("leads").update(patch as any).eq("id", infoLead.id);
     if (error) { toast.error(error.message); return; }
-    toast.success("Lead atualizado");
+    toast.success(promoted ? "Lead atualizado e movido da Caixa de Entrada" : "Lead atualizado");
     setEditForm(null);
     setInfoLead(null);
     qc.invalidateQueries({ queryKey: ["pipeline", ws.id] });
@@ -112,7 +117,7 @@ function PipelinePage() {
       const pipe = pipes?.[0];
       if (!pipe) return { pipe: null, stages: [] as Stage[], leads: [] as Lead[], owners: new Map<string, string>() };
       const [{ data: stages, error: stagesError }, { data: leads, error: leadsError }] = await Promise.all([
-        supabase.from("pipeline_stages").select("id, name, color, type, position").eq("pipeline_id", pipe.id).order("position"),
+        supabase.from("pipeline_stages").select("id, name, color, type, position, is_inbox").eq("pipeline_id", pipe.id).order("position"),
         supabase.from("leads").select("id, title, value, stage_id, priority, source, tags, created_at, last_interaction_at, notes, custom_fields, owner_id, contact_id, contacts:contact_id(name, company_name, phone, birthdate)").eq("pipeline_id", pipe.id).order("position"),
       ]);
       if (stagesError) throw stagesError;
@@ -124,7 +129,17 @@ function PipelinePage() {
         const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ownerIds);
         (profs ?? []).forEach((p) => owners.set(p.id, p.full_name ?? "Membro"));
       }
-      return { pipe, stages: (stages ?? []) as Stage[], leads: leadList, owners };
+      const leadIds = leadList.map((l) => l.id);
+      const conversationByLead = new Map<string, string>();
+      if (leadIds.length > 0) {
+        const { data: convs } = await supabase
+          .from("conversations")
+          .select("id, lead_id")
+          .eq("workspace_id", ws!.id)
+          .in("lead_id", leadIds);
+        (convs ?? []).forEach((c) => { if (c.lead_id && !conversationByLead.has(c.lead_id)) conversationByLead.set(c.lead_id, c.id); });
+      }
+      return { pipe, stages: (stages ?? []) as Stage[], leads: leadList, owners, conversationByLead };
     },
   });
 
