@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyWorkspaces } from "@/hooks/useWorkspace";
@@ -50,6 +50,7 @@ function PipelinePage() {
   const ws = workspaces?.[0];
   const isAdmin = ws?.role === "owner" || ws?.role === "admin" || ws?.role === "support" || ws?.role === "manager";
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [dragging, setDragging] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [infoLead, setInfoLead] = useState<Lead | null>(null);
@@ -381,6 +382,31 @@ function PipelinePage() {
                           </button>
                         </div>
                       </div>
+                      {stage.is_inbox && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setInfoLead(l); startEdit(l); }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          draggable={false}
+                          className="mt-2 w-full rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          Editar dados do lead
+                        </button>
+                      )}
+                      {pipelineQ.data?.conversationByLead.get(l.id) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate({ to: "/app/conversations", search: { c: pipelineQ.data!.conversationByLead.get(l.id)! } });
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          draggable={false}
+                          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                        >
+                          <MessageSquare className="h-3 w-3" /> Ir pra conversa
+                        </button>
+                      )}
                       {l.contacts?.name && (
                         <div className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1">
                           <UserIcon className="h-3 w-3" /> {l.contacts.name}
