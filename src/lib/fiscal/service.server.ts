@@ -265,6 +265,121 @@ export function buildIcmsGroup(
   };
 }
 
+/* --------------- grupo ICMSUFDest (DIFAL — EC 87/2015) --------------- */
+
+export const DIFAL_NOT_CONFIGURED_MESSAGE =
+  "Tributação ICMS/DIFAL da UF de destino não configurada para esta operação interestadual.";
+
+export type DifalContext = {
+  emitUf?: string | null;
+  destUf?: string | null;
+  /** 1 = consumidor final */
+  finalConsumer: boolean;
+  /** true quando o destinatário é contribuinte de ICMS */
+  taxpayer: boolean;
+};
+
+/** ICMSUFDest só existe em operação interestadual, a consumidor final não contribuinte. */
+export function difalApplies(ctx: DifalContext): boolean {
+  const emitUf = (ctx.emitUf ?? "").trim().toUpperCase();
+  const destUf = (ctx.destUf ?? "").trim().toUpperCase();
+  if (!emitUf || !destUf || destUf === "EX") return false;
+  if (emitUf === destUf) return false;
+  return ctx.finalConsumer && !ctx.taxpayer;
+}
+
+export type DifalDetail = {
+  base: number;
+  aliquota_interna_uf_destino: number;
+  aliquota_interestadual: number;
+  percentual_partilha: number;
+  percentual_fcp: number;
+  fcp_valor_uf_destino: number;
+  icms_valor_uf_destino: number;
+  icms_valor_uf_remetente: number;
+};
+
+/**
+ * Monta o grupo adicional ICMSUFDest a partir EXCLUSIVAMENTE do que a
+ * contabilidade configurou no perfil fiscal. Não substitui o ICMS do item
+ * e nunca arbitra bases ou alíquotas.
+ */
+export function buildIcmsUfDestGroup(
+  profile: Record<string, any> | null,
+  amount: number,
+  ctx: DifalContext,
+): { group: Record<string, string>; issues: FiscalValidationIssue[]; detail: DifalDetail | null } {
+  if (!difalApplies(ctx)) return { group: {}, issues: [], detail: null };
+
+  const tax = (profile?.tax_configuration ?? {}) as Record<string, any>;
+  const modo = String(tax.difal_base_uf_destino_modo ?? "").trim();
+  const baseInformada = num(tax.difal_base_uf_destino_valor);
+  const aliqInterna = num(tax.difal_aliquota_interna_uf_destino);
+  const aliqInter = num(tax.difal_aliquota_interestadual);
+  const partilha = num(tax.difal_percentual_partilha);
+  const fcp = num(tax.difal_fcp_percentual);
+
+  const missing: string[] = [];
+  if (!modo) missing.push("Base de cálculo ICMS UF destino");
+  if (modo === "valor_informado" && baseInformada == null)
+    missing.push("Valor da base de cálculo ICMS UF destino");
+  if (aliqInterna == null) missing.push("Alíquota interna da UF de destino");
+  if (aliqInter == null) missing.push("Alíquota interestadual");
+  if (partilha == null) missing.push("Percentual de partilha");
+  if (fcp == null) missing.push("Percentual de FCP da UF de destino");
+
+  if (missing.length)
+    return {
+      group: {},
+      issues: [
+        {
+          field: "icms_uf_destino",
+          message: `${DIFAL_NOT_CONFIGURED_MESSAGE} Pendente: ${missing.join(", ")}.`,
+        },
+      ],
+      detail: null,
+    };
+
+  const base = round2(modo === "valor_informado" ? (baseInformada as number) : amount);
+  if (!(base > 0))
+    return {
+      group: {},
+      issues: [{ field: "icms_uf_destino", message: DIFAL_NOT_CONFIGURED_MESSAGE }],
+      detail: null,
+    };
+
+  const diff = ((aliqInterna as number) - (aliqInter as number)) / 100;
+  const valorTotal = base * diff;
+  const valorDestino = round2((valorTotal * (partilha as number)) / 100);
+  const valorRemetente = round2(valorTotal - valorDestino);
+  const fcpValor = round2((base * (fcp as number)) / 100);
+
+  return {
+    group: {
+      icms_base_calculo_uf_destino: base.toFixed(2),
+      fcp_base_calculo_uf_destino: base.toFixed(2),
+      fcp_percentual_uf_destino: (fcp as number).toFixed(2),
+      icms_aliquota_interna_uf_destino: (aliqInterna as number).toFixed(2),
+      icms_aliquota_interestadual: (aliqInter as number).toFixed(2),
+      icms_percentual_partilha: (partilha as number).toFixed(2),
+      fcp_valor_uf_destino: fcpValor.toFixed(2),
+      icms_valor_uf_destino: valorDestino.toFixed(2),
+      icms_valor_uf_remetente: valorRemetente.toFixed(2),
+    },
+    issues: [],
+    detail: {
+      base,
+      aliquota_interna_uf_destino: aliqInterna as number,
+      aliquota_interestadual: aliqInter as number,
+      percentual_partilha: partilha as number,
+      percentual_fcp: fcp as number,
+      fcp_valor_uf_destino: fcpValor,
+      icms_valor_uf_destino: valorDestino,
+      icms_valor_uf_remetente: valorRemetente,
+    },
+  };
+}
+
 
 export function buildIssuerSnapshot(cfg: FiscalConfigRow) {
   return {
