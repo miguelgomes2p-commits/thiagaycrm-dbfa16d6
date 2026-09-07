@@ -391,7 +391,7 @@ export function buildNfePayload(input: {
     consumidor_final: recipient.final_consumer === false ? 0 : 1,
     presenca_comprador: 1,
     modalidade_frete: 9,
-    local_destino: recipient.uf === cfg.emit_uf ? 1 : 2,
+    local_destino: dest.localDestino,
     serie: cfg.serie_padrao ?? 1,
     cnpj_emitente: onlyDigits(cfg.cnpj_emitente),
     inscricao_estadual_emitente: cfg.ie_emitente,
