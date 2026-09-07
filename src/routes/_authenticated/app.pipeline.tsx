@@ -393,12 +393,13 @@ function PipelinePage() {
                           Editar dados do lead
                         </button>
                       )}
-                      {pipelineQ.data?.conversationByLead.get(l.id) && (
+                      {pipelineQ.data?.conversationByLead?.get(l.id) && (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate({ to: "/app/conversations", search: { c: pipelineQ.data!.conversationByLead.get(l.id)! } });
+                            const convId = pipelineQ.data?.conversationByLead?.get(l.id);
+                            if (convId) navigate({ to: "/app/conversations", search: { c: convId } });
                           }}
                           onMouseDown={(e) => e.stopPropagation()}
                           draggable={false}
