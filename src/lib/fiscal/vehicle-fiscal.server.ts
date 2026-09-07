@@ -290,6 +290,16 @@ export function buildVehicleNfePayload(input: VehicleNfeBuildInput) {
     ...(profile.cest ? { cest: profile.cest } : {}),
     ...tax,
     ...buildIcmsGroup(profile, amount).group,
+    ...buildIcmsUfDestGroup(profile, amount, {
+      emitUf: cfg.emit_uf,
+      destUf: counterparty.uf,
+      finalConsumer:
+        profile.final_consumer === false ? false : counterparty.final_consumer !== false,
+      taxpayer:
+        (counterparty.taxpayer_indicator ??
+          (counterparty.taxpayer ? "contributor" : "non_contributor")) === "contributor",
+    }).group,
+
 
   };
 
