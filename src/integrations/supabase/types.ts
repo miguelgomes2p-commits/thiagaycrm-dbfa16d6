@@ -1987,6 +1987,7 @@ export type Database = {
           color: string | null
           created_at: string
           id: string
+          is_inbox: boolean
           name: string
           pipeline_id: string
           position: number
@@ -1999,6 +2000,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          is_inbox?: boolean
           name: string
           pipeline_id: string
           position?: number
@@ -2011,6 +2013,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          is_inbox?: boolean
           name?: string
           pipeline_id?: string
           position?: number
