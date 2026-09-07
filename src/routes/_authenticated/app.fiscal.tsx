@@ -810,6 +810,60 @@ function ProfilesCard({
                 )}
             </div>
 
+            <div className="sm:col-span-2 pt-2 border-t border-border space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                ICMS/DIFAL da UF de destino (ICMSUFDest)
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Usado apenas em venda interestadual para consumidor final não contribuinte. Informe
+                exatamente os valores indicados pela contabilidade.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Base de cálculo UF destino</Label>
+              <Select
+                value={tax.difal_base_uf_destino_modo || "none"}
+                onValueChange={(v) =>
+                  setTax({ ...tax, difal_base_uf_destino_modo: v === "none" ? "" : v })
+                }
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não informado</SelectItem>
+                  <SelectItem value="valor_operacao">Valor da operação</SelectItem>
+                  <SelectItem value="valor_informado">Valor informado abaixo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <F
+              label="Valor da base UF destino (R$)"
+              hint="Preencher somente quando a base for um valor fixo informado pela contabilidade."
+              v={tax.difal_base_uf_destino_valor}
+              on={(v) => setTax({ ...tax, difal_base_uf_destino_valor: v })}
+            />
+            <F
+              label="Alíquota interna UF destino (%)"
+              v={tax.difal_aliquota_interna_uf_destino}
+              on={(v) => setTax({ ...tax, difal_aliquota_interna_uf_destino: v })}
+            />
+            <F
+              label="Alíquota interestadual (%)"
+              v={tax.difal_aliquota_interestadual}
+              on={(v) => setTax({ ...tax, difal_aliquota_interestadual: v })}
+            />
+            <F
+              label="Percentual FCP UF destino (%)"
+              v={tax.difal_fcp_percentual}
+              on={(v) => setTax({ ...tax, difal_fcp_percentual: v })}
+            />
+            <F
+              label="Percentual de partilha UF destino (%)"
+              v={tax.difal_percentual_partilha}
+              on={(v) => setTax({ ...tax, difal_percentual_partilha: v })}
+            />
+
+
+
             <div className="sm:col-span-2 space-y-1">
               <Label className="text-xs text-muted-foreground">Informações adicionais</Label>
               <Textarea rows={2} value={form.additional_information ?? ""}
