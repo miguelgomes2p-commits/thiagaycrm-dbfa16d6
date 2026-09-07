@@ -482,6 +482,13 @@ export function buildNfePayload(input: {
     ...(profile.cest ? { cest: profile.cest } : {}),
     ...tax, // CST/CSOSN, alíquotas e reduções vindos da contabilidade
     ...buildIcmsGroup(profile, amount).group,
+    ...buildIcmsUfDestGroup(profile, amount, {
+      emitUf: cfg.emit_uf,
+      destUf: recipient.uf,
+      finalConsumer: recipient.final_consumer !== false,
+      taxpayer: !!recipient.taxpayer,
+    }).group,
+
 
   };
 
