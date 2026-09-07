@@ -773,6 +773,15 @@ async function gatherEmissionContext(supabaseAdmin: any, data: z.infer<typeof em
     ...svc.validateRecipient(data.recipient),
     ...(vehicle ? [] : [{ field: "vehicle", message: "Veículo não encontrado" }]),
   ];
+  // Bloqueio pré-Focus: CFOP coerente com a operação (interna x interestadual).
+  if (cfg && profile) {
+    const dest = svc.resolveOperationDestination({
+      emitUf: cfg.emit_uf,
+      destUf: data.recipient?.uf,
+      profile,
+    });
+    if (dest.issue && !issues.some((i) => i.field === dest.issue!.field)) issues.push(dest.issue);
+  }
   return { svc, cfg, profile, vehicle, issues };
 }
 
