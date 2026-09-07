@@ -5,7 +5,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildIcmsGroup,
+  buildIcmsUfDestGroup,
   buildIssuerSnapshot,
+
 
   missingEmitterFields,
   onlyDigits,
@@ -210,6 +212,20 @@ export function validateFiscalOperation(input: {
       for (const i of buildIcmsGroup(ctx.profile, amount).issues)
         if (!issues.some((x) => x.message === i.message)) issues.push(i);
 
+    // ICMSUFDest (DIFAL): só em operação interestadual a consumidor final
+    // não contribuinte. Bloqueia antes do envio quando não configurado.
+    if (amount && amount > 0)
+      for (const i of buildIcmsUfDestGroup(ctx.profile, amount, {
+        emitUf: cfg?.emit_uf ?? null,
+        destUf: counterparty?.uf ?? null,
+        finalConsumer:
+          ctx.profile.final_consumer === false ? false : counterparty?.final_consumer !== false,
+        taxpayer:
+          ((counterparty as any)?.taxpayer_indicator ??
+            (counterparty?.taxpayer ? "contributor" : "non_contributor")) === "contributor",
+      }).issues)
+        if (!issues.some((x) => x.message === i.message)) issues.push(i);
+
 
     if (ctx.profile.direction && ctx.profile.direction !== ctx.direction)
       issues.push({
@@ -290,6 +306,16 @@ export function buildVehicleNfePayload(input: VehicleNfeBuildInput) {
     ...(profile.cest ? { cest: profile.cest } : {}),
     ...tax,
     ...buildIcmsGroup(profile, amount).group,
+    ...buildIcmsUfDestGroup(profile, amount, {
+      emitUf: cfg.emit_uf,
+      destUf: counterparty.uf,
+      finalConsumer:
+        profile.final_consumer === false ? false : counterparty.final_consumer !== false,
+      taxpayer:
+        (counterparty.taxpayer_indicator ??
+          (counterparty.taxpayer ? "contributor" : "non_contributor")) === "contributor",
+    }).group,
+
 
   };
 
