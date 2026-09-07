@@ -240,6 +240,7 @@ export async function handleTriageComplete(request: Request, pathConversationId?
       status: result.status,
       conversation_id: conversationId,
     };
+    if (result.workspace_id) payload["workspace_id"] = result.workspace_id;
     if (result.assigned_agent) payload["assigned_agent"] = result.assigned_agent;
 
     const httpStatus = result.status === "waiting_for_agent" ? 202 : 200;
