@@ -304,6 +304,34 @@ export function vehicleAdditionalInfo(v: Record<string, any>): string {
   return parts.join(" | ");
 }
 
+/**
+ * Resolve idDest/local_destino e o CFOP da operação pelas UFs:
+ * mesma UF → interna (1) → profile.cfop; UF diferente → interestadual (2) → profile.cfop_interstate.
+ * Nunca faz fallback interno/interestadual nem inventa códigos.
+ */
+export function resolveOperationDestination(input: {
+  emitUf?: string | null;
+  destUf?: string | null;
+  profile: Record<string, any> | null;
+}): { localDestino: 1 | 2; cfop: string | null; issue: FiscalValidationIssue | null } {
+  const emitUf = (input.emitUf ?? "").trim().toUpperCase();
+  const destUf = (input.destUf ?? "").trim().toUpperCase();
+  const interstate = !!emitUf && !!destUf && emitUf !== destUf;
+  const localDestino = interstate ? 2 : 1;
+  const cfop = interstate
+    ? ((input.profile?.cfop_interstate ?? null) || null)
+    : ((input.profile?.cfop ?? null) || null);
+  const issue = !cfop
+    ? {
+        field: interstate ? "cfop_interstate" : "cfop",
+        message: interstate
+          ? "CFOP interestadual não configurado para este perfil fiscal."
+          : "CFOP não definido no perfil fiscal",
+      }
+    : null;
+  return { localDestino, cfop, issue };
+}
+
 /** Monta o payload NF-e modelo 55 usando EXCLUSIVAMENTE os valores do perfil fiscal. */
 export function buildNfePayload(input: {
   cfg: FiscalConfigRow;
@@ -315,13 +343,18 @@ export function buildNfePayload(input: {
   const { cfg, profile, vehicle, recipient, amount } = input;
   const tax = (profile.tax_configuration ?? {}) as Record<string, any>;
   const value = amount.toFixed(2);
+  const dest = resolveOperationDestination({
+    emitUf: cfg.emit_uf,
+    destUf: recipient.uf,
+    profile,
+  });
 
   const item: Record<string, unknown> = {
     numero_item: 1,
     codigo_produto: vehicle.stock_code || vehicle.chassis?.slice(-10) || "VEIC001",
     descricao: vehicleDescription(vehicle) || "Veículo automotor",
     codigo_ncm: profile.ncm,
-    cfop: profile.cfop,
+    cfop: dest.cfop,
     unidade_comercial: "UN",
     quantidade_comercial: "1.0000",
     valor_unitario_comercial: value,
@@ -358,7 +391,7 @@ export function buildNfePayload(input: {
     consumidor_final: recipient.final_consumer === false ? 0 : 1,
     presenca_comprador: 1,
     modalidade_frete: 9,
-    local_destino: recipient.uf === cfg.emit_uf ? 1 : 2,
+    local_destino: dest.localDestino,
     serie: cfg.serie_padrao ?? 1,
     cnpj_emitente: onlyDigits(cfg.cnpj_emitente),
     inscricao_estadual_emitente: cfg.ie_emitente,
